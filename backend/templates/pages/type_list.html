@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+<div class="grid grid--3">
+    {% for row in rows %}
+        <a class="card card--link" href="{% url 'core:object_list' %}?type={{ row.id }}">
+            <p class="eyebrow">{% trans 'Тип объекта' %}</p>
+            <h3 style="margin:var(--sp-2) 0">{{ row.name }}</h3>
+            {% if row.type.description %}
+                <p class="small muted">{{ row.type.description }}</p>
+            {% endif %}
+            <dl class="facts" style="margin-top:var(--sp-3)">
+                <div><dt>{% trans 'Объектов' %}</dt><dd>{{ row.count }}</dd></div>
+                <div><dt>{% trans 'Доля от общего числа' %}</dt><dd>{{ row.count|ratio:total|percent }}</dd></div>
+                <div><dt>{% trans 'Суммарная мощность' %}</dt><dd>{{ row.capacity|tons }}</dd></div>
+            </dl>
+            <div class="bar" style="margin-top:var(--sp-3)">
+                <div class="bar__fill" style="width:{{ row.count|ratio:total }}%"></div>
+            </div>
+        </a>
+    {% empty %}
+        {% include "partials/_empty.html" %}
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--{{ incident.severity|severity_tone }}">
+        <span class="metric__label">{% trans 'Уровень серьёзности' %}</span>
+        <span class="metric__value">{{ incident.severity }}<small>/5</small></span>
+        <span class="metric__note">{{ incident.severity_state.0 }}</span>
+    </div>
+    <div class="metric metric--{% if incident.is_open %}alert{% else %}ok{% endif %}">
+        <span class="metric__label">{% trans 'Состояние' %}</span>
+        <span class="metric__value" style="font-size:var(--fs-lg)">
+            {% if incident.is_open %}Открыт{% else %}Устранён{% endif %}
+        </span>
+        <span class="metric__note">
+            {% if incident.resolved_at %}{{ incident.resolved_at|date:"d.m.Y H:i" }}
+            {% else %}устранение не зафиксировано{% endif %}
+        </span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Длительность' %}</span>
+        <span class="metric__value">{{ incident.duration_hours|spaced:1 }}<small> ч</small></span>
+        <span class="metric__note">с {{ incident.reported_at|date:"d.m.Y H:i" }}</span>
+    </div>
+    <div class="metric metric--{% if incident.affects_cargo %}warn{% else %}muted{% endif %}">
+        <span class="metric__label">{% trans 'Грузовой транспорт' %}</span>
+        <span class="metric__value" style="font-size:var(--fs-lg)">
+            {% if incident.affects_cargo %}Затронут{% else %}Не затронут{% endif %}
+        </span>
+    </div>
+</div>
+
+<div class="grid grid--wide">
+    <div class="stack">
+        <article class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Описание события' %}</h3>
+            <p>{{ incident.description|default:"Описание не предоставлено источником данных." }}</p>
+            <dl class="facts" style="margin-top:var(--sp-4)">
+                <div><dt>{% trans 'Тип события' %}</dt><dd>{{ incident.get_incident_type_display }}</dd></div>
+                <div><dt>{% trans 'Участок сети' %}</dt>
+                    <dd>{% if incident.road %}
+                        <a href="{{ incident.road.get_absolute_url }}">{{ incident.road.name }}</a>
+                        {% else %}не указан{% endif %}</dd></div>
+                <div><dt>{% trans 'Округ' %}</dt>
+                    <dd>{{ incident.road.district.name|default:"—" }}</dd></div>
+                {% if incident.geom %}
+                    <div><dt>{% trans 'Координаты' %}</dt>
+                        <dd>{{ incident.geom.lat|spaced:5 }}, {{ incident.geom.lon|spaced:5 }}</dd></div>
+                {% endif %}
+                <div><dt>{% trans 'Источник' %}</dt><dd>{{ incident.source.name|dash }}</dd></div>
+            </dl>
+        </article>
+
+        {% if context_window %}
+            <article class="card card--flush">
+                <div class="card__head">
+                    <div>
+                        <p class="eyebrow">{% trans 'Окрестность события' %}</p>
+                        <h3>{% trans 'Обстановка на участке' %}</h3>
+                    </div>
+                </div>
+                <div class="card__body">
+                    {% chart_from context_window "recorded_at" "congestion_level" "d.m H:i" as ctx_chart %}
+                    <div data-chart='{{ ctx_chart }}' data-chart-type="bar" data-height="220"></div>
+                    <p class="small faint" style="margin-top:var(--sp-2)">{% trans 'Замеры за шесть часов до регистрации события и шесть часов после его устранения — позволяют оценить фактическое влияние на движение.' %}</p>
+                </div>
+            </article>
+        {% endif %}
+    </div>
+
+    <aside class="stack">
+        {% if incident.geom %}
+            <div class="card card--flush">
+                <div class="card__head"><h3>{% trans 'Место события' %}</h3></div>
+                <div id="incident-map" style="height:260px"
+                     data-lat="{{ incident.geom.lat|stringformat:'f' }}"
+                     data-lon="{{ incident.geom.lon|stringformat:'f' }}"></div>
+            </div>
+        {% endif %}
+
+        {% if nearby %}
+            <div class="card">
+                <h3 style="margin-bottom:var(--sp-3)">{% trans 'Другие события на участке' %}</h3>
+                <div class="stack stack--tight">
+                    {% for item in nearby %}
+                        <a href="{{ item.get_absolute_url }}" style="color:inherit;padding:4px 0">
+                            <div class="row row--between">
+                                <span class="small">{{ item.get_incident_type_display }}</span>
+                                <span class="badge badge--{{ item.severity|severity_tone }}">
+                                    {{ item.severity }}</span>
+                            </div>
+                            <span class="table-sub">{{ item.reported_at|date:"d.m.Y" }}</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if incident.geom %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var node = document.getElementById("incident-map");
+    if (!node || typeof L === "undefined") return;
+    var lat = parseFloat(node.dataset.lat), lon = parseFloat(node.dataset.lon);
+    var map = L.map(node, { scrollWheelZoom: false }).setView([lat, lon], 13);
+    L.tileLayer("{{ MAP_TILE_URL }}", { attribution: "{{ MAP_ATTRIBUTION }}" }).addTo(map);
+    L.circleMarker([lat, lon], {
+        radius: 10, color: "#e2504a", weight: 2, fillColor: "#e2504a", fillOpacity: 0.5
+    }).addTo(map);
+});
+</script>
+{% endif %}
+{% endblock %}

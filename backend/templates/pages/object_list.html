@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block page_header %}
+<header class="page-header">
+    <div class="page-header__row">
+        <div>
+            <h1>{{ page_title }}</h1>
+            <p class="lead">{{ page_lead }}</p>
+        </div>
+        <div class="page-header__actions">
+            {% include "partials/_export.html" %}
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+
+<form class="filters" method="get" data-autosubmit>
+    <div class="filters__grid">
+        <div class="field">
+            <label for="f-q">{% trans 'Поиск' %}</label>
+            <input type="search" id="f-q" name="q" value="{{ filters.q }}"
+                   placeholder="{% trans 'Название или адрес объекта' %}">
+        </div>
+        <div class="field">
+            <label for="f-district">{% trans 'Округ' %}</label>
+            <select id="f-district" name="district">
+                <option value="">{% trans 'Все округа' %}</option>
+                {% for district in districts %}
+                    <option value="{{ district.pk }}"
+                            {% if filters.district == district.pk %}selected{% endif %}>
+                        {{ district.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field">
+            <label for="f-type">{% trans 'Тип объекта' %}</label>
+            <select id="f-type" name="type">
+                <option value="">{% trans 'Все типы' %}</option>
+                {% for type in types %}
+                    <option value="{{ type.pk }}" {% if filters.type == type.pk %}selected{% endif %}>
+                        {{ type.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field">
+            <label for="f-source">{% trans 'Источник данных' %}</label>
+            <select id="f-source" name="source">
+                <option value="">{% trans 'Любой источник' %}</option>
+                {% for source in sources %}
+                    <option value="{{ source.pk }}" {% if filters.source == source.pk %}selected{% endif %}>
+                        {{ source.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field">
+            <span class="field__label">{% trans 'Режим работы' %}</span>
+            <label class="check">
+                <input type="checkbox" name="round_clock" value="1"
+                       {% if filters.round_clock %}checked{% endif %}>
+                <span>{% trans 'Только круглосуточные' %}</span>
+            </label>
+        </div>
+        <div class="row">
+            <button class="button button--primary" type="submit">{% trans 'Показать' %}</button>
+            <a class="button button--ghost" href="{% url 'core:object_list' %}">{% trans 'Очистить' %}</a>
+        </div>
+    </div>
+</form>
+
+<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Найдено объектов' %}</span>
+        <span class="metric__value">{{ total_count|spaced }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Суммарная мощность' %}</span>
+        <span class="metric__value">{{ total_capacity|tons }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Суммарная площадь' %}</span>
+        <span class="metric__value">{{ total_area|spaced }}<small> м²</small></span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Показано на странице' %}</span>
+        <span class="metric__value">{{ page_obj.object_list|length }}</span>
+        <span class="metric__note">{% blocktrans with page=page_obj.number total=page_obj.paginator.num_pages %}страница {{ page }} из {{ total }}{% endblocktrans %}</span>
+    </div>
+</div>
+
+{% if page_obj.object_list %}
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>{% sort_link request "name" filters.sort _("Наименование") %}</th>
+                    <th>{% sort_link request "type" filters.sort _("Тип") %}</th>
+                    <th>{% sort_link request "district" filters.sort _("Округ") %}</th>
+                    <th class="num">{% sort_link request "capacity" filters.sort _("Мощность, т") %}</th>
+                    <th class="num">{% sort_link request "area" filters.sort _("Площадь, м²") %}</th>
+                    <th>{% trans 'Режим работы' %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for object in page_obj.object_list %}
+                    <tr data-href="{{ object.get_absolute_url }}">
+                        <td>
+                            <span class="table-title">{{ object.name }}</span>
+                            <span class="table-sub">{{ object.address|dash }}</span>
+                        </td>
+                        <td>{{ object.type.name }}</td>
+                        <td><span class="badge badge--plain">{{ object.district.short_name }}</span></td>
+                        <td class="num">{{ object.capacity_tons|spaced }}</td>
+                        <td class="num">{{ object.area_sq_m|spaced }}</td>
+                        <td>
+                            {% if object.is_round_the_clock %}
+                                <span class="badge badge--ok">{% trans 'круглосуточно' %}</span>
+                            {% else %}
+                                <span class="small muted">{{ object.operating_hours|dash }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include "partials/_pagination.html" %}
+{% else %}
+    {% include "partials/_empty.html" with empty_action_url="/objects/" %}
+{% endif %}
+
+{% endblock %}

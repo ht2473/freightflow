@@ -1,0 +1,29 @@
+{% load ff i18n %}
+{# Постраничная навигация. Тег query сохраняет наложенные условия отбора. #}
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="pagination" aria-label="{% trans 'Страницы списка' %}">
+    <p class="small">{% trans 'Записи' %}<span class="mono">{{ page_obj.start_index }}–{{ page_obj.end_index }}</span>
+        из <span class="mono">{{ page_obj.paginator.count }}</span>
+    </p>
+    <div class="pagination__pages">
+        {% if page_obj.has_previous %}
+            <a href="{% query page=page_obj.previous_page_number %}" rel="prev"
+               aria-label="{% trans 'Предыдущая страница' %}">←</a>
+        {% endif %}
+        {% elided_range page_obj as page_numbers %}
+        {% for number in page_numbers %}
+            {% if number == page_obj.number %}
+                <span class="is-current" aria-current="page">{{ number }}</span>
+            {% elif number == page_obj.paginator.ELLIPSIS %}
+                <span class="is-gap">{{ number }}</span>
+            {% else %}
+                <a href="{% query page=number %}">{{ number }}</a>
+            {% endif %}
+        {% endfor %}
+        {% if page_obj.has_next %}
+            <a href="{% query page=page_obj.next_page_number %}" rel="next"
+               aria-label="{% trans 'Следующая страница' %}">→</a>
+        {% endif %}
+    </div>
+</nav>
+{% endif %}

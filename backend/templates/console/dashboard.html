@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% include "partials/_tabs.html" %}
+
+<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Пользователей' %}</span>
+        <span class="metric__value">{{ users.total }}</span>
+        <span class="metric__note">{% blocktrans with active=users.active recent=users.recent %}активных {{ active }}, за неделю входили {{ recent }}{% endblocktrans %}</span>
+    </div>
+    <a class="metric metric--{% if feedback_new %}warn{% else %}ok{% endif %}"
+       href="{% url 'console:feedback' %}">
+        <span class="metric__label">{% trans 'Новых обращений' %}</span>
+        <span class="metric__value">{{ feedback_new }}</span>
+        <span class="metric__note">{% blocktrans with total=feedback_total %}всего в системе {{ total }}{% endblocktrans %}</span>
+    </a>
+    <a class="metric metric--{% if incidents_open %}alert{% else %}ok{% endif %}"
+       href="{% url 'core:incident_list' %}?state=open">
+        <span class="metric__label">{% trans 'Открытых инцидентов' %}</span>
+        <span class="metric__value">{{ incidents_open }}</span>
+    </a>
+    <div class="metric metric--{% if etl.failed_runs %}alert{% else %}ok{% endif %}">
+        <span class="metric__label">{% trans 'Успешность загрузок' %}</span>
+        <span class="metric__value">{{ etl.success_rate|spaced:1 }}<small> %</small></span>
+        <span class="metric__note">{% blocktrans with runs=etl.total_runs failed=etl.failed_runs %}запусков {{ runs }}, сбоев {{ failed }}{% endblocktrans %}</span>
+    </div>
+</div>
+
+<div class="grid grid--wide">
+    <div class="stack">
+        <article class="card card--flush">
+            <div class="card__head">
+                <div>
+                    <p class="eyebrow">{% trans 'Наполнение' %}</p>
+                    <h3>{% trans 'Объёмы основных таблиц' %}</h3>
+                </div>
+                <a class="small" href="{% url 'console:quality' %}">{% trans 'Качество данных →' %}</a>
+            </div>
+            <div class="table-wrap" style="border:none">
+                <table class="data">
+                    <thead>
+                        <tr><th>{% trans 'Таблица' %}</th><th>{% trans 'Наименование' %}</th>
+                            <th class="num">{% trans 'Записей' %}</th><th>{% trans 'Геокодирование' %}</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for row in coverage %}
+                            <tr>
+                                <td class="mono small faint">{{ row.table }}</td>
+                                <td class="small">{{ row.title }}</td>
+                                <td class="num">{{ row.count|spaced }}</td>
+                                <td style="min-width:140px">
+                                    {% if row.geo is not None %}
+                                        <div class="bar">
+                                            <div class="bar__fill bar__fill--ok"
+                                                 style="width:{{ row.geo|ratio:row.count }}%"></div>
+                                        </div>
+                                        <span class="small faint">
+                                            {{ row.geo|spaced }} из {{ row.count|spaced }}
+                                        </span>
+                                    {% else %}
+                                        <span class="small faint">{% trans 'не применяется' %}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+
+        <article class="card card--flush">
+            <div class="card__head">
+                <div>
+                    <p class="eyebrow">{% trans 'Аудит' %}</p>
+                    <h3>{% trans 'Последние действия пользователей' %}</h3>
+                </div>
+                <a class="small" href="{% url 'console:audit' %}">{% trans 'Весь журнал →' %}</a>
+            </div>
+            <div class="table-wrap" style="border:none">
+                <table class="data">
+                    <thead><tr><th>{% trans 'Время' %}</th><th>{% trans 'Пользователь' %}</th><th>{% trans 'Действие' %}</th><th>{% trans 'Описание' %}</th></tr></thead>
+                    <tbody>
+                        {% for event in recent_events %}
+                            <tr>
+                                <td class="mono small">{{ event.created_at|date:"d.m H:i" }}</td>
+                                <td class="small">{{ event.user.username|default:"аноним" }}</td>
+                                <td><span class="badge badge--plain">{{ event.get_action_display }}</span></td>
+                                <td class="small muted">{{ event.summary|translated|truncatechars:56 }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="4" class="muted">{% trans 'Событий нет.' %}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </div>
+
+    <aside class="stack">
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Пользователи по ролям' %}</h3>
+            <div class="stack stack--tight">
+                {% for row in by_role %}
+                    <div>
+                        <div class="row row--between small">
+                            <span>{{ row.label }}</span>
+                            <span class="mono">{{ row.count }}</span>
+                        </div>
+                        <div class="bar" style="margin-top:5px">
+                            <div class="bar__fill" style="width:{{ row.count|ratio:users.total }}%"></div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            <a class="button button--block" style="margin-top:var(--sp-4)"
+               href="{% url 'console:users' %}">{% trans 'Управление доступом' %}</a>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Содержание портала' %}</h3>
+            <dl class="facts">
+                <div><dt>{% trans 'Опубликовано материалов' %}</dt><dd>{{ articles_published }}</dd></div>
+                <div><dt>{% trans 'Выгрузок за неделю' %}</dt><dd>{{ exports_week }}</dd></div>
+                <div><dt>{% trans 'Загружено записей' %}</dt><dd>{{ etl.total_loaded|spaced }}</dd></div>
+                <div><dt>{% trans 'Отклонено записей' %}</dt><dd>{{ etl.total_errors|spaced }}</dd></div>
+            </dl>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Обслуживание' %}</h3>
+            <p class="small muted" style="margin-bottom:var(--sp-3)">{% trans 'Сводки и аналитические расчёты кешируются. Сбросьте кеш после ручного изменения данных, чтобы страницы показали актуальные значения.' %}</p>
+            <form method="post" action="{% url 'console:cache_flush' %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'console:dashboard' %}">
+                <button class="button button--block" type="submit">{% trans 'Сбросить кеш' %}</button>
+            </form>
+        </div>
+    </aside>
+</div>
+{% endblock %}

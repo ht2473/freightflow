@@ -1,0 +1,24 @@
+{% load ff i18n %}
+{# Панель выгрузки отчёта. Условия отбора текущей страницы передаются в     #}
+{# запрос без изменений, поэтому пользователь получает ровно ту выборку,    #}
+{# которую видит на экране.                                                 #}
+{% if user.is_authenticated and user.profile.can_export %}
+    <div class="segmented" role="group" aria-label="{% trans 'Выгрузка отчёта' %}">
+        <span class="small faint" style="padding:4px 10px">{% trans 'Выгрузить:' %}</span>
+        {% query dataset=export_dataset format="xlsx" next=request.path as q_xlsx %}
+        <a href="{% url 'exports:create' %}{{ q_xlsx }}">XLSX</a>
+        {% query dataset=export_dataset format="docx" next=request.path as q_docx %}
+        <a href="{% url 'exports:create' %}{{ q_docx }}">DOCX</a>
+        {% query dataset=export_dataset format="pdf" next=request.path as q_pdf %}
+        <a href="{% url 'exports:create' %}{{ q_pdf }}">PDF</a>
+        {% query dataset=export_dataset format="csv" next=request.path as q_csv %}
+        <a href="{% url 'exports:create' %}{{ q_csv }}">CSV</a>
+        {% if export_geojson %}
+            {% query dataset=export_dataset format="geojson" next=request.path as q_geo %}
+            <a href="{% url 'exports:create' %}{{ q_geo }}">GeoJSON</a>
+        {% endif %}
+    </div>
+{% elif user.is_authenticated %}
+    <a class="button button--sm button--ghost" href="{% url 'accounts:api_access' %}"
+       title="{% trans 'Выгрузка доступна с роли «Аналитик»' %}">{% trans 'Выгрузка недоступна' %}</a>
+{% endif %}

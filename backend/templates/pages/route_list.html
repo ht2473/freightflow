@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block page_header %}
+<header class="page-header">
+    <div class="page-header__row">
+        <div>
+            <h1>{{ page_title }}</h1>
+            <p class="lead">{{ page_lead }}</p>
+        </div>
+        <div class="page-header__actions">
+            {% include "partials/_export.html" %}
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<form class="filters" method="get" data-autosubmit>
+    <div class="filters__grid">
+        <div class="field">
+            <label for="f-q">{% trans 'Поиск' %}</label>
+            <input type="search" id="f-q" name="q" value="{{ filters.q }}"
+                   placeholder="{% trans 'Маршрут, регион отправления или назначения' %}">
+        </div>
+        <div class="field">
+            <label for="f-type">{% trans 'Тип маршрута' %}</label>
+            <select id="f-type" name="type">
+                <option value="">{% trans 'Все типы' %}</option>
+                {% for value, label in route_types %}
+                    <option value="{{ value }}" {% if filters.type == value %}selected{% endif %}>
+                        {{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="row">
+            <button class="button button--primary" type="submit">{% trans 'Показать' %}</button>
+            <a class="button button--ghost" href="{% url 'core:route_list' %}">{% trans 'Очистить' %}</a>
+        </div>
+    </div>
+</form>
+
+<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Маршрутов' %}</span>
+        <span class="metric__value">{{ total_count }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Суммарная протяжённость' %}</span>
+        <span class="metric__value">{{ total_distance|spaced:0 }}<small> км</small></span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Интенсивность движения' %}</span>
+        <span class="metric__value">{{ total_trucks|spaced }}<small>{% trans 'ТС/сут' %}</small></span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Структура по типам' %}</span>
+        <span class="metric__value" style="font-size:var(--fs-base);line-height:1.5">
+            {% for row in by_type %}
+                <span class="small">{{ row.route_type }}: {{ row.count }}</span><br>
+            {% endfor %}
+        </span>
+    </div>
+</div>
+
+<div class="table-wrap">
+    <table class="data">
+        <thead>
+            <tr>
+                <th>{% sort_link request "name" filters.sort _("Маршрут") %}</th>
+                <th>{% trans 'Тип' %}</th><th>{% trans 'Отправление → Назначение' %}</th>
+                <th class="num">{% sort_link request "distance" filters.sort _("Длина, км") %}</th>
+                <th class="num">{% sort_link request "duration" filters.sort _("Время, ч") %}</th>
+                <th class="num">{% trans 'Скорость' %}</th>
+                <th class="num">{% sort_link request "trucks" filters.sort _("ТС/сут") %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for route in page_obj.object_list %}
+                <tr data-href="{{ route.get_absolute_url }}">
+                    <td><span class="table-title">{{ route.name }}</span></td>
+                    <td><span class="badge badge--plain">{{ route.get_route_type_display }}</span></td>
+                    <td class="small muted">
+                        {{ route.origin_region|dash }} → {{ route.destination|dash }}
+                    </td>
+                    <td class="num">{{ route.distance_km|spaced:1 }}</td>
+                    <td class="num">{{ route.avg_duration_h|spaced:1 }}</td>
+                    <td class="num">{{ route.avg_speed_kmh|spaced:0 }} км/ч</td>
+                    <td class="num">{{ route.truck_count_day|spaced }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="7" class="muted">{% trans 'Маршруты не найдены.' %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% include "partials/_pagination.html" %}
+{% endblock %}

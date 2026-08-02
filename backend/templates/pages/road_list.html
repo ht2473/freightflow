@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block page_header %}
+<header class="page-header">
+    <div class="page-header__row">
+        <div>
+            <h1>{{ page_title }}</h1>
+            <p class="lead">{{ page_lead }}</p>
+        </div>
+        <div class="page-header__actions">
+            {% include "partials/_export.html" %}
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<form class="filters" method="get" data-autosubmit>
+    <div class="filters__grid">
+        <div class="field">
+            <label for="f-q">{% trans 'Поиск' %}</label>
+            <input type="search" id="f-q" name="q" value="{{ filters.q }}"
+                   placeholder="{% trans 'Название магистрали' %}">
+        </div>
+        <div class="field">
+            <label for="f-district">{% trans 'Округ' %}</label>
+            <select id="f-district" name="district">
+                <option value="">{% trans 'Все округа' %}</option>
+                {% for district in districts %}
+                    <option value="{{ district.pk }}"
+                            {% if filters.district == district.pk %}selected{% endif %}>
+                        {{ district.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field">
+            <label for="f-class">{% trans 'Класс дороги' %}</label>
+            <select id="f-class" name="class">
+                <option value="">{% trans 'Все классы' %}</option>
+                {% for value, label in road_classes %}
+                    <option value="{{ value }}" {% if filters.class == value %}selected{% endif %}>
+                        {{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="row">
+            <button class="button button--primary" type="submit">{% trans 'Показать' %}</button>
+            <a class="button button--ghost" href="{% url 'core:road_list' %}">{% trans 'Очистить' %}</a>
+        </div>
+    </div>
+</form>
+
+<div class="grid grid--3" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Участков под мониторингом' %}</span>
+        <span class="metric__value">{{ total_count }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Суммарная протяжённость' %}</span>
+        <span class="metric__value">{{ total_length|spaced:1 }}<small> км</small></span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Оперативная обстановка' %}</span>
+        <span class="metric__value" style="font-size:var(--fs-md)">
+            <a href="{% url 'core:traffic' %}">{% trans 'Сводка загруженности →' %}</a>
+        </span>
+    </div>
+</div>
+
+<div class="table-wrap">
+    <table class="data">
+        <thead>
+            <tr>
+                <th>{% sort_link request "name" filters.sort _("Участок") %}</th>
+                <th>{% trans 'Класс' %}</th>
+                <th>{% trans 'Округ' %}</th>
+                <th class="num">{% sort_link request "length" filters.sort _("Длина, км") %}</th>
+                <th class="num">{% sort_link request "lanes" filters.sort _("Полос") %}</th>
+                <th class="num">{% sort_link request "speed" filters.sort _("Скорость") %}</th>
+                <th>{% trans 'Текущее состояние' %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for road in page_obj.object_list %}
+                <tr data-href="{{ road.get_absolute_url }}">
+                    <td><span class="table-title">{{ road.name }}</span></td>
+                    <td class="small muted">{{ road.get_road_class_display }}</td>
+                    <td>
+                        {% if road.district %}
+                            <span class="badge badge--plain">{{ road.district.short_name }}</span>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td class="num">{{ road.length_km|spaced:1 }}</td>
+                    <td class="num">{{ road.lanes|dash }}</td>
+                    <td class="num">{{ road.speed_limit_kmh|dash }} км/ч</td>
+                    <td>
+                        {% if road.current %}
+                            <span class="badge badge--{{ road.current.congestion_level|tone }}">
+                                {{ road.current.congestion_level }} · {{ road.current.state.1 }}
+                            </span>
+                        {% else %}
+                            <span class="badge">{% trans 'нет замеров' %}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="7" class="muted">{% trans 'Участки не найдены.' %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% include "partials/_pagination.html" %}
+{% endblock %}

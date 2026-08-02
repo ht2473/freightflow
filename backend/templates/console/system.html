@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% include "partials/_tabs.html" %}
+
+<div class="grid grid--wide">
+    <article class="card card--flush">
+        <div class="card__head">
+            <div>
+                <p class="eyebrow">{% trans 'Среда выполнения' %}</p>
+                <h3>{% trans 'Параметры развёртывания' %}</h3>
+            </div>
+        </div>
+        <div class="table-wrap" style="border:none">
+            <table class="data">
+                <thead><tr><th>{% trans 'Параметр' %}</th><th>{% trans 'Значение' %}</th></tr></thead>
+                <tbody>
+                    {% for name, value in parameters %}
+                        <tr>
+                            <td>{{ name }}</td>
+                            <td class="mono small">{{ value }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </article>
+
+    <aside class="stack">
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Хранение' %}</h3>
+            <dl class="facts">
+                <div><dt>{% trans 'Заданий на выгрузку' %}</dt><dd>{{ exports_total|spaced }}</dd></div>
+                <div><dt>{% trans 'Объём выгрузок' %}</dt><dd>{{ exports_size|filesizeformat }}</dd></div>
+                <div><dt>{% trans 'Записей аудита' %}</dt><dd>{{ audit_total|spaced }}</dd></div>
+            </dl>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Проверка доступности' %}</h3>
+            <p class="small muted" style="margin-bottom:var(--sp-3)">{% trans 'Конечная точка для системы мониторинга возвращает состояние соединения с базой и объёмы ключевых таблиц.' %}</p>
+            <div class="code-block">GET /healthz</div>
+            <a class="button button--block" style="margin-top:var(--sp-3)"
+               href="/healthz" target="_blank" rel="noopener">{% trans 'Выполнить проверку' %}</a>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Обслуживание' %}</h3>
+            <form method="post" action="{% url 'console:cache_flush' %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'console:system' %}">
+                <button class="button button--block" type="submit">{% trans 'Сбросить кеш' %}</button>
+            </form>
+            <a class="button button--block button--ghost" style="margin-top:var(--sp-2)"
+               href="/django-admin/">{% trans 'Штатная админка Django' %}</a>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Разработка' %}</h3>
+            <dl class="facts">
+                <div><dt>{% trans 'Автор' %}</dt>
+                    <dd style="font-family:var(--font-body)">{{ PROJECT_AUTHOR }}</dd></div>
+                <div><dt>{% trans 'Идентификатор' %}</dt><dd>{{ PROJECT_AUTHOR_ID }}</dd></div>
+            </dl>
+        </div>
+    </aside>
+</div>
+{% endblock %}

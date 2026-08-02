@@ -1,0 +1,17 @@
+{% load i18n %}
+{# Навигационная цепочка. Последнее звено выводится без ссылки. #}
+<div class="crumbs">
+    <div class="shell">
+        <nav aria-label="{% trans 'Вы находитесь здесь' %}">
+            <ol>
+                {% for crumb in crumbs %}
+                    {% if crumb.url and not forloop.last %}
+                        <li><a href="{{ crumb.url }}">{{ crumb.title }}</a></li>
+                    {% else %}
+                        <li aria-current="page">{{ crumb.title }}</li>
+                    {% endif %}
+                {% endfor %}
+            </ol>
+        </nav>
+    </div>
+</div>

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+<div class="grid grid--aside">
+    <aside>
+        <div class="card" style="position:sticky;top:calc(var(--header-height) + var(--sp-4))">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Содержание' %}</h3>
+            <div class="stack stack--tight small">
+                {% for section in sections %}
+                    <a href="#{{ section.key }}">{{ section.title }}</a>
+                {% endfor %}
+            </div>
+        </div>
+    </aside>
+
+    <div class="stack">
+        {% for section in sections %}
+            <section class="card" id="{{ section.key }}">
+                <h2 style="font-size:var(--fs-lg);margin-bottom:var(--sp-4)">{{ section.title }}</h2>
+                <dl class="facts">
+                    {% for title, text in section.items %}
+                        <div style="flex-direction:column;align-items:flex-start;gap:var(--sp-1)">
+                            <dt style="font-weight:500;color:var(--text)">{{ title }}</dt>
+                            <dd style="text-align:left;font-family:var(--font-body);
+                                       color:var(--text-dim);max-width:70ch">{{ text }}</dd>
+                        </div>
+                    {% endfor %}
+                </dl>
+            </section>
+        {% endfor %}
+
+        <section class="card">
+            <h2 style="font-size:var(--fs-lg);margin-bottom:var(--sp-3)">{% trans 'Не нашли ответа?' %}</h2>
+            <p class="muted small" style="margin-bottom:var(--sp-4)">{% trans 'Задайте вопрос через форму обратной связи — обращения рассматривает администратор системы.' %}</p>
+            <a class="button button--primary" href="{% url 'content:feedback' %}">{% trans 'Написать в поддержку' %}</a>
+        </section>
+    </div>
+</div>
+{% endblock %}

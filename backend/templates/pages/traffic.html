@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+<form class="filters" method="get" data-autosubmit>
+    <div class="filters__grid">
+        <div class="field">
+            <label for="f-district">{% trans 'Округ' %}</label>
+            <select id="f-district" name="district">
+                <option value="">{% trans 'Вся территория города' %}</option>
+                {% for district in districts %}
+                    <option value="{{ district.pk }}"
+                            {% if filters.district == district.pk %}selected{% endif %}>
+                        {{ district.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="row">
+            <a class="button button--ghost" href="{% url 'core:traffic' %}">{% trans 'Сбросить' %}</a>
+            <a class="button" href="{% url 'core:incident_list' %}?state=open">
+                Открытые инциденты: {{ open_incidents }}
+            </a>
+        </div>
+    </div>
+</form>
+
+<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--{{ average|tone }}">
+        <span class="metric__label">{% trans 'Средняя загруженность' %}</span>
+        <span class="metric__value">{{ average|spaced:1 }}<small>/10</small></span>
+        <span class="metric__note">{{ average_label }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Участков в сводке' %}</span>
+        <span class="metric__value">{{ conditions|length }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Час максимальной нагрузки' %}</span>
+        <span class="metric__value">
+            {% if peak %}{{ peak.hour }}:00{% else %}—{% endif %}
+        </span>
+        <span class="metric__note">
+            {% if peak %}средний балл {{ peak.avg|spaced:1 }}{% endif %}
+        </span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Средняя скорость за неделю' %}</span>
+        <span class="metric__value">{{ weekly.avg_speed|spaced:0 }}<small>{% trans 'км/ч' %}</small></span>
+        <span class="metric__note">{{ weekly.samples|spaced }} замеров</span>
+    </div>
+</div>
+
+<section class="section">
+    <div class="grid grid--wide">
+        <article class="card card--flush">
+            <div class="card__head">
+                <div>
+                    <p class="eyebrow">{% trans 'Две недели наблюдений' %}</p>
+                    <h3>{% trans 'Суточный профиль загруженности' %}</h3>
+                </div>
+            </div>
+            <div class="card__body">
+                {% chart_from daily "hour" "avg" as daily_chart %}
+                <div data-chart='{{ daily_chart }}' data-chart-type="bar" data-height="230"></div>
+                <p class="small faint" style="margin-top:var(--sp-2)">{% trans 'По горизонтали — час суток, по вертикали — средний балл загруженности по всем участкам сети.' %}</p>
+            </div>
+        </article>
+
+        <article class="card">
+            <p class="eyebrow">{% trans 'Распределение' %}</p>
+            <h3 style="margin:var(--sp-2) 0 var(--sp-4)">{% trans 'Участки по состояниям' %}</h3>
+            <div class="stack stack--tight">
+                {% for row in distribution %}
+                    <div>
+                        <div class="row row--between small">
+                            <span class="badge badge--{{ row.tone }}">{{ row.label }}</span>
+                            <span class="mono">{{ row.count }}</span>
+                        </div>
+                        <div class="bar" style="margin-top:6px">
+                            <div class="bar__fill bar__fill--{{ row.tone }}"
+                                 style="width:{{ row.count|ratio:conditions_count }}%"></div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="muted small">{% trans 'Замеры отсутствуют.' %}</p>
+                {% endfor %}
+            </div>
+        </article>
+    </div>
+</section>
+
+<section class="section">
+    <div class="section__head">
+        <h2>{% trans 'Обстановка по участкам' %}</h2>
+        <p class="small faint">{% trans 'Отсортировано по убыванию загруженности' %}</p>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>{% trans 'Участок' %}</th><th>{% trans 'Округ' %}</th><th class="num">{% trans 'Балл' %}</th>
+                    <th class="num">{% trans 'Скорость' %}</th><th class="num">{% trans 'Время проезда' %}</th>
+                    <th class="num">{% trans 'Плотность' %}</th><th>{% trans 'Состояние' %}</th><th>{% trans 'Замер' %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for condition in conditions %}
+                    <tr data-href="{{ condition.road.get_absolute_url }}">
+                        <td>
+                            <span class="table-title">{{ condition.road.name }}</span>
+                            <span class="table-sub">{{ condition.road.get_road_class_display }}</span>
+                        </td>
+                        <td>{% if condition.road.district %}
+                            <span class="badge badge--plain">{{ condition.road.district.short_name }}</span>
+                            {% else %}—{% endif %}</td>
+                        <td class="num">{{ condition.congestion_level }}</td>
+                        <td class="num">{{ condition.avg_speed_kmh|spaced:0 }} км/ч</td>
+                        <td class="num">{{ condition.travel_time_min|spaced:1 }} мин</td>
+                        <td class="num">{{ condition.vehicle_density|spaced }}</td>
+                        <td><span class="badge badge--{{ condition.congestion_level|tone }}">
+                            {{ condition.state.1 }}</span></td>
+                        <td class="small faint">{{ condition.recorded_at|date:"d.m H:i" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="8" class="muted">{% trans 'Данные мониторинга отсутствуют.' %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

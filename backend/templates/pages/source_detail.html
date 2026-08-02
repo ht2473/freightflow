@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Всего загрузок' %}</span>
+        <span class="metric__value">{{ aggregates.total|default:0 }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Загружено записей' %}</span>
+        <span class="metric__value">{{ aggregates.loaded|spaced }}</span>
+    </div>
+    <div class="metric metric--{% if aggregates.errors %}warn{% else %}ok{% endif %}">
+        <span class="metric__label">{% trans 'Отклонено записей' %}</span>
+        <span class="metric__value">{{ aggregates.errors|spaced }}</span>
+    </div>
+    <div class="metric metric--{% if source.is_active %}ok{% else %}muted{% endif %}">
+        <span class="metric__label">{% trans 'Состояние источника' %}</span>
+        <span class="metric__value" style="font-size:var(--fs-lg)">
+            {% if source.is_active %}Активен{% else %}Отключён{% endif %}
+        </span>
+    </div>
+</div>
+
+<div class="grid grid--wide">
+    <article class="card card--flush">
+        <div class="card__head">
+            <div>
+                <p class="eyebrow">{% trans 'Хронология' %}</p>
+                <h3>{% trans 'Последние загрузки' %}</h3>
+            </div>
+            <a class="small" href="{% url 'core:etl_log' %}?source={{ source.pk }}">{% trans 'Весь журнал →' %}</a>
+        </div>
+        <div class="table-wrap" style="border:none">
+            <table class="data">
+                <thead>
+                    <tr><th>{% trans 'Начало' %}</th><th>{% trans 'Таблица' %}</th><th class="num">{% trans 'Загружено' %}</th>
+                        <th class="num">{% trans 'Ошибок' %}</th><th class="num">{% trans 'Длительность' %}</th><th>{% trans 'Итог' %}</th></tr>
+                </thead>
+                <tbody>
+                    {% for run in runs %}
+                        <tr>
+                            <td class="small mono">{{ run.started_at|date:"d.m.Y H:i" }}</td>
+                            <td class="small">{{ run.target_label }}</td>
+                            <td class="num">{{ run.records_loaded|spaced }}</td>
+                            <td class="num">{{ run.records_errors|spaced }}</td>
+                            <td class="num">{{ run.duration_minutes|spaced:1 }} мин</td>
+                            <td>
+                                <span class="badge badge--{% if run.status == 'success' %}ok{% elif run.status == 'failed' %}alert{% elif run.status == 'partial' %}warn{% endif %}">
+                                    {{ run.get_status_display }}
+                                </span>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="6" class="muted">{% trans 'Загрузки не выполнялись.' %}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </article>
+
+    <aside class="stack">
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Сведения об источнике' %}</h3>
+            <dl class="facts">
+                <div><dt>{% trans 'Тип' %}</dt><dd>{{ source.get_source_type_display }}</dd></div>
+                <div><dt>{% trans 'Периодичность' %}</dt><dd>{{ source.get_update_frequency_display|dash }}</dd></div>
+                <div><dt>{% trans 'Адрес' %}</dt>
+                    <dd>{% if source.url %}
+                        <a href="{{ source.url }}" rel="noopener" target="_blank">{% trans 'ссылка' %}</a>
+                        {% else %}—{% endif %}</dd></div>
+            </dl>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Записи по источнику' %}</h3>
+            <dl class="facts">
+                <div><dt>{% trans 'Объекты инфраструктуры' %}</dt><dd>{{ usage.objects|spaced }}</dd></div>
+                <div><dt>{% trans 'Участки дорог' %}</dt><dd>{{ usage.roads|spaced }}</dd></div>
+                <div><dt>{% trans 'Грузовые маршруты' %}</dt><dd>{{ usage.routes|spaced }}</dd></div>
+                <div><dt>{% trans 'Дорожные события' %}</dt><dd>{{ usage.incidents|spaced }}</dd></div>
+                <div><dt>{% trans 'Показатели грузопотоков' %}</dt><dd>{{ usage.flows|spaced }}</dd></div>
+                <div><dt>{% trans 'Замеры обстановки' %}</dt><dd>{{ usage.traffic|spaced }}</dd></div>
+            </dl>
+        </div>
+    </aside>
+</div>
+{% endblock %}

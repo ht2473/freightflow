@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+{% load ff humanize i18n %}
+
+{% block page_header %}
+<header class="page-header">
+    <div class="page-header__row">
+        <div>
+            <p class="eyebrow">{% trans 'Оперативная сводка' %} · {{ summary.measured_at|date:"d.m.Y, H:i" }}</p>
+            <h1>{{ page_title }}</h1>
+            <p class="lead">{{ page_lead }}</p>
+        </div>
+        <div class="page-header__actions">
+            <a class="button button--primary" href="{% url 'core:map' %}">{% trans 'Открыть карту' %}</a>
+            <a class="button" href="{% url 'analytics:index' %}">{% trans 'Индекс нагрузки' %}</a>
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+
+{# ---------------------------------------------------------------------- #}
+{# Лента состояния сети — сигнатурный элемент интерфейса. Каждый сегмент   #}
+{# соответствует участку улично-дорожной сети и окрашен по текущему баллу  #}
+{# загруженности: обстановка по городу считывается целиком, до чтения      #}
+{# таблиц и графиков.                                                      #}
+{# ---------------------------------------------------------------------- #}
+<section class="section">
+    <div class="section__head">
+        <div>
+            <p class="eyebrow">{% trans 'Состояние улично-дорожной сети' %}</p>
+            <h2>
+                {{ summary.congestion_label }}
+                <span class="mono muted" style="font-size:var(--fs-md)">
+                    {% blocktrans with value=summary.congestion_avg|spaced:1 %}{{ value }} из 10{% endblocktrans %}
+                </span>
+            </h2>
+        </div>
+        <a class="button button--ghost button--sm" href="{% url 'core:traffic' %}">{% trans 'Все участки сети' %}</a>
+    </div>
+
+    <div class="ribbon" role="img"
+         aria-label="Загруженность {{ congested|length }} участков дорожной сети">
+        {% for condition in ribbon_items %}
+            <a class="ribbon__seg ribbon__seg--{{ condition.congestion_level|tone }}"
+               href="{{ condition.road.get_absolute_url }}"
+               title="{{ condition.road.name }} — {{ condition.congestion_level }} балла, {{ condition.avg_speed_kmh|spaced:0 }} км/ч"></a>
+        {% endfor %}
+    </div>
+
+    <div class="ribbon-legend">
+        <span><i style="background:var(--tone-ok)"></i>{% trans 'свободно (0–4)' %}</span>
+        <span><i style="background:var(--tone-warn)"></i>{% trans 'затруднения (5–6)' %}</span>
+        <span><i style="background:var(--tone-alert)"></i>{% trans 'пробки (7–8)' %}</span>
+        <span><i style="background:var(--tone-crit)"></i>{% trans 'движение остановлено (9–10)' %}</span>
+        <span class="faint">{% trans 'каждый сегмент — участок сети, наведите для названия' %}</span>
+    </div>
+</section>
+
+{# ---------------------------------------------------------------------- #}
+{# Ключевые показатели                                                     #}
+{# ---------------------------------------------------------------------- #}
+<section class="section">
+    <div class="grid grid--5">
+        <a class="metric metric--accent" href="{% url 'core:object_list' %}">
+            <span class="metric__label">{% trans 'Объектов инфраструктуры' %}</span>
+            <span class="metric__value">{{ summary.object_count|spaced }}</span>
+            <span class="metric__note">в {{ summary.district_count }} округах города</span>
+        </a>
+
+        <a class="metric metric--accent" href="{% url 'core:district_list' %}">
+            <span class="metric__label">{% trans 'Мощность хранения' %}</span>
+            <span class="metric__value">{{ summary.capacity_tons|tons }}</span>
+            <span class="metric__note">{% trans 'суммарно по всем объектам' %}</span>
+        </a>
+
+        <a class="metric metric--accent" href="{% url 'core:flow_overview' %}">
+            <span class="metric__label">{% trans 'Перевезено грузов' %}</span>
+            <span class="metric__value">{{ summary.volume_tons|tons }}</span>
+            <span class="metric__note">
+                {% if summary.period_from %}
+                    {{ summary.period_from|date:"m.Y" }} — {{ summary.period_to|date:"m.Y" }}
+                {% else %}за период наблюдения{% endif %}
+            </span>
+        </a>
+
+        <a class="metric metric--{{ summary.congestion_avg|tone }}" href="{% url 'core:traffic' %}">
+            <span class="metric__label">{% trans 'Загруженность сети' %}</span>
+            <span class="metric__value">
+                {{ summary.congestion_avg|spaced:1 }}<small>/10</small>
+            </span>
+            <span class="metric__note">{{ summary.congestion_label }}</span>
+        </a>
+
+        <a class="metric metric--{% if summary.incidents_open %}alert{% else %}ok{% endif %}"
+           href="{% url 'core:incident_list' %}?state=open">
+            <span class="metric__label">{% trans 'Открытых инцидентов' %}</span>
+            <span class="metric__value">{{ summary.incidents_open }}</span>
+            <span class="metric__note">
+                {% blocktrans with count=summary.incidents_cargo %}{{ count }} влияют на грузовой транспорт{% endblocktrans %}
+            </span>
+        </a>
+    </div>
+</section>
+
+{# ---------------------------------------------------------------------- #}
+{# Динамика грузопотока и структура направлений                            #}
+{# ---------------------------------------------------------------------- #}
+<section class="section">
+    <div class="grid grid--wide">
+        <article class="card card--flush">
+            <div class="card__head">
+                <div>
+                    <p class="eyebrow">{% trans 'Помесячная динамика' %}</p>
+                    <h3>{% trans 'Объём перевозок, тонн' %}</h3>
+                </div>
+                <a class="small" href="{% url 'core:flow_overview' %}">{% trans 'Подробнее →' %}</a>
+            </div>
+            <div class="card__body">
+                {% if timeseries %}
+                    <div data-chart='{{ flow_chart }}' data-height="260"></div>
+                    <div class="chart-legend">
+                        <span><i style="background:var(--accent)"></i>{% trans 'объём перевозок, т' %}</span>
+                    </div>
+                {% else %}
+                    <p class="muted small">{% trans 'Данные о грузопотоках отсутствуют.' %}</p>
+                {% endif %}
+            </div>
+        </article>
+
+        <article class="card card--flush">
+            <div class="card__head">
+                <p class="eyebrow">{% trans 'Структура' %}</p>
+                <h3 class="visually-hidden">{% trans 'Направления перевозок' %}</h3>
+            </div>
+            <div class="card__body stack">
+                {% for row in by_direction %}
+                    <div>
+                        <div class="row row--between small">
+                            <span>{{ row.label }}</span>
+                            <span class="mono">{{ row.volume|tons }}</span>
+                        </div>
+                        <div class="bar" style="margin-top:6px">
+                            <div class="bar__fill" style="width:{{ row.volume|ratio:total_flow_volume }}%"></div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="muted small">{% trans 'Нет данных по направлениям.' %}</p>
+                {% endfor %}
+
+                <hr style="border:none;border-top:1px solid var(--border);margin:var(--sp-2) 0">
+
+                <p class="eyebrow">{% trans 'Объекты по типам' %}</p>
+                {% for row in by_type %}
+                    <div>
+                        <div class="row row--between small">
+                            <span>{{ row.name }}</span>
+                            <span class="mono">{{ row.count }}</span>
+                        </div>
+                        <div class="bar" style="margin-top:6px">
+                            <div class="bar__fill bar__fill--ok"
+                                 style="width:{{ row.count|ratio:max_type_count }}%"></div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </article>
+    </div>
+</section>
+
+{# ---------------------------------------------------------------------- #}
+{# Округа с наибольшей нагрузкой и наиболее загруженные участки            #}
+{# ---------------------------------------------------------------------- #}
+<section class="section">
+    <div class="grid grid--2">
+        <article class="card card--flush">
+            <div class="card__head">
+                <div>
+                    <p class="eyebrow">{% trans 'Рейтинг' %}</p>
+                    <h3>{% trans 'Округа с наибольшим грузопотоком' %}</h3>
+                </div>
+                <a class="small" href="{% url 'core:district_list' %}">{% trans 'Все округа →' %}</a>
+            </div>
+            <div class="table-wrap" style="border:none">
+                <table class="data">
+                    <thead>
+                        <tr>
+                            <th>{% trans 'Округ' %}</th>
+                            <th class="num">{% trans 'Объектов' %}</th>
+                            <th class="num">{% trans 'Грузопоток' %}</th>
+                            <th>{% trans 'Обстановка' %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for profile in top_districts %}
+                            <tr data-href="{{ profile.district.get_absolute_url }}">
+                                <td>
+                                    <span class="table-title">{{ profile.district.short_name }}</span>
+                                    <span class="table-sub">{{ profile.district.name }}</span>
+                                </td>
+                                <td class="num">{{ profile.object_count }}</td>
+                                <td class="num">{{ profile.volume_tons|tons }}</td>
+                                <td>
+                                    <span class="badge badge--{{ profile.congestion_tone }}">
+                                        {{ profile.congestion|spaced:1 }}
+                                    </span>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+
+        <article class="card card--flush">
+            <div class="card__head">
+                <div>
+                    <p class="eyebrow">{% trans 'Требуют внимания' %}</p>
+                    <h3>{% trans 'Наиболее загруженные участки' %}</h3>
+                </div>
+                <a class="small" href="{% url 'core:traffic' %}">{% trans 'Обстановка →' %}</a>
+            </div>
+            <div class="table-wrap" style="border:none">
+                <table class="data">
+                    <thead>
+                        <tr>
+                            <th>{% trans 'Участок' %}</th>
+                            <th class="num">{% trans 'Балл' %}</th>
+                            <th class="num">{% trans 'Скорость' %}</th>
+                            <th>{% trans 'Состояние' %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for condition in congested %}
+                            <tr data-href="{{ condition.road.get_absolute_url }}">
+                                <td>
+                                    <span class="table-title">{{ condition.road.name }}</span>
+                                    <span class="table-sub">
+                                        {{ condition.road.get_road_class_display }}
+                                    </span>
+                                </td>
+                                <td class="num">{{ condition.congestion_level }}</td>
+                                <td class="num">{{ condition.avg_speed_kmh|spaced:0 }} км/ч</td>
+                                <td>
+                                    <span class="badge badge--{{ condition.congestion_level|tone }}">
+                                        {{ condition.state.1 }}
+                                    </span>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="4" class="muted">{% trans 'Замеры обстановки отсутствуют.' %}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </div>
+</section>
+
+{# ---------------------------------------------------------------------- #}
+{# Последние инциденты и аналитические материалы                           #}
+{# ---------------------------------------------------------------------- #}
+<section class="section">
+    <div class="grid grid--2">
+        <article class="card card--flush">
+            <div class="card__head">
+                <div>
+                    <p class="eyebrow">{% trans 'Журнал событий' %}</p>
+                    <h3>{% trans 'Последние дорожные инциденты' %}</h3>
+                </div>
+                <a class="small" href="{% url 'core:incident_list' %}">{% trans 'Весь журнал →' %}</a>
+            </div>
+            <div class="card__body stack stack--tight">
+                {% for incident in incidents %}
+                    <a class="row row--between" href="{{ incident.get_absolute_url }}"
+                       style="padding:var(--sp-2) 0;border-bottom:1px solid var(--border);color:inherit">
+                        <span>
+                            <span class="table-title">{{ incident.get_incident_type_display }}</span>
+                            <span class="table-sub">
+                                {{ incident.road.name|default:"Место не указано" }} ·
+                                {{ incident.reported_at|date:"d.m.Y H:i" }}
+                            </span>
+                        </span>
+                        <span class="row" style="gap:var(--sp-2)">
+                            {% if incident.affects_cargo %}
+                                <span class="badge badge--plain">{% trans 'груз' %}</span>
+                            {% endif %}
+                            <span class="badge badge--{{ incident.severity|severity_tone }}">
+                                {{ incident.severity_state.0 }}
+                            </span>
+                        </span>
+                    </a>
+                {% empty %}
+                    <p class="muted small">{% trans 'Инциденты не зарегистрированы.' %}</p>
+                {% endfor %}
+            </div>
+        </article>
+
+        <article class="card card--flush">
+            <div class="card__head">
+                <div>
+                    <p class="eyebrow">{% trans 'Материалы' %}</p>
+                    <h3>{% trans 'Аналитические обзоры' %}</h3>
+                </div>
+                <a class="small" href="{% url 'content:article_list' %}">{% trans 'Все материалы →' %}</a>
+            </div>
+            <div class="card__body stack">
+                {% for article in articles %}
+                    <a href="{{ article.get_absolute_url }}" style="color:inherit">
+                        <p class="eyebrow">{{ article.category.name }}</p>
+                        <p class="table-title" style="margin:4px 0">{{ article.title }}</p>
+                        <p class="small muted">{{ article.lead|truncatechars:130 }}</p>
+                        <p class="small faint" style="margin-top:4px">
+                            {{ article.published_at|date:"d.m.Y" }} ·
+                            {{ article.reading_minutes }} мин чтения
+                        </p>
+                    </a>
+                {% empty %}
+                    <p class="muted small">{% trans 'Материалы ещё не опубликованы.' %}</p>
+                {% endfor %}
+            </div>
+        </article>
+    </div>
+</section>
+
+{% endblock %}

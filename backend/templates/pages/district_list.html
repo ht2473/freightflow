@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block page_header %}
+<header class="page-header">
+    <div class="page-header__row">
+        <div>
+            <h1>{{ page_title }}</h1>
+            <p class="lead">{{ page_lead }}</p>
+        </div>
+        <div class="page-header__actions">
+            {% include "partials/_export.html" %}
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Округов' %}</span>
+        <span class="metric__value">{{ profiles|length }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Объектов инфраструктуры' %}</span>
+        <span class="metric__value">{{ totals.objects|spaced }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Мощность хранения' %}</span>
+        <span class="metric__value">{{ totals.capacity|tons }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Протяжённость сети' %}</span>
+        <span class="metric__value">{{ totals.roads|spaced:1 }}<small> км</small></span>
+    </div>
+</div>
+
+<section class="section">
+    <div class="section__head">
+        <div>
+            <p class="eyebrow">{% trans 'Ранжирование по грузопотоку' %}</p>
+            <h2>{% trans 'Профили округов' %}</h2>
+        </div>
+        <a class="button button--ghost button--sm" href="{% url 'analytics:index' %}">{% trans 'Индекс логистической нагрузки' %}</a>
+    </div>
+
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>{% trans 'Округ' %}</th>
+                    <th class="num">{% trans 'Объектов' %}</th>
+                    <th class="num">{% trans 'Мощность' %}</th>
+                    <th class="num">{% trans 'Грузопоток' %}</th>
+                    <th>{% trans 'Доля грузопотока' %}</th>
+                    <th class="num">{% trans 'Дороги, км' %}</th>
+                    <th>{% trans 'Обстановка' %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for profile in profiles %}
+                    <tr data-href="{{ profile.district.get_absolute_url }}">
+                        <td>
+                            <span class="table-title">{{ profile.district.short_name }}</span>
+                            <span class="table-sub">{{ profile.district.name }}</span>
+                        </td>
+                        <td class="num">{{ profile.object_count }}</td>
+                        <td class="num">{{ profile.capacity_tons|tons }}</td>
+                        <td class="num">{{ profile.volume_tons|tons }}</td>
+                        <td style="min-width:130px">
+                            <div class="bar">
+                                <div class="bar__fill"
+                                     style="width:{{ profile.volume_tons|ratio:max_volume }}%"></div>
+                            </div>
+                        </td>
+                        <td class="num">{{ profile.road_length_km|spaced:1 }}</td>
+                        <td>
+                            <span class="badge badge--{{ profile.congestion_tone }}">
+                                {{ profile.congestion|spaced:1 }}
+                            </span>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="section">
+    <div class="grid grid--3">
+        {% for profile in profiles|slice:":6" %}
+            <a class="card card--link" href="{{ profile.district.get_absolute_url }}">
+                <div class="row row--between">
+                    <div>
+                        <p class="eyebrow">{{ profile.district.short_name }}</p>
+                        <h3 style="margin-top:4px">{{ profile.district.name }}</h3>
+                    </div>
+                    <span class="badge badge--{{ profile.congestion_tone }}">
+                        {{ profile.congestion|spaced:1 }}
+                    </span>
+                </div>
+                <dl class="facts" style="margin-top:var(--sp-3)">
+                    <div><dt>{% trans 'Площадь' %}</dt><dd>{{ profile.district.area_sq_km|spaced:1 }} км²</dd></div>
+                    <div><dt>{% trans 'Население' %}</dt><dd>{{ profile.district.population|spaced }} чел.</dd></div>
+                    <div><dt>{% trans 'Объектов' %}</dt><dd>{{ profile.object_count }}</dd></div>
+                    <div><dt>{% trans 'Грузопоток' %}</dt><dd>{{ profile.volume_tons|tons }}</dd></div>
+                </dl>
+            </a>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

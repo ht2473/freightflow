@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="grid grid--3">
+    {% for item in groups %}
+        <div class="card">
+            <p class="eyebrow">{{ forloop.counter|stringformat:"02d" }}</p>
+            <h3 style="margin:var(--sp-2) 0 var(--sp-3)">
+                <a href="{{ item.url }}">{{ item.title }}</a>
+            </h3>
+            <p class="small muted" style="margin-bottom:var(--sp-3)">{{ item.description }}</p>
+            {% if item.is_group %}
+                <div class="stack stack--tight">
+                    {% for child in item.children %}
+                        <a href="{{ child.url }}" class="small" style="color:inherit">
+                            <span class="table-title">{{ child.title }}</span>
+                            <span class="table-sub">{{ child.description }}</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    {% endfor %}
+
+    <div class="card">
+        <p class="eyebrow">11</p>
+        <h3 style="margin:var(--sp-2) 0 var(--sp-3)">{% trans 'Личный кабинет' %}</h3>
+        <p class="small muted" style="margin-bottom:var(--sp-3)">{% trans 'Избранное, сохранённые виды, выгрузки и подписки' %}</p>
+        <div class="stack stack--tight small">
+            <a href="{% url 'accounts:overview' %}">{% trans 'Обзор кабинета' %}</a>
+            <a href="{% url 'accounts:favorites' %}">{% trans 'Избранное' %}</a>
+            <a href="{% url 'accounts:saved_views' %}">{% trans 'Сохранённые виды' %}</a>
+            <a href="{% url 'accounts:exports' %}">{% trans 'Центр выгрузок' %}</a>
+            <a href="{% url 'accounts:subscriptions' %}">{% trans 'Подписки' %}</a>
+            <a href="{% url 'accounts:api_access' %}">{% trans 'Доступ к API' %}</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <p class="eyebrow">12</p>
+        <h3 style="margin:var(--sp-2) 0 var(--sp-3)">{% trans 'Служебные страницы' %}</h3>
+        <p class="small muted" style="margin-bottom:var(--sp-3)">{% trans 'Вход, регистрация и сведения о системе' %}</p>
+        <div class="stack stack--tight small">
+            <a href="{% url 'login' %}">{% trans 'Вход в систему' %}</a>
+            <a href="{% url 'register' %}">{% trans 'Регистрация' %}</a>
+            <a href="{% url 'core:about' %}">{% trans 'О системе' %}</a>
+            <a href="/api/v1/docs/">{% trans 'Документация API' %}</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

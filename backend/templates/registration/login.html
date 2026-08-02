@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="grid grid--2" style="max-width:960px;margin:0 auto;align-items:start">
+    <div class="card">
+        <h2 style="margin-bottom:var(--sp-4)">{% trans 'Вход в систему' %}</h2>
+
+        {% if form.errors %}
+            <div class="flash flash--error" style="position:static;margin-bottom:var(--sp-4)">
+                <span>{% trans 'Неверное имя пользователя или пароль. Проверьте раскладку клавиатуры и регистр символов.' %}</span>
+            </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="field">
+                <label for="{{ form.username.id_for_label }}">{% trans 'Имя пользователя' %}</label>
+                {{ form.username }}
+            </div>
+            <div class="field" style="margin-top:var(--sp-3)">
+                <label for="{{ form.password.id_for_label }}">{% trans 'Пароль' %}</label>
+                {{ form.password }}
+            </div>
+            <input type="hidden" name="next" value="{{ next }}">
+            <button class="button button--primary button--block" type="submit"
+                    style="margin-top:var(--sp-5)">{% trans 'Войти' %}</button>
+        </form>
+
+        <p class="small muted" style="margin-top:var(--sp-4)">{% trans 'Нет учётной записи?' %}<a href="{% url 'register' %}">{% trans 'Зарегистрируйтесь' %}</a>{% trans '— роль «Наблюдатель» назначается автоматически.' %}</p>
+    </div>
+
+    <div class="card card--raised">
+        <p class="eyebrow">{% trans 'Демонстрационный доступ' %}</p>
+        <h3 style="margin:var(--sp-2) 0 var(--sp-4)">{% trans 'Учётные записи стенда' %}</h3>
+        <p class="small muted" style="margin-bottom:var(--sp-4)">{% trans 'Для ознакомления с возможностями ролей подготовлены учётные записи с паролем' %}<span class="mono">FreightFlow2026</span>.
+        </p>
+        <dl class="facts">
+            <div><dt>{% trans 'Наблюдатель' %}</dt><dd>viewer</dd></div>
+            <div><dt>{% trans 'Аналитик' %}</dt><dd>analyst</dd></div>
+            <div><dt>{% trans 'Диспетчер' %}</dt><dd>operator</dd></div>
+            <div><dt>{% trans 'Администратор' %}</dt><dd>admin</dd></div>
+        </dl>
+        <p class="small faint" style="margin-top:var(--sp-4)">{% trans 'Учётные записи создаются командой' %}<span class="mono">init_demo</span>{% trans 'и предназначены только для учебного контура.' %}</p>
+    </div>
+</div>
+{% endblock %}

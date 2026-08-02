@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+<div class="grid grid--4" style="margin-bottom:var(--sp-6)">
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Объектов в системе' %}</span>
+        <span class="metric__value">{{ summary.object_count|spaced }}</span>
+    </div>
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Участков сети' %}</span>
+        <span class="metric__value">{{ summary.road_count }}</span>
+        <span class="metric__note">{% blocktrans with km=summary.road_length_km|spaced:1 %}{{ km }} км под наблюдением{% endblocktrans %}</span>
+    </div>
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Грузовых маршрутов' %}</span>
+        <span class="metric__value">{{ summary.route_count }}</span>
+    </div>
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Административных округов' %}</span>
+        <span class="metric__value">{{ summary.district_count }}</span>
+    </div>
+</div>
+
+<div class="grid grid--sidebar">
+    <div class="prose">
+        <h2>{% trans 'Назначение системы' %}</h2>
+        <p>{% trans '«ГрузПоток» — информационно-аналитическая система, объединяющая сведения о логистической инфраструктуре Москвы в единой среде: складские мощности и терминалы, магистральную сеть с оценкой загруженности, грузовые коридоры и статистику перевозок.' %}</p>
+        <p>{% trans 'Практическая задача системы — сократить время, необходимое для получения ответа на вопросы вида «где сосредоточены мощности хранения», «какие направления перегружены в утренний пик» и «как изменится нагрузка на округ при росте объёма перевозок». До консолидации данных такие вопросы требовали обращения к нескольким ведомственным источникам и ручного сопоставления разнородных выгрузок.' %}</p>
+
+        <h2>{% trans 'Архитектура' %}</h2>
+        <p>{% trans 'Система построена на платформе Django и следует классической многослойной организации: слой моделей отвечает за представление предметной области, слой выборок — за агрегацию, представления — за подготовку контекста страниц. Аналитические расчёты вынесены в отдельный модуль и не зависят от способа отображения результата.' %}</p>
+        <p>{% trans 'Пространственный слой реализован без внешних библиотек геообработки. Хранение и запросы выполняет сама СУБД: в промышленном контуре это PostgreSQL с расширением PostGIS, в контуре разработки и в автотестах — SQLite с текстовым представлением геометрии. Прикладной код одинаков для обоих вариантов, что позволяет разворачивать систему без установки системных зависимостей.' %}</p>
+
+        <h2>{% trans 'Разграничение доступа' %}</h2>
+        <p>{% trans 'Предусмотрены четыре роли с вложенной моделью полномочий. «Наблюдатель» работает с реестрами и картой, «Аналитик» дополнительно получает выгрузку отчётов и программный доступ, «Диспетчер» вносит сведения о дорожных событиях, «Администратор» управляет учётными записями, справочниками и настройками. Все значимые действия фиксируются в журнале аудита.' %}</p>
+
+        <h2>{% trans 'Открытость данных' %}</h2>
+        <p>{% trans 'Реестры и аналитические показатели доступны без авторизации как через веб-интерфейс, так и через программный интерфейс REST со спецификацией OpenAPI. Полнота исходных данных публикуется открыто: показатели заполненности таблиц приведены в разделе источников, а автоматические проверки качества доступны администратору.' %}</p>
+    </div>
+
+    <aside class="stack">
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Разработка' %}</h3>
+            <dl class="facts">
+                <div><dt>{% trans 'Автор' %}</dt><dd style="font-family:var(--font-body)">{{ PROJECT_AUTHOR }}</dd></div>
+                <div><dt>{% trans 'Идентификатор' %}</dt><dd>{{ PROJECT_AUTHOR_ID }}</dd></div>
+                <div><dt>{% trans 'Версия системы' %}</dt><dd>{{ PROJECT_VERSION }}</dd></div>
+                <div><dt>{% trans 'Платформа' %}</dt><dd>Django</dd></div>
+                <div><dt>{% trans 'Хранилище' %}</dt><dd>{{ db_vendor }}</dd></div>
+            </dl>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Состав данных' %}</h3>
+            <div class="stack stack--tight">
+                {% for row in coverage %}
+                    <div class="row row--between small">
+                        <span>{{ row.title }}</span>
+                        <span class="mono">{{ row.count|spaced }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Документы' %}</h3>
+            <div class="stack stack--tight small">
+                <a href="{% url 'core:methodology' %}">{% trans 'Методология расчётов' %}</a>
+                <a href="{% url 'core:api_docs' %}">{% trans 'Программный интерфейс' %}</a>
+                <a href="{% url 'core:help' %}">{% trans 'Руководство пользователя' %}</a>
+                <a href="{% url 'core:sitemap' %}">{% trans 'Карта сайта' %}</a>
+            </div>
+        </div>
+    </aside>
+</div>
+{% endblock %}

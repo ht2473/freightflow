@@ -1,0 +1,281 @@
+-- =============================================================================
+--  ИС «ГрузПоток» (FreightFlow) — логистическая инфраструктура города Москвы
+--  Схема операционно-аналитической базы данных: PostgreSQL 15+ / PostGIS 3.x
+--
+--  Файл является каноническим описанием доменной части хранилища. Django-модели
+--  приложения (backend/core/models.py) отображаются на эти же таблицы один в
+--  один: имена таблиц, колонок и типы согласованы, поэтому базу можно поднять
+--  как миграциями Django, так и «сырым» SQL — результат идентичен.
+--
+--  Порядок применения:
+--      psql -d freightflow -f db/001_schema.sql
+--      psql -d freightflow -f db/002_seed_data_scale1.sql   (данные)
+--      psql -d freightflow -f db/003_views.sql              (представления)
+--      psql -d freightflow -f db/004_district_centers.sql   (геометрия округов)
+-- =============================================================================
+
+BEGIN;
+
+-- Расширения. PostGIS обеспечивает геометрические типы и пространственные
+-- операции (ST_AsText, ST_DWithin, ST_Distance), pg_trgm — быстрый поиск по
+-- подстроке в названиях объектов (индексы GIN ниже).
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- -----------------------------------------------------------------------------
+--  1. СПРАВОЧНИКИ
+-- -----------------------------------------------------------------------------
+
+-- Административные округа Москвы (12 шт.).
+-- geom   — граница округа (заполняется опционально, из открытых данных);
+-- center — координата условного центра округа, используется для подписей карты
+--          и как fallback при отсутствии границ.
+CREATE TABLE IF NOT EXISTS districts (
+    id          SERIAL PRIMARY KEY,
+    name        VARCHAR(120) NOT NULL UNIQUE,
+    short_name  VARCHAR(16)  NOT NULL UNIQUE,
+    area_sq_km  NUMERIC(10, 2),
+    population  INTEGER,
+    geom        geometry(MultiPolygon, 4326),
+    center      geometry(Point, 4326),
+    CONSTRAINT districts_area_positive CHECK (area_sq_km IS NULL OR area_sq_km > 0),
+    CONSTRAINT districts_population_positive CHECK (population IS NULL OR population >= 0)
+);
+
+COMMENT ON TABLE  districts IS 'Административные округа города Москвы';
+COMMENT ON COLUMN districts.short_name IS 'Аббревиатура округа: ЦАО, САО, СВАО, …';
+
+-- Типы объектов логистической инфраструктуры: склад, терминал, грузовой двор и т.д.
+CREATE TABLE IF NOT EXISTS infrastructure_types (
+    id          SERIAL PRIMARY KEY,
+    code        VARCHAR(32)  NOT NULL UNIQUE,
+    name        VARCHAR(120) NOT NULL,
+    description TEXT
+);
+
+COMMENT ON TABLE infrastructure_types IS 'Классификатор типов объектов инфраструктуры';
+
+-- Классификатор грузов. hazard_class — класс опасности по ДОПОГ/ADR:
+-- 0 — груз не опасен, 1…9 — соответствующий класс опасности.
+CREATE TABLE IF NOT EXISTS cargo_categories (
+    id           SERIAL PRIMARY KEY,
+    code         VARCHAR(32)  NOT NULL UNIQUE,
+    name         VARCHAR(120) NOT NULL,
+    hazard_class SMALLINT     NOT NULL DEFAULT 0,
+    CONSTRAINT cargo_categories_hazard_range CHECK (hazard_class BETWEEN 0 AND 9)
+);
+
+COMMENT ON TABLE  cargo_categories IS 'Классификатор категорий перевозимых грузов';
+COMMENT ON COLUMN cargo_categories.hazard_class IS 'Класс опасности ADR: 0 — неопасный груз';
+
+-- Реестр источников данных, интегрированных в систему (ЦОДД, СВП, Росстат и др.).
+-- source_type определяет способ получения: api | csv | open_data | gis_service | manual.
+CREATE TABLE IF NOT EXISTS data_sources (
+    id               SERIAL PRIMARY KEY,
+    code             VARCHAR(32)  NOT NULL UNIQUE,
+    name             VARCHAR(200) NOT NULL,
+    source_type      VARCHAR(32)  NOT NULL,
+    url              VARCHAR(500),
+    update_frequency VARCHAR(32),
+    is_active        BOOLEAN      NOT NULL DEFAULT TRUE,
+    CONSTRAINT data_sources_type_allowed CHECK (
+        source_type IN ('api', 'csv', 'open_data', 'gis_service', 'manual')
+    )
+);
+
+COMMENT ON TABLE  data_sources IS 'Реестр внешних источников данных';
+COMMENT ON COLUMN data_sources.update_frequency IS 'Регламент обновления: hourly | daily | weekly | monthly | quarterly';
+
+-- -----------------------------------------------------------------------------
+--  2. ОБЪЕКТЫ ПРЕДМЕТНОЙ ОБЛАСТИ
+-- -----------------------------------------------------------------------------
+
+-- Точечные объекты логистической инфраструктуры: склады, терминалы, грузовые
+-- дворы, стоянки грузового транспорта, весовые пункты, распределительные центры.
+CREATE TABLE IF NOT EXISTS infrastructure_objects (
+    id              SERIAL PRIMARY KEY,
+    type_id         INTEGER NOT NULL REFERENCES infrastructure_types (id) ON DELETE RESTRICT,
+    district_id     INTEGER NOT NULL REFERENCES districts (id) ON DELETE RESTRICT,
+    name            VARCHAR(200) NOT NULL,
+    address         VARCHAR(300),
+    capacity_tons   NUMERIC(12, 2),
+    area_sq_m       NUMERIC(12, 2),
+    operating_hours VARCHAR(64),
+    geom            geometry(Point, 4326),
+    source_id       INTEGER REFERENCES data_sources (id) ON DELETE SET NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT infra_capacity_positive CHECK (capacity_tons IS NULL OR capacity_tons >= 0),
+    CONSTRAINT infra_area_positive CHECK (area_sq_m IS NULL OR area_sq_m >= 0)
+);
+
+COMMENT ON TABLE  infrastructure_objects IS 'Объекты логистической инфраструктуры (точечные)';
+COMMENT ON COLUMN infrastructure_objects.capacity_tons IS 'Проектная мощность единовременного хранения, тонн';
+
+-- Ключевые участки улично-дорожной сети, по которым ведётся мониторинг.
+-- road_class: highway (магистраль) | arterial (городская магистраль) | collector (связующая).
+CREATE TABLE IF NOT EXISTS road_segments (
+    id              SERIAL PRIMARY KEY,
+    name            VARCHAR(200) NOT NULL,
+    road_class      VARCHAR(32)  NOT NULL,
+    lanes           SMALLINT,
+    length_km       NUMERIC(8, 2),
+    speed_limit_kmh SMALLINT,
+    district_id     INTEGER REFERENCES districts (id) ON DELETE SET NULL,
+    geom            geometry(LineString, 4326),
+    source_id       INTEGER REFERENCES data_sources (id) ON DELETE SET NULL,
+    CONSTRAINT road_class_allowed CHECK (road_class IN ('highway', 'arterial', 'collector')),
+    CONSTRAINT road_lanes_range CHECK (lanes IS NULL OR lanes BETWEEN 1 AND 16),
+    CONSTRAINT road_speed_range CHECK (speed_limit_kmh IS NULL OR speed_limit_kmh BETWEEN 5 AND 130)
+);
+
+COMMENT ON TABLE infrastructure_objects IS 'Объекты логистической инфраструктуры (точечные)';
+COMMENT ON TABLE road_segments IS 'Участки улично-дорожной сети под мониторингом';
+
+-- Грузовые маршруты и транспортные коридоры.
+-- route_type: inbound (ввоз в город) | outbound (вывоз) | transit (транзит).
+CREATE TABLE IF NOT EXISTS cargo_routes (
+    id              SERIAL PRIMARY KEY,
+    name            VARCHAR(200) NOT NULL,
+    route_type      VARCHAR(16)  NOT NULL,
+    origin_region   VARCHAR(120),
+    destination     VARCHAR(120),
+    distance_km     NUMERIC(10, 2),
+    avg_duration_h  NUMERIC(8, 2),
+    truck_count_day INTEGER,
+    geom            geometry(LineString, 4326),
+    source_id       INTEGER REFERENCES data_sources (id) ON DELETE SET NULL,
+    CONSTRAINT route_type_allowed CHECK (route_type IN ('inbound', 'outbound', 'transit')),
+    CONSTRAINT route_distance_positive CHECK (distance_km IS NULL OR distance_km > 0),
+    CONSTRAINT route_trucks_positive CHECK (truck_count_day IS NULL OR truck_count_day >= 0)
+);
+
+COMMENT ON TABLE  cargo_routes IS 'Грузовые маршруты и транспортные коридоры';
+COMMENT ON COLUMN cargo_routes.truck_count_day IS 'Среднесуточная интенсивность движения грузового транспорта, ТС/сут.';
+
+-- -----------------------------------------------------------------------------
+--  3. ВРЕМЕННЫЕ РЯДЫ И СОБЫТИЯ
+-- -----------------------------------------------------------------------------
+
+-- Агрегированная статистика грузопотоков по периодам.
+-- direction: in (ввоз) | out (вывоз) | transit (транзит).
+CREATE TABLE IF NOT EXISTS freight_flow_stats (
+    id            SERIAL PRIMARY KEY,
+    period_date   DATE        NOT NULL,
+    period_type   VARCHAR(16) NOT NULL DEFAULT 'month',
+    route_id      INTEGER REFERENCES cargo_routes (id) ON DELETE SET NULL,
+    district_id   INTEGER REFERENCES districts (id) ON DELETE SET NULL,
+    cargo_cat_id  INTEGER REFERENCES cargo_categories (id) ON DELETE SET NULL,
+    direction     VARCHAR(16) NOT NULL,
+    volume_tons   NUMERIC(14, 2),
+    vehicle_count INTEGER,
+    avg_speed_kmh NUMERIC(6, 2),
+    source_id     INTEGER REFERENCES data_sources (id) ON DELETE SET NULL,
+    CONSTRAINT flow_period_allowed CHECK (period_type IN ('day', 'week', 'month', 'quarter', 'year')),
+    CONSTRAINT flow_direction_allowed CHECK (direction IN ('in', 'out', 'transit')),
+    CONSTRAINT flow_volume_positive CHECK (volume_tons IS NULL OR volume_tons >= 0)
+);
+
+COMMENT ON TABLE freight_flow_stats IS 'Статистика грузопотоков в разрезе периодов, округов и категорий грузов';
+
+-- Замеры дорожной обстановки. congestion_level — балл загруженности по шкале
+-- ЦОДД (0 — свободно, 10 — движение парализовано).
+CREATE TABLE IF NOT EXISTS traffic_conditions (
+    id               SERIAL PRIMARY KEY,
+    recorded_at      TIMESTAMPTZ NOT NULL,
+    road_id          INTEGER NOT NULL REFERENCES road_segments (id) ON DELETE CASCADE,
+    congestion_level SMALLINT NOT NULL,
+    avg_speed_kmh    NUMERIC(6, 2),
+    travel_time_min  NUMERIC(8, 2),
+    vehicle_density  INTEGER,
+    incident_flag    BOOLEAN NOT NULL DEFAULT FALSE,
+    source_id        INTEGER REFERENCES data_sources (id) ON DELETE SET NULL,
+    CONSTRAINT traffic_congestion_range CHECK (congestion_level BETWEEN 0 AND 10),
+    CONSTRAINT traffic_speed_positive CHECK (avg_speed_kmh IS NULL OR avg_speed_kmh >= 0)
+);
+
+COMMENT ON COLUMN traffic_conditions.congestion_level IS 'Балл загруженности 0–10 (шкала ЦОДД)';
+COMMENT ON COLUMN traffic_conditions.vehicle_density IS 'Плотность потока, ТС на километр полосы';
+
+-- Дорожные события: ДТП, ремонтные работы, ограничения, погодные явления.
+-- severity: 1 — незначительное, 5 — критическое (полное перекрытие).
+CREATE TABLE IF NOT EXISTS traffic_incidents (
+    id            SERIAL PRIMARY KEY,
+    reported_at   TIMESTAMPTZ NOT NULL,
+    resolved_at   TIMESTAMPTZ,
+    incident_type VARCHAR(32) NOT NULL,
+    severity      SMALLINT    NOT NULL DEFAULT 1,
+    road_id       INTEGER REFERENCES road_segments (id) ON DELETE SET NULL,
+    description   TEXT,
+    geom          geometry(Point, 4326),
+    affects_cargo BOOLEAN     NOT NULL DEFAULT FALSE,
+    source_id     INTEGER REFERENCES data_sources (id) ON DELETE SET NULL,
+    CONSTRAINT incident_type_allowed CHECK (
+        incident_type IN ('accident', 'roadworks', 'restriction', 'weather', 'event', 'other')
+    ),
+    CONSTRAINT incident_severity_range CHECK (severity BETWEEN 1 AND 5),
+    CONSTRAINT incident_period_valid CHECK (resolved_at IS NULL OR resolved_at >= reported_at)
+);
+
+COMMENT ON TABLE  traffic_incidents IS 'Инциденты на улично-дорожной сети';
+COMMENT ON COLUMN traffic_incidents.affects_cargo IS 'Признак влияния инцидента на движение грузового транспорта';
+
+-- -----------------------------------------------------------------------------
+--  4. СЛУЖЕБНЫЕ ТАБЛИЦЫ
+-- -----------------------------------------------------------------------------
+
+-- Журнал загрузок ETL: одна строка на один запуск загрузчика по одному источнику.
+CREATE TABLE IF NOT EXISTS etl_log (
+    id             SERIAL PRIMARY KEY,
+    started_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    finished_at    TIMESTAMPTZ,
+    source_id      INTEGER REFERENCES data_sources (id) ON DELETE SET NULL,
+    target_table   VARCHAR(64) NOT NULL,
+    records_loaded INTEGER NOT NULL DEFAULT 0,
+    records_errors INTEGER NOT NULL DEFAULT 0,
+    status         VARCHAR(16) NOT NULL DEFAULT 'running',
+    error_message  TEXT,
+    CONSTRAINT etl_status_allowed CHECK (status IN ('running', 'success', 'partial', 'failed')),
+    CONSTRAINT etl_counters_positive CHECK (records_loaded >= 0 AND records_errors >= 0)
+);
+
+COMMENT ON TABLE etl_log IS 'Журнал запусков процедур загрузки данных (ETL)';
+
+-- -----------------------------------------------------------------------------
+--  5. ИНДЕКСЫ
+--  Состав определён по фактическим запросам приложения: фильтрация реестров,
+--  выборки временных рядов «последние N», пространственные запросы карты.
+-- -----------------------------------------------------------------------------
+
+-- Пространственные (GiST) — для запросов «в границах экрана» и «ближайшие».
+CREATE INDEX IF NOT EXISTS idx_infra_geom      ON infrastructure_objects USING GIST (geom);
+CREATE INDEX IF NOT EXISTS idx_roads_geom      ON road_segments          USING GIST (geom);
+CREATE INDEX IF NOT EXISTS idx_routes_geom     ON cargo_routes           USING GIST (geom);
+CREATE INDEX IF NOT EXISTS idx_incidents_geom  ON traffic_incidents      USING GIST (geom);
+
+-- Внешние ключи и типовые фильтры реестров.
+CREATE INDEX IF NOT EXISTS idx_infra_district  ON infrastructure_objects (district_id);
+CREATE INDEX IF NOT EXISTS idx_infra_type      ON infrastructure_objects (type_id);
+CREATE INDEX IF NOT EXISTS idx_infra_source    ON infrastructure_objects (source_id);
+CREATE INDEX IF NOT EXISTS idx_roads_district  ON road_segments (district_id);
+CREATE INDEX IF NOT EXISTS idx_routes_type     ON cargo_routes (route_type);
+
+-- Поиск по названию объекта без учёта регистра и по подстроке (pg_trgm).
+CREATE INDEX IF NOT EXISTS idx_infra_name_trgm ON infrastructure_objects USING GIN (name gin_trgm_ops);
+
+-- Временные ряды: выборка «последние замеры по участку» и агрегаты по периодам.
+CREATE INDEX IF NOT EXISTS idx_traffic_road_time ON traffic_conditions (road_id, recorded_at DESC);
+CREATE INDEX IF NOT EXISTS idx_traffic_time      ON traffic_conditions (recorded_at DESC);
+CREATE INDEX IF NOT EXISTS idx_flow_period       ON freight_flow_stats (period_date);
+CREATE INDEX IF NOT EXISTS idx_flow_district     ON freight_flow_stats (district_id, period_date);
+CREATE INDEX IF NOT EXISTS idx_flow_category     ON freight_flow_stats (cargo_cat_id, period_date);
+CREATE INDEX IF NOT EXISTS idx_incidents_time    ON traffic_incidents (reported_at DESC);
+
+-- Открытые инциденты (resolved_at IS NULL) запрашиваются на каждой странице
+-- мониторинга — частичный индекс существенно дешевле полного.
+CREATE INDEX IF NOT EXISTS idx_incidents_open ON traffic_incidents (reported_at DESC)
+    WHERE resolved_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_etl_started ON etl_log (started_at DESC);
+
+COMMIT;

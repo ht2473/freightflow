@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% include "partials/_tabs.html" %}
+
+<div class="grid grid--wide">
+    <div class="card">
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <p class="eyebrow" style="margin-bottom:var(--sp-3)">{% trans 'Личные сведения' %}</p>
+            <div class="grid grid--2">
+                <div class="field">
+                    <label for="{{ form.last_name.id_for_label }}">{% trans 'Фамилия' %}</label>
+                    {{ form.last_name }}
+                </div>
+                <div class="field">
+                    <label for="{{ form.first_name.id_for_label }}">{% trans 'Имя' %}</label>
+                    {{ form.first_name }}
+                </div>
+            </div>
+            <div class="field" style="margin-top:var(--sp-3)">
+                <label for="{{ form.email.id_for_label }}">{% trans 'Адрес электронной почты' %}</label>
+                {{ form.email }}
+                {% if form.email.errors %}<p class="field__error">{{ form.email.errors|join:" " }}</p>{% endif %}
+            </div>
+
+            <p class="eyebrow" style="margin:var(--sp-6) 0 var(--sp-3)">{% trans 'Место работы' %}</p>
+            <div class="grid grid--2">
+                <div class="field">
+                    <label for="{{ form.organization.id_for_label }}">{% trans 'Организация' %}</label>
+                    {{ form.organization }}
+                </div>
+                <div class="field">
+                    <label for="{{ form.position.id_for_label }}">{% trans 'Должность' %}</label>
+                    {{ form.position }}
+                </div>
+            </div>
+            <div class="field" style="margin-top:var(--sp-3)">
+                <label for="{{ form.phone.id_for_label }}">{% trans 'Телефон' %}</label>
+                {{ form.phone }}
+            </div>
+
+            <p class="eyebrow" style="margin:var(--sp-6) 0 var(--sp-3)">{% trans 'Предпочтения интерфейса' %}</p>
+            <div class="grid grid--3">
+                <div class="field">
+                    <label for="{{ form.theme.id_for_label }}">{% trans 'Оформление' %}</label>
+                    {{ form.theme }}
+                </div>
+                <div class="field">
+                    <label for="{{ form.language.id_for_label }}">{% trans 'Язык интерфейса' %}</label>
+                    {{ form.language }}
+                </div>
+                <div class="field">
+                    <label for="{{ form.default_district.id_for_label }}">{% trans 'Округ по умолчанию' %}</label>
+                    {{ form.default_district }}
+                </div>
+            </div>
+            <label class="check" style="margin-top:var(--sp-4)">
+                {{ form.notify_incidents }}
+                <span>{% trans 'Уведомлять о дорожных событиях по моим подпискам' %}</span>
+            </label>
+
+            <button class="button button--primary" type="submit"
+                    style="margin-top:var(--sp-5)">{% trans 'Сохранить изменения' %}</button>
+        </form>
+    </div>
+
+    <aside class="stack">
+        <div class="card">
+            <p class="eyebrow">{% trans 'Текущая роль' %}</p>
+            <h3 style="margin:var(--sp-2) 0 var(--sp-3)">{{ profile.get_role_display }}</h3>
+            <p class="small muted">{{ profile.role_description }}</p>
+            <p class="small faint" style="margin-top:var(--sp-4)">{% trans 'Роль назначает администратор системы. Для расширения полномочий направьте запрос через' %}<a href="{% url 'content:feedback' %}">{% trans 'форму обратной связи' %}</a>{% trans ', указав организацию и характер выполняемых задач.' %}</p>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Доступ' %}</h3>
+            <dl class="facts">
+                <div><dt>{% trans 'Выгрузка отчётов' %}</dt>
+                    <dd>{% if profile.can_export %}разрешена{% else %}недоступна{% endif %}</dd></div>
+                <div><dt>{% trans 'Изменение данных' %}</dt>
+                    <dd>{% if profile.can_operate %}разрешено{% else %}недоступно{% endif %}</dd></div>
+                <div><dt>{% trans 'Панель администратора' %}</dt>
+                    <dd>{% if profile.can_administer %}открыта{% else %}закрыта{% endif %}</dd></div>
+            </dl>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Безопасность' %}</h3>
+            <a class="button button--block" href="{% url 'password_change' %}">{% trans 'Сменить пароль' %}</a>
+            <a class="button button--block button--ghost" style="margin-top:var(--sp-2)"
+               href="{% url 'accounts:activity' %}">{% trans 'Журнал моих действий' %}</a>
+        </div>
+    </aside>
+</div>
+{% endblock %}

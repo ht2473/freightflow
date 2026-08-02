@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Протяжённость' %}</span>
+        <span class="metric__value">{{ route.distance_km|spaced:1 }}<small> км</small></span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Время в пути' %}</span>
+        <span class="metric__value">{{ route.avg_duration_h|spaced:1 }}<small> ч</small></span>
+        <span class="metric__note">средняя скорость {{ route.avg_speed_kmh|spaced:0 }} км/ч</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Интенсивность' %}</span>
+        <span class="metric__value">{{ route.truck_count_day|spaced }}<small>{% trans 'ТС/сут' %}</small></span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Транспортная работа' %}</span>
+        <span class="metric__value">{{ route.daily_load_index|spaced:0 }}<small>{% trans 'ТС·км' %}</small></span>
+        <span class="metric__note">{% trans 'суточная, по маршруту' %}</span>
+    </div>
+</div>
+
+<div class="grid grid--wide">
+    <div class="stack">
+        {% if route.geom %}
+            <article class="card card--flush">
+                <div class="card__head"><h3>{% trans 'Трасса маршрута' %}</h3></div>
+                <div id="route-map" style="height:400px"
+                     data-line="{{ route.geom.geojson|safe }}"></div>
+            </article>
+        {% endif %}
+
+        <article class="card card--flush">
+            <div class="card__head">
+                <div>
+                    <p class="eyebrow">{% trans 'Статистика перевозок' %}</p>
+                    <h3>{% trans 'Показатели по периодам' %}</h3>
+                </div>
+            </div>
+            <div class="table-wrap" style="border:none">
+                <table class="data">
+                    <thead>
+                        <tr><th>{% trans 'Период' %}</th><th>{% trans 'Направление' %}</th><th>{% trans 'Категория' %}</th>
+                            <th class="num">{% trans 'Объём, т' %}</th><th class="num">{% trans 'Рейсов' %}</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for flow in flows %}
+                            <tr>
+                                <td class="mono small">{{ flow.period_date|date:"m.Y" }}</td>
+                                <td class="small">{{ flow.get_direction_display }}</td>
+                                <td class="small muted">{{ flow.cargo_category.name|dash }}</td>
+                                <td class="num">{{ flow.volume_tons|spaced }}</td>
+                                <td class="num">{{ flow.vehicle_count|spaced }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="5" class="muted">{% trans 'Статистика отсутствует.' %}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </div>
+
+    <aside class="stack">
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Характеристики' %}</h3>
+            <dl class="facts">
+                <div><dt>{% trans 'Тип маршрута' %}</dt><dd>{{ route.get_route_type_display }}</dd></div>
+                <div><dt>{% trans 'Регион отправления' %}</dt><dd>{{ route.origin_region|dash }}</dd></div>
+                <div><dt>{% trans 'Регион назначения' %}</dt><dd>{{ route.destination|dash }}</dd></div>
+                <div><dt>{% trans 'Источник' %}</dt><dd>{{ route.source.name|dash }}</dd></div>
+            </dl>
+        </div>
+
+        {% if by_category %}
+            <div class="card">
+                <h3 style="margin-bottom:var(--sp-3)">{% trans 'Структура груза' %}</h3>
+                <div class="stack stack--tight">
+                    {% for row in by_category %}
+                        <div class="row row--between small">
+                            <span>{{ row.cargo_category__name }}</span>
+                            <span class="mono">{{ row.volume|tons }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if similar %}
+            <div class="card">
+                <h3 style="margin-bottom:var(--sp-3)">{% trans 'Схожие маршруты' %}</h3>
+                <div class="stack stack--tight">
+                    {% for item in similar %}
+                        <a href="{{ item.get_absolute_url }}" class="row row--between small"
+                           style="color:inherit;padding:3px 0">
+                            <span>{{ item.name }}</span>
+                            <span class="mono faint">{{ item.truck_count_day|spaced }}</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if route.geom %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var node = document.getElementById("route-map");
+    if (!node || typeof L === "undefined") return;
+    var geometry = JSON.parse(node.dataset.line.replace(/'/g, '"'));
+    var map = L.map(node, { scrollWheelZoom: false });
+    L.tileLayer("{{ MAP_TILE_URL }}", { attribution: "{{ MAP_ATTRIBUTION }}" }).addTo(map);
+    var line = L.geoJSON({ type: "Feature", geometry: geometry, properties: {} },
+        { style: { color: "#4aa3d9", weight: 4, opacity: 0.9, dashArray: "8 6" } }).addTo(map);
+    map.fitBounds(line.getBounds(), { padding: [30, 30] });
+});
+</script>
+{% endif %}
+{% endblock %}

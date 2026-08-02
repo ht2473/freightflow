@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% if summary.count %}
+<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--alert">
+        <span class="metric__label">{% trans 'Наибольшая нагрузка' %}</span>
+        <span class="metric__value">{{ summary.max.district.short_name }}</span>
+        <span class="metric__note">индекс {{ summary.max.score|spaced:1 }} из 100</span>
+    </div>
+    <div class="metric metric--ok">
+        <span class="metric__label">{% trans 'Наименьшая нагрузка' %}</span>
+        <span class="metric__value">{{ summary.min.district.short_name }}</span>
+        <span class="metric__note">индекс {{ summary.min.score|spaced:1 }}</span>
+    </div>
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Среднее по городу' %}</span>
+        <span class="metric__value">{{ summary.mean|spaced:1 }}</span>
+        <span class="metric__note">размах {{ summary.spread|spaced:1 }} балла</span>
+    </div>
+    <div class="metric metric--{% if summary.variation > 30 %}warn{% else %}ok{% endif %}">
+        <span class="metric__label">{% trans 'Коэффициент вариации' %}</span>
+        <span class="metric__value">{{ summary.variation|spaced:1 }}<small> %</small></span>
+        <span class="metric__note">
+            {% if summary.variation > 30 %}выраженная поляризация округов
+            {% else %}округа относительно однородны{% endif %}
+        </span>
+    </div>
+</div>
+{% endif %}
+
+<section class="section">
+    <div class="section__head">
+        <div>
+            <p class="eyebrow">{% trans 'Ранжирование' %}</p>
+            <h2>{% trans 'Индекс по округам' %}</h2>
+        </div>
+        <div class="row">
+            <a class="button button--sm" href="{% url 'analytics:typology' %}">{% trans 'Типология' %}</a>
+            <a class="button button--sm" href="{% url 'analytics:compare' %}">{% trans 'Сравнить округа' %}</a>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+                <tr>
+                    <th class="num">№</th><th>{% trans 'Округ' %}</th><th class="num">{% trans 'Индекс' %}</th>
+                    <th>{% trans 'Профиль составляющих' %}</th>
+                    {% for key, title in components.items %}<th class="num">{{ title }}</th>{% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                    <tr data-href="{{ row.district.get_absolute_url }}">
+                        <td class="num faint">{{ row.rank }}</td>
+                        <td>
+                            <span class="table-title">{{ row.district.short_name }}</span>
+                            <span class="table-sub">{{ row.district.name }}</span>
+                        </td>
+                        <td class="num">
+                            <strong style="font-size:var(--fs-md)">{{ row.score|spaced:1 }}</strong>
+                        </td>
+                        <td style="min-width:160px">
+                            <div class="bar">
+                                <div class="bar__fill bar__fill--{{ row.congestion|tone }}"
+                                     style="width:{{ row.score }}%"></div>
+                            </div>
+                        </td>
+                        <td class="num">{{ row.components.capacity|spaced:0 }}</td>
+                        <td class="num">{{ row.components.flow|spaced:0 }}</td>
+                        <td class="num">{{ row.components.congestion|spaced:0 }}</td>
+                        <td class="num">{{ row.components.incidents|spaced:0 }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="8" class="muted">{% trans 'Недостаточно данных для расчёта.' %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="section">
+    <div class="grid grid--2">
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Как устроен расчёт' %}</h3>
+            <p class="small muted" style="margin-bottom:var(--sp-4)">{% trans 'Четыре показателя округа нормируются методом «минимум — максимум», умножаются на веса и суммируются. Результат приводится к стобалльной шкале.' %}</p>
+            <dl class="facts">
+                {% for key, weight in weights.items %}
+                    <div>
+                        <dt>{% for k, title in components.items %}{% if k == key %}{{ title }}{% endif %}{% endfor %}</dt>
+                        <dd>{{ weight|spaced:2 }}</dd>
+                    </div>
+                {% endfor %}
+            </dl>
+            <a class="button button--block" style="margin-top:var(--sp-4)"
+               href="{% url 'core:methodology' %}">{% trans 'Подробнее о методике' %}</a>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Как читать индекс' %}</h3>
+            <div class="prose">
+                <p class="small muted">{% trans 'Индекс отражает положение округа' %}<em>{% trans 'относительно других округов' %}</em>{% trans ', а не абсолютный уровень нагрузки. Округ с индексом 100 имеет наибольшие значения показателей в текущей выборке, а не «предельно возможные».' %}</p>
+                <p class="small muted">{% trans 'Высокий индекс не означает проблемы сам по себе: он может отражать концентрацию складских мощностей — то есть развитость инфраструктуры. Смысл конкретного значения раскрывают составляющие: сочетание высокой загруженности при низких мощностях указывает на транзитную перегрузку, обратное сочетание — на логистический узел с достаточной пропускной способностью.' %}</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

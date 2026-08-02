@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+<form class="filters" method="get" data-autosubmit>
+    <div class="filters__grid">
+        <div class="field">
+            <label for="f-status">{% trans 'Итог загрузки' %}</label>
+            <select id="f-status" name="status">
+                <option value="">{% trans 'Любой' %}</option>
+                <option value="success" {% if filters.status == "success" %}selected{% endif %}>{% trans 'Успешно' %}</option>
+                <option value="partial" {% if filters.status == "partial" %}selected{% endif %}>{% trans 'С замечаниями' %}</option>
+                <option value="failed" {% if filters.status == "failed" %}selected{% endif %}>{% trans 'Ошибка' %}</option>
+                <option value="running" {% if filters.status == "running" %}selected{% endif %}>{% trans 'Выполняется' %}</option>
+            </select>
+        </div>
+        <div class="field">
+            <label for="f-source">{% trans 'Источник' %}</label>
+            <select id="f-source" name="source">
+                <option value="">{% trans 'Все источники' %}</option>
+                {% for source in sources %}
+                    <option value="{{ source.pk }}" {% if filters.source == source.pk %}selected{% endif %}>
+                        {{ source.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="row">
+            <button class="button button--primary" type="submit">{% trans 'Показать' %}</button>
+            <a class="button button--ghost" href="{% url 'core:etl_log' %}">{% trans 'Очистить' %}</a>
+        </div>
+    </div>
+</form>
+
+<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Всего запусков' %}</span>
+        <span class="metric__value">{{ health.total_runs|spaced }}</span>
+    </div>
+    <div class="metric metric--ok">
+        <span class="metric__label">{% trans 'Доля успешных' %}</span>
+        <span class="metric__value">{{ health.success_rate|spaced:1 }}<small> %</small></span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Загружено записей' %}</span>
+        <span class="metric__value">{{ health.total_loaded|spaced }}</span>
+    </div>
+    <div class="metric metric--{% if health.total_errors %}warn{% else %}ok{% endif %}">
+        <span class="metric__label">{% trans 'Отклонено записей' %}</span>
+        <span class="metric__value">{{ health.total_errors|spaced }}</span>
+    </div>
+</div>
+
+<div class="table-wrap">
+    <table class="data">
+        <thead>
+            <tr><th>{% trans 'Начало' %}</th><th>{% trans 'Источник' %}</th><th>{% trans 'Целевая таблица' %}</th>
+                <th class="num">{% trans 'Загружено' %}</th><th class="num">{% trans 'Ошибок' %}</th>
+                <th class="num">{% trans 'Длительность' %}</th><th>{% trans 'Итог' %}</th><th>{% trans 'Сообщение' %}</th></tr>
+        </thead>
+        <tbody>
+            {% for run in page_obj.object_list %}
+                <tr>
+                    <td class="small mono">{{ run.started_at|date:"d.m.Y H:i" }}</td>
+                    <td class="small">{{ run.source.name|dash }}</td>
+                    <td class="small mono">{{ run.target_label }}</td>
+                    <td class="num">{{ run.records_loaded|spaced }}</td>
+                    <td class="num">{{ run.records_errors|spaced }}</td>
+                    <td class="num">{{ run.duration_minutes|spaced:1 }} мин</td>
+                    <td>
+                        <span class="badge badge--{% if run.status == 'success' %}ok{% elif run.status == 'failed' %}alert{% elif run.status == 'partial' %}warn{% endif %}">
+                            {{ run.get_status_display }}
+                        </span>
+                    </td>
+                    <td class="small faint">{{ run.error_message|dash|truncatechars:44 }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="8" class="muted">{% trans 'Записи журнала отсутствуют.' %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% include "partials/_pagination.html" %}
+{% endblock %}

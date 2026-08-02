@@ -1,0 +1,3739 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-07-31 23:44+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Пользователи и доступ"
+msgstr "Users and access"
+
+msgid "Изменение профиля"
+msgstr "Profile updated"
+
+msgid "Изменение избранного"
+msgstr "Favourites changed"
+
+msgid "Сохранение вида"
+msgstr "View saved"
+
+msgid "Действие с сохранённым видом"
+msgstr "Saved view action"
+
+msgid "Оформление подписки"
+msgstr "Subscription created"
+
+msgid "Отмена подписки"
+msgstr "Subscription cancelled"
+
+msgid "Уведомления отмечены прочитанными"
+msgstr "Notifications marked as read"
+
+msgid "Управление токеном доступа"
+msgstr "Access token management"
+
+msgid "Смена пароля"
+msgstr "Password changed"
+
+msgid "Отправка обращения"
+msgstr "Enquiry submitted"
+
+msgid "Изменение учётной записи"
+msgstr "Account changed"
+
+msgid "Публикация материала"
+msgstr "Article publication"
+
+msgid "Обработка обращения"
+msgstr "Enquiry handled"
+
+msgid "Сброс кеша сводок"
+msgstr "Summary cache cleared"
+
+msgid "Изменение данных"
+msgstr "Data changed"
+
+msgid "Наблюдатель"
+msgstr "Viewer"
+
+msgid "Аналитик"
+msgstr "Analyst"
+
+msgid "Диспетчер"
+msgstr "Operator"
+
+msgid "Администратор"
+msgstr "Administrator"
+
+msgid "Просмотр реестров, карты и аналитики, ведение избранного и сохранённых условий отбора."
+msgstr "Viewing registers, the map and analytics; keeping favourites and saved filter settings."
+
+msgid "Дополнительно: выгрузка отчётов в форматах XLSX, DOCX, CSV и GeoJSON, работа с конструктором сравнений и доступ к REST API по токену."
+msgstr "Additionally: exporting reports in XLSX, DOCX, CSV and GeoJSON, using the comparison builder and REST API access by token."
+
+msgid "Дополнительно: регистрация и закрытие дорожных инцидентов, редактирование карточек объектов инфраструктуры, запуск загрузки данных."
+msgstr "Additionally: registering and closing traffic incidents, editing infrastructure facility records and running data loads."
+
+msgid "Полный доступ: управление пользователями и ролями, ведение справочников, модерация обращений, журнал аудита, настройки системы."
+msgstr "Full access: managing users and roles, maintaining reference data, moderating enquiries, the audit log and system settings."
+
+msgid "Пользователь"
+msgstr "User"
+
+msgid "Роль"
+msgstr "Role"
+
+msgid "Организация"
+msgstr "Organisation"
+
+msgid "Должность"
+msgstr "Position"
+
+msgid "Телефон"
+msgstr "Phone"
+
+msgid "Оформление"
+msgstr "Appearance"
+
+msgid "Как в системе"
+msgstr "System default"
+
+msgid "Тёмное"
+msgstr "Dark"
+
+msgid "Светлое"
+msgstr "Light"
+
+msgid "Язык интерфейса"
+msgstr "Interface language"
+
+msgid "Округ по умолчанию"
+msgstr "Default district"
+
+msgid "Уведомлять об инцидентах"
+msgstr "Notify about incidents"
+
+msgid "Токен REST API"
+msgstr "REST API token"
+
+msgid "Токен выпущен"
+msgstr "Token issued"
+
+msgid "Создан"
+msgstr "Created"
+
+msgid "Обновлён"
+msgstr "Updated"
+
+msgid "Профиль пользователя"
+msgstr "User profile"
+
+msgid "Профили пользователей"
+msgstr "User profiles"
+
+msgid "Объект инфраструктуры"
+msgstr "Infrastructure facility"
+
+msgid "Округ"
+msgstr "District"
+
+msgid "Участок дороги"
+msgstr "Road segment"
+
+msgid "Грузовой маршрут"
+msgstr "Freight route"
+
+msgid "Тип"
+msgstr "Type"
+
+msgid "Идентификатор объекта"
+msgstr "Facility identifier"
+
+msgid "Наименование"
+msgstr "Name"
+
+msgid "Заметка"
+msgstr "Note"
+
+msgid "Добавлено"
+msgstr "Added"
+
+msgid "Закладка"
+msgstr "Bookmark"
+
+msgid "Избранное"
+msgstr "Favourites"
+
+msgid "Название"
+msgstr "Title"
+
+msgid "Страница"
+msgstr "Page"
+
+msgid "Условия отбора"
+msgstr "Filters"
+
+msgid "Пояснение"
+msgstr "Explanation"
+
+msgid "Токен доступа"
+msgstr "Access token"
+
+msgid "Доступен по ссылке"
+msgstr "Shared by link"
+
+msgid "Последнее открытие"
+msgstr "Last opened"
+
+msgid "Число открытий"
+msgstr "Open count"
+
+msgid "Сохранённый вид"
+msgstr "Saved view"
+
+msgid "Сохранённые виды"
+msgstr "Saved views"
+
+msgid "Округа"
+msgstr "Districts"
+
+msgid "Объекты инфраструктуры"
+msgstr "Infrastructure facilities"
+
+msgid "Грузовые маршруты"
+msgstr "Freight routes"
+
+msgid "Тип сравнения"
+msgstr "Comparison type"
+
+msgid "Состав набора"
+msgstr "Set contents"
+
+msgid "Набор сравнения"
+msgstr "Comparison set"
+
+msgid "Наборы сравнения"
+msgstr "Comparison sets"
+
+msgid "Электронная таблица XLSX"
+msgstr "XLSX spreadsheet"
+
+msgid "Документ Word DOCX"
+msgstr "Word DOCX document"
+
+msgid "Таблица CSV"
+msgstr "CSV table"
+
+msgid "Документ PDF"
+msgstr "PDF document"
+
+msgid "Слой GeoJSON"
+msgstr "GeoJSON layer"
+
+msgid "В очереди"
+msgstr "Queued"
+
+msgid "Готов"
+msgstr "Ready"
+
+msgid "Ошибка"
+msgstr "Failed"
+
+msgid "Наименование отчёта"
+msgstr "Report name"
+
+msgid "Набор данных"
+msgstr "Dataset"
+
+msgid "Формат"
+msgstr "Format"
+
+msgid "Состояние"
+msgstr "State"
+
+msgid "Имя файла"
+msgstr "File name"
+
+msgid "Размер, байт"
+msgstr "Size, bytes"
+
+msgid "Число строк"
+msgstr "Row count"
+
+msgid "Создано"
+msgstr "Created"
+
+msgid "Завершено"
+msgstr "Completed"
+
+msgid "Задание на выгрузку"
+msgstr "Export job"
+
+msgid "Центр выгрузок"
+msgstr "Export centre"
+
+msgid "Минимальная серьёзность"
+msgstr "Minimum severity"
+
+msgid "Только влияющие на грузовой транспорт"
+msgstr "Affecting freight traffic only"
+
+msgid "Активна"
+msgstr "Active"
+
+msgid "Создана"
+msgstr "Created"
+
+msgid "Подписка на инциденты"
+msgstr "Incident subscription"
+
+msgid "Подписки на инциденты"
+msgstr "Incident subscriptions"
+
+msgid "вся Москва"
+msgstr "all of Moscow"
+
+msgid "Информация"
+msgstr "Information"
+
+msgid "Предупреждение"
+msgstr "Warning"
+
+msgid "Тревога"
+msgstr "Alert"
+
+msgid "Уровень"
+msgstr "Level"
+
+msgid "Заголовок"
+msgstr "Heading"
+
+msgid "Текст"
+msgstr "Text"
+
+msgid "Ссылка"
+msgstr "Link"
+
+msgid "Прочитано"
+msgstr "Read"
+
+msgid "Уведомление"
+msgstr "Notification"
+
+msgid "Уведомления"
+msgstr "Notifications"
+
+msgid "Вход в систему"
+msgstr "Sign in"
+
+msgid "Выход из системы"
+msgstr "Sign out"
+
+msgid "Создание записи"
+msgstr "Record created"
+
+msgid "Изменение записи"
+msgstr "Record changed"
+
+msgid "Удаление записи"
+msgstr "Record deleted"
+
+msgid "Выгрузка отчёта"
+msgstr "Report export"
+
+msgid "Загрузка данных"
+msgstr "Data loading"
+
+msgid "Административное действие"
+msgstr "Administrative action"
+
+msgid "Действие"
+msgstr "Action"
+
+msgid "Объект"
+msgstr "Facility"
+
+msgid "Идентификатор"
+msgstr "Identifier"
+
+msgid "Описание"
+msgstr "Description"
+
+msgid "Адрес запроса"
+msgstr "Request path"
+
+msgid "IP-адрес"
+msgstr "IP address"
+
+msgid "Идентификатор запроса"
+msgstr "Request identifier"
+
+msgid "Время"
+msgstr "Time"
+
+msgid "Событие журнала"
+msgstr "Log event"
+
+msgid "Журнал действий"
+msgstr "Activity log"
+
+msgid "Выполнен вход в систему"
+msgstr "Signed in"
+
+msgid "Выполнен выход из системы"
+msgstr "Signed out"
+
+msgid "Профиль"
+msgstr "Profile"
+
+msgid "Подписки"
+msgstr "Subscriptions"
+
+msgid "Доступ к API"
+msgstr "API access"
+
+msgid "Личный кабинет"
+msgstr "Personal account"
+
+msgid "Учётная запись создана. Роль «Наблюдатель» назначена по умолчанию; для расширения прав обратитесь к администратору системы."
+msgstr "Account created. The Viewer role is assigned by default; contact the system administrator for extended permissions."
+
+msgid "Регистрация"
+msgstr "Registration"
+
+msgid "Создание учётной записи для работы с личным кабинетом системы."
+msgstr "Create an account to use the personal area of the system."
+
+msgid "Обзор"
+msgstr "Overview"
+
+msgid "Состояние личного кабинета и последние действия в системе."
+msgstr "Personal area summary and recent activity in the system."
+
+msgid "Сведения профиля обновлены."
+msgstr "Profile details updated."
+
+msgid "Контактные сведения, роль и предпочтения интерфейса."
+msgstr "Contact details, role and interface preferences."
+
+msgid "Закладки на объекты, округа, участки сети и маршруты."
+msgstr "Bookmarks for facilities, districts, network segments and routes."
+
+msgid "Не удалось изменить закладку: некорректные параметры."
+msgstr "Could not change the bookmark: invalid parameters."
+
+msgid "Закладка убрана."
+msgstr "Bookmark removed."
+
+msgid "Добавлено в избранное."
+msgstr "Added to favourites."
+
+msgid "Вид сохранён."
+msgstr "View saved."
+
+msgid "Настроенные условия отбора. Сохраняются параметры, а не данные: при открытии выборка выполняется заново."
+msgstr "Stored filter settings. Parameters are saved rather than data: the selection is re-run each time the view is opened."
+
+msgid "Вид опубликован — доступ открыт по ссылке."
+msgstr "View published — accessible by link."
+
+msgid "Публичный доступ к виду закрыт."
+msgstr "Public access to the view revoked."
+
+msgid "Вид удалён."
+msgstr "View deleted."
+
+msgid "Группы округов, объектов и маршрутов для сопоставительного анализа."
+msgstr "Groups of districts, facilities and routes for comparative analysis."
+
+msgid "Файл отчёта ещё не сформирован"
+msgstr "The report file has not been generated yet"
+
+msgid "Файл отчёта удалён по истечении срока хранения"
+msgstr "The report file was removed after the retention period"
+
+msgid "Подписка оформлена."
+msgstr "Subscription created."
+
+msgid "Оповещение о дорожных событиях в выбранном округе с заданным порогом серьёзности."
+msgstr "Notification of traffic incidents in the selected district above a given severity threshold."
+
+msgid "Подписка удалена."
+msgstr "Subscription removed."
+
+msgid "Сообщения системы о событиях, подпадающих под ваши подписки."
+msgstr "System messages about events matching your subscriptions."
+
+msgid "Все уведомления отмечены как прочитанные."
+msgstr "All notifications marked as read."
+
+msgid "Хронология входов, изменений и выгрузок в разрезе вашей учётной записи."
+msgstr "History of sign-ins, changes and exports for your account."
+
+msgid "Доступ к программному интерфейсу предоставляется с роли «Аналитик»."
+msgstr "API access is available from the Analyst role."
+
+msgid "Новый токен выпущен. Предыдущий отозван."
+msgstr "A new token has been issued. The previous one is revoked."
+
+msgid "Токен отозван."
+msgstr "Token revoked."
+
+msgid "Персональный токен для программного обращения к системе. Передаётся в заголовке Authorization."
+msgstr "A personal token for programmatic access. Passed in the Authorization header."
+
+msgid "Аналитика"
+msgstr "Analytics"
+
+msgid "Складские мощности"
+msgstr "Storage capacity"
+
+msgid "Грузопоток"
+msgstr "Freight flow"
+
+msgid "Загруженность сети"
+msgstr "Network congestion"
+
+msgid "Аварийность"
+msgstr "Incident rate"
+
+msgid "Периферийные округа с низкой нагрузкой"
+msgstr "Peripheral districts with low load"
+
+msgid "Округа сбалансированного профиля"
+msgstr "Districts with a balanced profile"
+
+msgid "Округа концентрации складских мощностей"
+msgstr "Districts concentrating storage capacity"
+
+msgid "Округа предельной транспортной нагрузки"
+msgstr "Districts under peak transport load"
+
+msgid "Недостаточно наблюдений"
+msgstr "Not enough observations"
+
+msgid "не определено"
+msgstr "undetermined"
+
+msgid "высокое"
+msgstr "high"
+
+msgid "приемлемое"
+msgstr "acceptable"
+
+msgid "низкое — прогноз носит ориентировочный характер"
+msgstr "low — the forecast is indicative only"
+
+msgid "Индекс логистической нагрузки"
+msgstr "Logistics load index"
+
+msgid "Композитная оценка нагрузки на логистическую инфраструктуру округа по четырём взвешенным составляющим, приведённым к стобалльной шкале."
+msgstr "A composite assessment of district logistics load from four weighted components on a hundred-point scale."
+
+msgid "Индекс нагрузки"
+msgstr "Load index"
+
+msgid "Типология округов"
+msgstr "District typology"
+
+msgid "Разбиение округов на однородные группы по стандартизованным показателям нагрузки методом k-средних."
+msgstr "Grouping districts into homogeneous clusters by standardised load indicators using k-means."
+
+msgid "Типология"
+msgstr "Typology"
+
+msgid "Прогноз грузопотока"
+msgstr "Freight flow forecast"
+
+msgid "Оценка помесячного объёма перевозок на ближайший период по модели линейного тренда с аддитивной сезонной составляющей."
+msgstr "Monthly transport volume projection based on a linear trend with an additive seasonal component."
+
+msgid "Прогноз"
+msgstr "Forecast"
+
+msgid "Факт и прогноз объёма перевозок"
+msgstr "Actual and forecast transport volume"
+
+msgid "Сравнение округов"
+msgstr "District comparison"
+
+msgid "Сопоставление округов по составляющим индекса логистической нагрузки."
+msgstr "Comparison of districts by the components of the logistics load index."
+
+msgid "Сравнение"
+msgstr "Comparison"
+
+msgid "Сценарный расчёт"
+msgstr "Scenario modelling"
+
+msgid "Моделирование последствий изменения объёма перевозок, складских мощностей и пропускной способности дорожной сети."
+msgstr "Modelling the effect of changes in transport volume, storage capacity and road network throughput."
+
+msgid "Панель администратора"
+msgstr "Administration console"
+
+msgid "Обзор системы"
+msgstr "System overview"
+
+msgid "Состояние и ключевые счётчики"
+msgstr "Status and key counters"
+
+msgid "Пользователи"
+msgstr "Users"
+
+msgid "Учётные записи и роли"
+msgstr "Accounts and roles"
+
+msgid "Справочники"
+msgstr "Reference data"
+
+msgid "Округа, типы, категории, источники"
+msgstr "Districts, types, categories, sources"
+
+msgid "Обращения"
+msgstr "Enquiries"
+
+msgid "Обратная связь и ответы"
+msgstr "Feedback and replies"
+
+msgid "Материалы"
+msgstr "Publications"
+
+msgid "Аналитические публикации"
+msgstr "Analytical publications"
+
+msgid "Качество данных"
+msgstr "Data quality"
+
+msgid "Полнота и целостность записей"
+msgstr "Record completeness and integrity"
+
+msgid "Журнал и запуск процедур"
+msgstr "Log and procedure runs"
+
+msgid "Журнал аудита"
+msgstr "Audit log"
+
+msgid "Действия всех пользователей"
+msgstr "Activity of all users"
+
+msgid "Состояние среды"
+msgstr "Environment status"
+
+msgid "Параметры развёртывания"
+msgstr "Deployment settings"
+
+msgid "Раздел доступен администраторам системы"
+msgstr "This section is available to system administrators"
+
+msgid "Ключевые счётчики, состояние данных и активность пользователей."
+msgstr "Key counters, data status and user activity."
+
+msgid "Учётные записи, назначенные роли и состояние доступа. Роль определяет объём полномочий во всех разделах системы."
+msgstr "Accounts, assigned roles and access status. The role determines permissions across all sections."
+
+msgid "Нельзя изменить роль или заблокировать собственную запись."
+msgstr "You cannot change the role of, or block, your own account."
+
+msgid "Классификаторы, на которых строится учёт. Изменение справочника затрагивает все связанные записи, поэтому правки выполняются через штатную админку с контролем ссылочной целостности."
+msgstr "The classifiers underpinning the records. Changing reference data affects all linked records, so edits are made through the built-in admin with referential integrity checks."
+
+msgid "Сообщения из формы обратной связи и подготовка ответов."
+msgstr "Messages from the feedback form and reply preparation."
+
+msgid "Текст ответа слишком короткий."
+msgstr "The reply text is too short."
+
+msgid "Ответ сохранён, обращение переведено в состояние «Отвечено»."
+msgstr "The reply has been saved and the enquiry marked as answered."
+
+msgid "Обращение взято в работу."
+msgstr "The enquiry has been taken into work."
+
+msgid "Обращение закрыто."
+msgstr "The enquiry has been closed."
+
+msgid "Аналитические обзоры портала: публикация, снятие, вынос на главную."
+msgstr "Portal analytical reviews: publish, withdraw, feature on home page."
+
+msgid "Объекты без координат"
+msgstr "Facilities without coordinates"
+
+msgid "Не отображаются на карте и не участвуют в поиске «что рядом»"
+msgstr "Not shown on the map and excluded from proximity search"
+
+msgid "Объекты без указания мощности"
+msgstr "Facilities without stated capacity"
+
+msgid "Не учитываются в расчёте обеспеченности округа"
+msgstr "Excluded from the district provision calculation"
+
+msgid "Объекты без адреса"
+msgstr "Facilities without an address"
+
+msgid "Затрудняет идентификацию объекта пользователем"
+msgstr "Makes it harder for users to identify the facility"
+
+msgid "Участки сети без геометрии"
+msgstr "Network segments without geometry"
+
+msgid "Не отображаются на слое дорожной сети"
+msgstr "Not shown on the road network layer"
+
+msgid "Инциденты без привязки к участку"
+msgstr "Incidents not linked to a segment"
+
+msgid "Не попадают в статистику аварийности по округам"
+msgstr "Excluded from district incident statistics"
+
+msgid "Незакрытые инциденты старше 30 суток"
+msgstr "Open incidents older than 30 days"
+
+msgid "Вероятно, отсутствует отметка об устранении"
+msgstr "The resolution mark is probably missing"
+
+msgid "Записи без указания источника"
+msgstr "Records without a stated source"
+
+msgid "Невозможно проследить происхождение сведений"
+msgstr "The origin of the data cannot be traced"
+
+msgid "Автоматические проверки полноты и согласованности сведений. Выявленные дефекты не блокируют работу системы, но снижают достоверность аналитических выводов."
+msgstr "Automatic completeness and consistency checks. Detected defects do not block the system but reduce the reliability of analytical conclusions."
+
+msgid "Хронология обновления сведений из внешних источников. Запуск процедуры вручную доступен для активных источников."
+msgstr "History of updates from external sources. Manual runs are available for active sources."
+
+msgid "Кеш сводок и аналитических расчётов сброшен."
+msgstr "The cache of summaries and analytical calculations has been cleared."
+
+msgid "Регистрация значимых событий: входы, изменения данных, выгрузки и административные операции."
+msgstr "Recording of significant events: sign-ins, data changes, exports and administrative operations."
+
+msgid "недоступно"
+msgstr "unavailable"
+
+msgid "Версия системы"
+msgstr "System version"
+
+msgid "Версия Django"
+msgstr "Django version"
+
+msgid "Версия Python"
+msgstr "Python version"
+
+msgid "Операционная система"
+msgstr "Operating system"
+
+msgid "Система управления БД"
+msgstr "Database management system"
+
+msgid "Объём базы данных"
+msgstr "Database size"
+
+msgid "Режим отладки"
+msgstr "Debug mode"
+
+msgid "включён"
+msgstr "enabled"
+
+msgid "выключен"
+msgstr "disabled"
+
+msgid "Часовой пояс"
+msgstr "Time zone"
+
+msgid "Язык по умолчанию"
+msgstr "Default language"
+
+msgid "Каталог выгрузок"
+msgstr "Export directory"
+
+msgid "Срок хранения выгрузок"
+msgstr "Export retention period"
+
+msgid "Параметры контура развёртывания и версии компонентов."
+msgstr "Deployment environment settings and component versions."
+
+msgid "Материалы и обратная связь"
+msgstr "Publications and feedback"
+
+msgid "Код"
+msgstr "Code"
+
+msgid "Порядок вывода"
+msgstr "Display order"
+
+msgid "Рубрика материалов"
+msgstr "Article category"
+
+msgid "Рубрики материалов"
+msgstr "Article categories"
+
+msgid "Рубрика"
+msgstr "Category"
+
+msgid "Адресный код"
+msgstr "Address code"
+
+msgid "Краткое содержание"
+msgstr "Summary"
+
+msgid "Текст материала"
+msgstr "Article text"
+
+msgid "Время чтения, мин"
+msgstr "Reading time, min"
+
+msgid "Опубликован"
+msgstr "Published"
+
+msgid "На главной"
+msgstr "Featured"
+
+msgid "Дата публикации"
+msgstr "Publication date"
+
+msgid "Автор"
+msgstr "Author"
+
+msgid "Число просмотров"
+msgstr "View count"
+
+msgid "Аналитический материал"
+msgstr "Analytical article"
+
+msgid "Аналитические материалы"
+msgstr "Analytical articles"
+
+msgid "Замечание к данным"
+msgstr "Data remark"
+
+msgid "Предложение по развитию"
+msgstr "Improvement suggestion"
+
+msgid "Сообщение об ошибке"
+msgstr "Error message"
+
+msgid "Вопрос по доступу"
+msgstr "Access request"
+
+msgid "Иное"
+msgstr "Other"
+
+msgid "Новое"
+msgstr "New"
+
+msgid "В работе"
+msgstr "In progress"
+
+msgid "Отвечено"
+msgstr "Answered"
+
+msgid "Закрыто"
+msgstr "Closed"
+
+msgid "Представление"
+msgstr "View"
+
+msgid "Адрес электронной почты"
+msgstr "Email address"
+
+msgid "Тема обращения"
+msgstr "Enquiry subject"
+
+msgid "Текст обращения"
+msgstr "Enquiry text"
+
+msgid "Вложение"
+msgstr "Attachment"
+
+msgid "Ответ"
+msgstr "Reply"
+
+msgid "Обработал"
+msgstr "Handled by"
+
+msgid "Дата ответа"
+msgstr "Reply date"
+
+msgid "Клиент"
+msgstr "Client"
+
+msgid "Поступило"
+msgstr "Received"
+
+msgid "Обращение"
+msgstr "Enquiry"
+
+msgid "Обратная связь"
+msgstr "Feedback"
+
+msgid "Код страницы"
+msgstr "Page code"
+
+msgid "Вводный текст"
+msgstr "Lead text"
+
+msgid "Содержание"
+msgstr "Contents"
+
+msgid "Опубликована"
+msgstr "Published"
+
+msgid "Обновлена"
+msgstr "Updated"
+
+msgid "Информационная страница"
+msgstr "Information page"
+
+msgid "Информационные страницы"
+msgstr "Information pages"
+
+msgid "Обзоры и методические публикации о состоянии логистической инфраструктуры Москвы, подготовленные на данных системы."
+msgstr "Reviews and methodological publications on Moscow logistics infrastructure, prepared from system data."
+
+msgid "Обращение принято. Ответ будет направлен на указанный адрес электронной почты в течение трёх рабочих дней."
+msgstr "Enquiry received. A reply will be sent to the given email address within three working days."
+
+msgid "Замечания к данным, предложения по развитию системы и сообщения об ошибках. Все обращения рассматриваются администратором системы."
+msgstr "Data remarks, improvement suggestions and error reports. All enquiries are reviewed by the system administrator."
+
+msgid "Обращение отправлено"
+msgstr "Enquiry sent"
+
+msgid "Спасибо за обратную связь."
+msgstr "Thank you for your feedback."
+
+msgid "Отправлено"
+msgstr "Sent"
+
+msgid "Логистическая инфраструктура"
+msgstr "Logistics infrastructure"
+
+msgid "Программный интерфейс (API)"
+msgstr "Application programming interface (API)"
+
+msgid "Выгрузка CSV"
+msgstr "CSV export"
+
+msgid "Портал открытых данных"
+msgstr "Open data portal"
+
+msgid "Геоинформационный сервис"
+msgstr "Geographic information service"
+
+msgid "Ручной ввод"
+msgstr "Manual entry"
+
+msgid "Ежечасно"
+msgstr "Hourly"
+
+msgid "Ежедневно"
+msgstr "Daily"
+
+msgid "Еженедельно"
+msgstr "Weekly"
+
+msgid "Ежемесячно"
+msgstr "Monthly"
+
+msgid "Ежеквартально"
+msgstr "Quarterly"
+
+msgid "Магистраль скоростного движения"
+msgstr "Expressway"
+
+msgid "Магистраль общегородского значения"
+msgstr "City arterial"
+
+msgid "Улица районного значения"
+msgstr "Local street"
+
+msgid "Ввоз в город"
+msgstr "Inbound to the city"
+
+msgid "Вывоз из города"
+msgstr "Outbound from the city"
+
+msgid "Транзит"
+msgstr "Transit"
+
+msgid "Ввоз"
+msgstr "Inbound"
+
+msgid "Вывоз"
+msgstr "Outbound"
+
+msgid "Сутки"
+msgstr "Day"
+
+msgid "Неделя"
+msgstr "Week"
+
+msgid "Месяц"
+msgstr "Month"
+
+msgid "Квартал"
+msgstr "Quarter"
+
+msgid "Год"
+msgstr "Year"
+
+msgid "Дорожно-транспортное происшествие"
+msgstr "Road accident"
+
+msgid "Дорожные работы"
+msgstr "Roadworks"
+
+msgid "Ограничение движения"
+msgstr "Traffic restriction"
+
+msgid "Погодные условия"
+msgstr "Weather conditions"
+
+msgid "Массовое мероприятие"
+msgstr "Public event"
+
+msgid "Прочее"
+msgstr "Other"
+
+msgid "Выполняется"
+msgstr "Running"
+
+msgid "Успешно"
+msgstr "Successful"
+
+msgid "С замечаниями"
+msgstr "With remarks"
+
+msgid "Свободно"
+msgstr "Free flow"
+
+msgid "Небольшие затруднения"
+msgstr "Minor delays"
+
+msgid "Затруднённое движение"
+msgstr "Heavy traffic"
+
+msgid "Пробки"
+msgstr "Congestion"
+
+msgid "Движение парализовано"
+msgstr "Traffic halted"
+
+msgid "Незначительный"
+msgstr "Negligible"
+
+msgid "Умеренный"
+msgstr "Moderate"
+
+msgid "Значительный"
+msgstr "Significant"
+
+msgid "Серьёзный"
+msgstr "Severe"
+
+msgid "Критический"
+msgstr "Critical"
+
+msgid "Неопасный груз"
+msgstr "Non-hazardous cargo"
+
+msgid "Класс 1 — взрывчатые вещества"
+msgstr "Class 1 — explosives"
+
+msgid "Класс 2 — газы"
+msgstr "Class 2 — gases"
+
+msgid "Класс 3 — легковоспламеняющиеся жидкости"
+msgstr "Class 3 — flammable liquids"
+
+msgid "Класс 4 — легковоспламеняющиеся твёрдые вещества"
+msgstr "Class 4 — flammable solids"
+
+msgid "Класс 5 — окисляющие вещества"
+msgstr "Class 5 — oxidising substances"
+
+msgid "Класс 6 — токсичные и инфекционные вещества"
+msgstr "Class 6 — toxic and infectious substances"
+
+msgid "Класс 7 — радиоактивные материалы"
+msgstr "Class 7 — radioactive material"
+
+msgid "Класс 8 — коррозионные вещества"
+msgstr "Class 8 — corrosive substances"
+
+msgid "Класс 9 — прочие опасные вещества"
+msgstr "Class 9 — miscellaneous dangerous substances"
+
+msgid "Нет данных"
+msgstr "No data"
+
+msgid "Главная"
+msgstr "Home"
+
+msgid "Оперативная сводка по городу"
+msgstr "Operational summary for the city"
+
+msgid "Карта"
+msgstr "Map"
+
+msgid "Интерактивная карта логистической инфраструктуры"
+msgstr "Interactive map of logistics infrastructure"
+
+msgid "Инфраструктура"
+msgstr "Infrastructure"
+
+msgid "Реестр складов, терминалов и грузовых дворов"
+msgstr "Register of warehouses, terminals and freight yards"
+
+msgid "Реестр объектов"
+msgstr "Facility register"
+
+msgid "Склады, терминалы, распределительные центры"
+msgstr "Warehouses, terminals, distribution centres"
+
+msgid "Профили административных округов Москвы"
+msgstr "Profiles of Moscow administrative districts"
+
+msgid "Типы объектов"
+msgstr "Facility types"
+
+msgid "Классификатор объектов инфраструктуры"
+msgstr "Infrastructure facility classifier"
+
+msgid "Дорожная сеть"
+msgstr "Road network"
+
+msgid "Магистрали, обстановка и происшествия"
+msgstr "Arterials, conditions and incidents"
+
+msgid "Участки сети"
+msgstr "Network segments"
+
+msgid "Магистрали под мониторингом"
+msgstr "Monitored arterials"
+
+msgid "Дорожная обстановка"
+msgstr "Traffic conditions"
+
+msgid "Загруженность в динамике"
+msgstr "Congestion over time"
+
+msgid "Инциденты"
+msgstr "Incidents"
+
+msgid "Журнал дорожных событий"
+msgstr "Traffic incident log"
+
+msgid "Грузопотоки"
+msgstr "Freight flows"
+
+msgid "Объёмы перевозок и маршрутная сеть"
+msgstr "Traffic volumes and route network"
+
+msgid "Статистика грузопотоков"
+msgstr "Freight flow statistics"
+
+msgid "Объёмы по периодам"
+msgstr "Volumes by period"
+
+msgid "Коридоры ввоза и вывоза"
+msgstr "Inbound and outbound corridors"
+
+msgid "Категории грузов"
+msgstr "Cargo categories"
+
+msgid "Классификатор с классами ADR"
+msgstr "Classifier with ADR classes"
+
+msgid "Расчётные показатели и прогнозы"
+msgstr "Calculated indicators and forecasts"
+
+msgid "Композитная оценка округов"
+msgstr "Composite district score"
+
+msgid "Кластерный анализ"
+msgstr "Cluster analysis"
+
+msgid "Оценка на 6 месяцев"
+msgstr "Six-month projection"
+
+msgid "Сопоставление профилей"
+msgstr "Profile comparison"
+
+msgid "Моделирование «что если»"
+msgstr "What-if modelling"
+
+msgid "Данные"
+msgstr "Data"
+
+msgid "Источники, качество и программный доступ"
+msgstr "Sources, quality and programmatic access"
+
+msgid "Источники данных"
+msgstr "Data sources"
+
+msgid "Реестр интеграций"
+msgstr "Integration register"
+
+msgid "Журнал загрузок"
+msgstr "Load log"
+
+msgid "История обновления данных"
+msgstr "Data update history"
+
+msgid "Программный интерфейс и примеры"
+msgstr "Programming interface and examples"
+
+msgid "Методология"
+msgstr "Methodology"
+
+msgid "Расчёт показателей"
+msgstr "Indicator calculation"
+
+msgid "Аналитические обзоры по логистике"
+msgstr "Analytical reviews on logistics"
+
+msgid "Справка"
+msgstr "Help"
+
+msgid "Руководство пользователя системы"
+msgstr "System user guide"
+
+msgid "Вопросы и замечания"
+msgstr "Questions and remarks"
+
+msgid "Аббревиатура"
+msgstr "Abbreviation"
+
+msgid "Площадь, км²"
+msgstr "Area, km²"
+
+msgid "Численность населения, чел."
+msgstr "Population"
+
+msgid "Границы округа"
+msgstr "District boundaries"
+
+msgid "Центр округа"
+msgstr "District centre"
+
+msgid "Административный округ"
+msgstr "Administrative district"
+
+msgid "Административные округа"
+msgstr "Administrative districts"
+
+msgid "Тип объекта инфраструктуры"
+msgstr "Infrastructure facility type"
+
+msgid "Типы объектов инфраструктуры"
+msgstr "Infrastructure facility types"
+
+msgid "Класс опасности ADR"
+msgstr "ADR hazard class"
+
+msgid "Категория груза"
+msgstr "Cargo category"
+
+msgid "Тип источника"
+msgstr "Source type"
+
+msgid "Адрес"
+msgstr "Address"
+
+msgid "Периодичность обновления"
+msgstr "Update frequency"
+
+msgid "Активен"
+msgstr "Active"
+
+msgid "Источник данных"
+msgstr "Data source"
+
+msgid "Тип объекта"
+msgstr "Facility type"
+
+msgid "Мощность хранения, т"
+msgstr "Storage capacity, t"
+
+msgid "Площадь, м²"
+msgstr "Area, m²"
+
+msgid "Режим работы"
+msgstr "Operating hours"
+
+msgid "Координаты"
+msgstr "Coordinates"
+
+msgid "Класс дороги"
+msgstr "Road class"
+
+msgid "Число полос"
+msgstr "Lanes"
+
+msgid "Протяжённость, км"
+msgstr "Length, km"
+
+msgid "Разрешённая скорость, км/ч"
+msgstr "Speed limit, km/h"
+
+msgid "Геометрия участка"
+msgstr "Segment geometry"
+
+msgid "Участок дорожной сети"
+msgstr "Road network segment"
+
+msgid "Участки дорожной сети"
+msgstr "Road network segments"
+
+msgid "Тип маршрута"
+msgstr "Route type"
+
+msgid "Регион отправления"
+msgstr "Origin region"
+
+msgid "Регион назначения"
+msgstr "Destination region"
+
+msgid "Среднее время в пути, ч"
+msgstr "Average travel time, h"
+
+msgid "Интенсивность, ТС/сут."
+msgstr "Intensity, veh/day"
+
+msgid "Геометрия маршрута"
+msgstr "Route geometry"
+
+msgid "Начало периода"
+msgstr "Period start"
+
+msgid "Тип периода"
+msgstr "Period type"
+
+msgid "Маршрут"
+msgstr "Route"
+
+msgid "Направление"
+msgstr "Direction"
+
+msgid "Объём, т"
+msgstr "Volume, t"
+
+msgid "Число рейсов"
+msgstr "Trip count"
+
+msgid "Средняя скорость, км/ч"
+msgstr "Average speed, km/h"
+
+msgid "Показатель грузопотока"
+msgstr "Freight flow record"
+
+msgid "Время замера"
+msgstr "Reading time"
+
+msgid "Участок"
+msgstr "Segment"
+
+msgid "Балл загруженности"
+msgstr "Congestion level"
+
+msgid "Время проезда, мин"
+msgstr "Travel time, min"
+
+msgid "Плотность потока, ТС/км"
+msgstr "Traffic density, veh/km"
+
+msgid "Есть инцидент"
+msgstr "Incident present"
+
+msgid "Замер дорожной обстановки"
+msgstr "Traffic condition reading"
+
+msgid "Зарегистрирован"
+msgstr "Reported"
+
+msgid "Устранён"
+msgstr "Resolved"
+
+msgid "Тип события"
+msgstr "Event type"
+
+msgid "Серьёзность"
+msgstr "Severity"
+
+msgid "Влияет на грузовой транспорт"
+msgstr "Affects freight traffic"
+
+msgid "Дорожный инцидент"
+msgstr "Traffic incident"
+
+msgid "Дорожные инциденты"
+msgstr "Traffic incidents"
+
+msgid "Начало"
+msgstr "Start"
+
+msgid "Окончание"
+msgstr "End"
+
+msgid "Целевая таблица"
+msgstr "Target table"
+
+msgid "Загружено записей"
+msgstr "Records loaded"
+
+msgid "Отклонено записей"
+msgstr "Records rejected"
+
+msgid "Статус"
+msgstr "Status"
+
+msgid "Журнал загрузок данных"
+msgstr "Data load log"
+
+msgid "Замеры обстановки"
+msgstr "Condition readings"
+
+msgid "Показатели грузопотоков"
+msgstr "Freight flow records"
+
+msgid "Полная загрузка набора"
+msgstr "Full dataset load"
+
+msgid "Карта логистической инфраструктуры"
+msgstr "Logistics infrastructure map"
+
+msgid "Пространственное распределение складских мощностей, магистралей и дорожных событий на территории Москвы."
+msgstr "Spatial distribution of storage capacity, arterials and traffic incidents across Moscow."
+
+msgid "Не указаны координаты точки"
+msgstr "Point coordinates were not provided"
+
+msgid "Загруженность улично-дорожной сети по последним замерам системы мониторинга. Шкала — от 0 (свободно) до 10 (движение остановлено)."
+msgstr "Road network congestion based on the latest monitoring readings. The scale runs from 0 (free flow) to 10 (traffic halted)."
+
+msgid "Происшествия, ремонтные работы и ограничения движения, влияющие на прохождение грузового транспорта по территории города."
+msgstr "Accidents, roadworks and traffic restrictions affecting freight movement across the city."
+
+msgid "Описание не предоставлено источником данных"
+msgstr "No description provided by the data source"
+
+msgid "Объёмы перевозок в разрезе периодов, округов, направлений и категорий грузов по данным ведомственных источников."
+msgstr "Transport volumes by period, district, direction and cargo category, based on departmental sources."
+
+msgid "Статистика"
+msgstr "Statistics"
+
+msgid "Логистическая инфраструктура Москвы"
+msgstr "Logistics infrastructure of Moscow"
+
+msgid "Единая информационная среда мониторинга складских мощностей, грузовых маршрутов и дорожной обстановки Московского транспортного узла."
+msgstr "A single environment for monitoring storage capacity, freight routes and road conditions across the Moscow transport hub."
+
+msgid "Помесячный объём перевозок"
+msgstr "Monthly transport volume"
+
+msgid "Состав исходных данных, правила их приведения к сопоставимому виду и формулы расчёта аналитических показателей."
+msgstr "Source data composition, harmonisation rules and formulas used to calculate analytical indicators."
+
+msgid "Программный интерфейс (REST API)"
+msgstr "REST application programming interface"
+
+msgid "Машиночитаемый доступ к справочникам, реестрам и аналитике системы. Спецификация публикуется в формате OpenAPI 3."
+msgstr "Machine-readable access to reference data, registers and analytics. The specification is published as OpenAPI 3."
+
+msgid "Справочник округов с площадью, населением и координатами центра."
+msgstr "District reference data with area, population and centre coordinates."
+
+msgid "Реестр складов, терминалов и распределительных центров."
+msgstr "Register of warehouses, terminals and distribution centres."
+
+msgid "Объекты рядом с точкой"
+msgstr "Facilities near a point"
+
+msgid "Поиск ближайших объектов по координатам и радиусу."
+msgstr "Search for the nearest facilities by coordinates and radius."
+
+msgid "Магистрали под мониторингом с текущей загруженностью."
+msgstr "Monitored arterials with current congestion."
+
+msgid "Текущая обстановка"
+msgstr "Current conditions"
+
+msgid "Последний замер загруженности по каждому участку сети."
+msgstr "The latest congestion reading for each network segment."
+
+msgid "Журнал происшествий, работ и ограничений движения."
+msgstr "Log of accidents, roadworks and traffic restrictions."
+
+msgid "Транспортные коридоры ввоза, вывоза и транзита."
+msgstr "Transport corridors for inbound, outbound and transit traffic."
+
+msgid "Помесячные объёмы перевозок по округам и категориям грузов."
+msgstr "Monthly transport volumes by district and cargo category."
+
+msgid "Композитная оценка нагрузки на инфраструктуру округов."
+msgstr "Composite assessment of district infrastructure load."
+
+msgid "Оценка объёма перевозок на ближайшие месяцы."
+msgstr "Transport volume projection for the coming months."
+
+msgid "Справка по системе"
+msgstr "System help"
+
+msgid "Назначение разделов, порядок работы с реестрами и картой, возможности личного кабинета и выгрузки отчётов."
+msgstr "Purpose of each section, working with registers and the map, personal area features and report export."
+
+msgid "С чего начать"
+msgstr "Getting started"
+
+msgid "Главная страница"
+msgstr "Home page"
+
+msgid "Оперативная сводка: число объектов, суммарная мощность хранения, средняя загруженность сети и открытые инциденты. Каждый показатель ведёт в соответствующий раздел."
+msgstr "Operational summary: number of facilities, total storage capacity, average network congestion and open incidents. Each indicator links to the corresponding section."
+
+msgid "Пространственный обзор. Слои включаются независимо: объекты, дорожная сеть с раскраской по загруженности, маршруты, инциденты. Инструмент «что рядом» показывает ближайшие объекты к указанной точке."
+msgstr "Spatial overview. Layers are toggled independently: facilities, the road network coloured by congestion, routes and incidents. The proximity tool shows the facilities nearest to a chosen point."
+
+msgid "Реестры"
+msgstr "Registers"
+
+msgid "Табличное представление с отбором и сортировкой. Любое состояние реестра адресуемо: ссылку можно сохранить или передать коллеге."
+msgstr "A tabular view with filtering and sorting. Every state of a register is addressable: the link can be saved or shared with a colleague."
+
+msgid "Отбор и сортировка"
+msgstr "Filtering and sorting"
+
+msgid "Наложение условий"
+msgstr "Applying filters"
+
+msgid "Условия отбора комбинируются: округ, тип объекта, источник данных, поисковый запрос. Сброс выполняется кнопкой «Очистить»."
+msgstr "Filters combine: district, facility type, data source and search query. Use the Clear button to reset them."
+
+msgid "Сортировка"
+msgstr "Sorting"
+
+msgid "Щелчок по заголовку колонки меняет порядок сортировки. Текущий порядок сохраняется при переходе между страницами списка."
+msgstr "Clicking a column heading changes the sort order. The current order is preserved when moving between pages."
+
+msgid "Авторизованный пользователь может сохранить настроенный отбор в личном кабинете и открыть его позднее одним щелчком."
+msgstr "A signed-in user can save the configured filters in their personal area and reopen them later with a single click."
+
+msgid "Аналитические разделы"
+msgstr "Analytical sections"
+
+msgid "Композитная оценка округов по четырём составляющим: обеспеченность мощностями, интенсивность грузопотока, загруженность сети и аварийность. Методика приведена в разделе «Методология»."
+msgstr "A composite district score from four components: capacity provision, freight flow intensity, network congestion and incident rate. The method is described in the Methodology section."
+
+msgid "Разбиение округов на однородные группы методом k-средних по нормированным показателям."
+msgstr "Grouping districts into homogeneous clusters by k-means on normalised indicators."
+
+msgid "Оценка объёма перевозок на ближайшие месяцы по модели тренда с сезонной составляющей."
+msgstr "Transport volume projection for the coming months using a trend model with a seasonal component."
+
+msgid "Моделирование «что если»: изменение объёма перевозок или складских мощностей и оценка последствий для нагрузки на сеть."
+msgstr "What-if modelling: changing transport volume or storage capacity and assessing the effect on network load."
+
+msgid "Избранное и сохранённые виды"
+msgstr "Favourites and saved views"
+
+msgid "Закладки на объекты, округа и участки; сохранённые условия отбора с возможностью публикации по ссылке."
+msgstr "Bookmarks for facilities, districts and segments; saved filter settings that can be shared by link."
+
+msgid "Формирование отчётов в форматах XLSX, DOCX, CSV, PDF и GeoJSON. Доступно с роли «Аналитик»."
+msgstr "Report generation in XLSX, DOCX, CSV, PDF and GeoJSON. Available from the Analyst role."
+
+msgid "Подписки и уведомления"
+msgstr "Subscriptions and notifications"
+
+msgid "Оповещение о дорожных событиях выбранного округа с заданным порогом серьёзности."
+msgstr "Notification of traffic incidents in a chosen district above a given severity threshold."
+
+msgid "Выпуск и отзыв персонального токена для программного доступа."
+msgstr "Issuing and revoking a personal token for programmatic access."
+
+msgid "Роли и права доступа"
+msgstr "Roles and permissions"
+
+msgid "Просмотр всех публичных разделов, избранное, сохранённые виды."
+msgstr "Viewing all public sections, favourites and saved views."
+
+msgid "Дополнительно — выгрузка отчётов и доступ к REST API по токену."
+msgstr "Additionally — report export and REST API access by token."
+
+msgid "Дополнительно — регистрация инцидентов и правка карточек объектов."
+msgstr "Additionally — registering incidents and editing facility records."
+
+msgid "Полный доступ, включая панель управления и журнал аудита."
+msgstr "Full access, including the administration console and audit log."
+
+msgid "О системе"
+msgstr "About"
+
+msgid "Назначение, архитектура и состав информационной системы по логистической инфраструктуре города Москвы."
+msgstr "Purpose, architecture and composition of the Moscow logistics infrastructure information system."
+
+msgid "Карта сайта"
+msgstr "Site map"
+
+msgid "Полный перечень разделов и страниц информационной системы."
+msgstr "Complete list of sections and pages of the system."
+
+msgid "Реестр объектов инфраструктуры"
+msgstr "Infrastructure facility register"
+
+msgid "Складские комплексы, грузовые терминалы, распределительные центры и площадки временного размещения грузов на территории Москвы."
+msgstr "Warehouse complexes, freight terminals, distribution centres and temporary cargo sites across Moscow."
+
+msgid "Адрес не указан в источнике данных"
+msgstr "No address provided by the data source"
+
+msgid "Сравнительные профили двенадцати округов Москвы: обеспеченность складскими мощностями, объёмы грузопотока и загруженность дорог."
+msgstr "Comparative profiles of the twelve Moscow districts: storage provision, freight volumes and road congestion."
+
+msgid "Классификатор, по которому ведётся учёт объектов: от складских комплексов до весовых пунктов контроля."
+msgstr "The classifier used to record facilities, from warehouse complexes to weight control points."
+
+msgid "Категории перевозимых грузов"
+msgstr "Categories of transported cargo"
+
+msgid "Классификатор грузов с указанием класса опасности по ДОПОГ. Перевозка опасных грузов требует согласования маршрута и времени."
+msgstr "Cargo classifier with ADR hazard classes. Transporting hazardous cargo requires route and timing approval."
+
+msgid "Магистрали и городские улицы, включённые в систему мониторинга грузового движения, с текущей оценкой загруженности."
+msgstr "Arterials and city streets covered by freight traffic monitoring, with current congestion assessment."
+
+msgid "Транспортные коридоры ввоза, вывоза и транзита грузов через Московский транспортный узел."
+msgstr "Transport corridors for inbound, outbound and transit cargo through the Moscow transport hub."
+
+msgid "Система консолидирует сведения из ведомственных информационных систем, открытых данных и результатов натурных обследований."
+msgstr "The system consolidates data from departmental information systems, open data and field surveys."
+
+msgid "Хронология обновления сведений: время выполнения, объём загруженных записей и число отклонённых строк."
+msgstr "Data update history: run time, number of records loaded and rows rejected."
+
+msgid "Выгрузка отчётов"
+msgstr "Report export"
+
+msgid "Тип действия"
+msgstr "Action type"
+
+msgid "Все действия"
+msgstr "All actions"
+
+msgid "Сбросить"
+msgstr "Reset"
+
+msgid "Записи журнала отсутствуют."
+msgstr "No log entries."
+
+msgid "В журнал попадают входы в систему, изменения данных, выгрузки отчётов и административные операции. Обращения к страницам просмотра не фиксируются."
+msgstr "The log records sign-ins, data changes, report exports and administrative operations. Page views are not recorded."
+
+msgid "Персональный токен"
+msgstr "Personal token"
+
+msgid "Программный доступ по токену предоставляется с роли «Аналитик». Справочники и реестры при этом доступны без авторизации — токен лишь повышает допустимую частоту обращений."
+msgstr "Token-based programmatic access is available from the Analyst role. Reference data and registers remain open without authorisation — the token only raises the permitted request rate."
+
+msgid "Описание интерфейса"
+msgstr "Interface description"
+
+msgid "Скопировать"
+msgstr "Copy"
+
+msgid "Выпустить новый"
+msgstr "Issue a new one"
+
+msgid "Отозвать"
+msgstr "Revoke"
+
+msgid "Токен не выпущен. Он потребуется для обращений к API с повышенной частотой и для доступа к методам, требующим авторизации."
+msgstr "No token has been issued. It is required for higher request rates and for methods that need authorisation."
+
+msgid "Выпустить токен"
+msgstr "Issue token"
+
+msgid "Пример обращения"
+msgstr "Example request"
+
+msgid "Базовый адрес:"
+msgstr "Base URL:"
+
+msgid "Ограничения"
+msgstr "Limits"
+
+msgid "Без токена"
+msgstr "Without a token"
+
+msgid "60 запросов/мин"
+msgstr "60 requests/min"
+
+msgid "По токену"
+msgstr "With a token"
+
+msgid "600 запросов/мин"
+msgstr "600 requests/min"
+
+msgid "Размер страницы"
+msgstr "Page size"
+
+msgid "до 500 записей"
+msgstr "up to 500 records"
+
+msgid "Документация"
+msgstr "Documentation"
+
+msgid "Справочная страница API"
+msgstr "API reference page"
+
+msgid "Интерактивная документация"
+msgstr "Interactive documentation"
+
+msgid "Спецификация OpenAPI"
+msgstr "OpenAPI specification"
+
+msgid "Элементов в наборе"
+msgstr "Items in the set"
+
+msgid "Сравнить округа"
+msgstr "Compare districts"
+
+msgid "Всего выгрузок"
+msgstr "Total exports"
+
+msgid "Суммарный объём"
+msgstr "Total size"
+
+msgid "Выгружено строк"
+msgstr "Rows exported"
+
+msgid "Право на выгрузку"
+msgstr "Export permission"
+
+msgid "Выгрузка отчётов недоступна"
+msgstr "Report export unavailable"
+
+msgid "Формирование отчётов в форматах XLSX, DOCX, CSV, PDF и GeoJSON предоставляется с роли «Аналитик». Запросите расширение прав через"
+msgstr "Report generation in XLSX, DOCX, CSV, PDF and GeoJSON is available from the Analyst role. Request extended permissions through"
+
+msgid "форму обратной связи"
+msgstr "the feedback form"
+
+msgid ", указав организацию и характер задач."
+msgstr ", stating your organisation and the nature of your work."
+
+msgid "Отчёт"
+msgstr "Report"
+
+msgid "Строк"
+msgstr "Rows"
+
+msgid "Размер"
+msgstr "Size"
+
+msgid "готов"
+msgstr "ready"
+
+msgid "ошибка"
+msgstr "failed"
+
+msgid "в очереди"
+msgstr "queued"
+
+msgid "Скачать"
+msgstr "Download"
+
+msgid "Тип закладки"
+msgstr "Bookmark type"
+
+msgid "Все типы"
+msgstr "All types"
+
+msgid "Убрать"
+msgstr "Remove"
+
+msgid "Все"
+msgstr "All"
+
+msgid "Непрочитанные"
+msgstr "Unread"
+
+msgid "Отметить все прочитанными"
+msgstr "Mark all as read"
+
+msgid "Перейти"
+msgstr "Open"
+
+msgid "Выгрузки"
+msgstr "Exports"
+
+#, python-format
+msgid "подписок: %(count)s"
+msgstr "subscriptions: %(count)s"
+
+msgid "Учётная запись"
+msgstr "Account"
+
+msgid "Электронная почта"
+msgstr "Email"
+
+msgid "Последний вход"
+msgstr "Last sign-in"
+
+msgid "Изменить профиль"
+msgstr "Edit profile"
+
+msgid "Сменить пароль"
+msgstr "Change password"
+
+msgid "Все →"
+msgstr "All →"
+
+msgid "Последние действия"
+msgstr "Recent activity"
+
+msgid "Весь журнал →"
+msgstr "Full log →"
+
+msgid "Действия не зафиксированы."
+msgstr "No activity recorded."
+
+msgid "Новые уведомления"
+msgstr "New notifications"
+
+msgid "Все уведомления"
+msgstr "All notifications"
+
+msgid "Управление пользователями, справочниками и контроль качества данных."
+msgstr "User management, reference data and data quality control."
+
+msgid "Открыть панель"
+msgstr "Open console"
+
+msgid "Личные сведения"
+msgstr "Personal details"
+
+msgid "Фамилия"
+msgstr "Last name"
+
+msgid "Имя"
+msgstr "First name"
+
+msgid "Место работы"
+msgstr "Place of work"
+
+msgid "Предпочтения интерфейса"
+msgstr "Interface preferences"
+
+msgid "Уведомлять о дорожных событиях по моим подпискам"
+msgstr "Notify me about traffic incidents matching my subscriptions"
+
+msgid "Сохранить изменения"
+msgstr "Save changes"
+
+msgid "Текущая роль"
+msgstr "Current role"
+
+msgid "Роль назначает администратор системы. Для расширения полномочий направьте запрос через"
+msgstr "The role is assigned by the system administrator. To request extended permissions, write through"
+
+msgid ", указав организацию и характер выполняемых задач."
+msgstr ", stating your organisation and the nature of your work."
+
+msgid "Доступ"
+msgstr "Access"
+
+msgid "Безопасность"
+msgstr "Security"
+
+msgid "Журнал моих действий"
+msgstr "My activity log"
+
+msgid "по ссылке"
+msgstr "by link"
+
+msgid "Открыть"
+msgstr "Open"
+
+msgid "Закрыть доступ"
+msgstr "Revoke link"
+
+msgid "Открыть по ссылке"
+msgstr "Share by link"
+
+msgid "Удалить"
+msgstr "Delete"
+
+msgid "Сохранить новый вид"
+msgstr "Save a new view"
+
+msgid "Сохранить"
+msgstr "Save"
+
+msgid "Сохраняются условия отбора, а не сами данные: при открытии выборка выполняется заново и показывает актуальные значения."
+msgstr "Filter settings are saved rather than the data itself: the selection is re-run on opening and shows current values."
+
+msgid "Территория"
+msgstr "Area"
+
+msgid "Порог серьёзности"
+msgstr "Severity threshold"
+
+msgid "Только грузовые"
+msgstr "Freight only"
+
+msgid "активна"
+msgstr "active"
+
+msgid "отключена"
+msgstr "disabled"
+
+msgid "Новая подписка"
+msgstr "New subscription"
+
+msgid "Только события, влияющие на грузовой транспорт"
+msgstr "Only incidents affecting freight traffic"
+
+msgid "Подписаться"
+msgstr "Subscribe"
+
+msgid "Шкала серьёзности"
+msgstr "Severity scale"
+
+msgid "1 — незначительный"
+msgstr "1 — negligible"
+
+msgid "помеха движению"
+msgstr "an obstruction to traffic"
+
+msgid "2 — умеренный"
+msgstr "2 — moderate"
+
+msgid "сужение проезжей части"
+msgstr "carriageway narrowing"
+
+msgid "3 — значительный"
+msgstr "3 — significant"
+
+msgid "перекрытие полосы"
+msgstr "lane closure"
+
+msgid "4 — серьёзный"
+msgstr "4 — severe"
+
+msgid "перекрытие направления"
+msgstr "direction closure"
+
+msgid "5 — критический"
+msgstr "5 — critical"
+
+msgid "полное перекрытие"
+msgstr "full closure"
+
+msgid "Оформление: тёмное"
+msgstr "Appearance: dark"
+
+msgid "Оформление: светлое"
+msgstr "Appearance: light"
+
+msgid "Оформление: как в системе"
+msgstr "Appearance: system default"
+
+msgid "Перейти к содержанию"
+msgstr "Skip to content"
+
+msgid "логистика Москвы"
+msgstr "Moscow logistics"
+
+msgid "Меню разделов"
+msgstr "Section menu"
+
+msgid "Кабинет"
+msgstr "Account"
+
+msgid "Войти"
+msgstr "Sign in"
+
+msgid "Скрыть сообщение"
+msgstr "Dismiss message"
+
+msgid "Информационная система мониторинга и анализа логистической инфраструктуры города Москвы: складские мощности, грузовые маршруты и обстановка на улично-дорожной сети."
+msgstr "An information system for monitoring and analysing the logistics infrastructure of Moscow: storage capacity, freight routes and road network conditions."
+
+msgid "Разделы"
+msgstr "Sections"
+
+msgid "Источники"
+msgstr "Sources"
+
+msgid "Помощь"
+msgstr "Help"
+
+msgid "Разработчик:"
+msgstr "Developer:"
+
+msgid "Все пользователи"
+msgstr "All users"
+
+msgid "Период"
+msgstr "Period"
+
+msgid "7 суток"
+msgstr "7 days"
+
+msgid "30 суток"
+msgstr "30 days"
+
+msgid "90 суток"
+msgstr "90 days"
+
+msgid "Событий за период"
+msgstr "Events in the period"
+
+msgid "Распределение по типам"
+msgstr "Breakdown by type"
+
+msgid "Запрос"
+msgstr "Request"
+
+msgid "Событий за период нет."
+msgstr "No events in the period."
+
+msgid "Опубликовано"
+msgstr "Published"
+
+msgid "Черновиков"
+msgstr "Drafts"
+
+msgid "Просмотров всего"
+msgstr "Total views"
+
+msgid "Рубрик"
+msgstr "Categories"
+
+msgid "Создать материал →"
+msgstr "Create an article →"
+
+msgid "Состояние публикации"
+msgstr "Publication state"
+
+msgid "Все материалы"
+msgstr "All articles"
+
+msgid "Опубликованные"
+msgstr "Published"
+
+msgid "Черновики"
+msgstr "Drafts"
+
+msgid "Материал"
+msgstr "Article"
+
+msgid "Публикация"
+msgstr "Publication"
+
+msgid "Просмотров"
+msgstr "Views"
+
+msgid "Действия"
+msgstr "Actions"
+
+msgid "опубликован"
+msgstr "published"
+
+msgid "черновик"
+msgstr "draft"
+
+msgid "на главной"
+msgstr "featured"
+
+msgid "Снять"
+msgstr "Withdraw"
+
+msgid "Опубликовать"
+msgstr "Publish"
+
+msgid "Материалов нет."
+msgstr "No articles."
+
+msgid "Пользователей"
+msgstr "Users"
+
+#, python-format
+msgid "активных %(active)s, за неделю входили %(recent)s"
+msgstr "%(active)s active, %(recent)s signed in this week"
+
+msgid "Новых обращений"
+msgstr "New enquiries"
+
+#, python-format
+msgid "всего в системе %(total)s"
+msgstr "%(total)s in total"
+
+msgid "Открытых инцидентов"
+msgstr "Open incidents"
+
+msgid "Успешность загрузок"
+msgstr "Load success rate"
+
+#, python-format
+msgid "запусков %(runs)s, сбоев %(failed)s"
+msgstr "%(runs)s runs, %(failed)s failures"
+
+msgid "Наполнение"
+msgstr "Population"
+
+msgid "Объёмы основных таблиц"
+msgstr "Size of the main tables"
+
+msgid "Качество данных →"
+msgstr "Data quality →"
+
+msgid "Таблица"
+msgstr "Table"
+
+msgid "Записей"
+msgstr "Records"
+
+msgid "Геокодирование"
+msgstr "Geocoding"
+
+msgid "не применяется"
+msgstr "not applicable"
+
+msgid "Аудит"
+msgstr "Audit"
+
+msgid "Последние действия пользователей"
+msgstr "Recent user activity"
+
+msgid "Событий нет."
+msgstr "No events."
+
+msgid "Пользователи по ролям"
+msgstr "Users by role"
+
+msgid "Управление доступом"
+msgstr "Access management"
+
+msgid "Содержание портала"
+msgstr "Portal content"
+
+msgid "Опубликовано материалов"
+msgstr "Articles published"
+
+msgid "Выгрузок за неделю"
+msgstr "Exports this week"
+
+msgid "Обслуживание"
+msgstr "Maintenance"
+
+msgid "Сводки и аналитические расчёты кешируются. Сбросьте кеш после ручного изменения данных, чтобы страницы показали актуальные значения."
+msgstr "Summaries and analytical calculations are cached. Clear the cache after manual data changes so pages show current values."
+
+msgid "Сбросить кеш"
+msgstr "Clear cache"
+
+msgid "Запусков всего"
+msgstr "Total runs"
+
+msgid "Доля успешных"
+msgstr "Success rate"
+
+msgid "Итог"
+msgstr "Result"
+
+msgid "Любой"
+msgstr "Any"
+
+msgid "Источник"
+msgstr "Source"
+
+msgid "Все источники"
+msgstr "All sources"
+
+msgid "Загружено"
+msgstr "Loaded"
+
+msgid "Ошибок"
+msgstr "Errors"
+
+msgid "Доля ошибок"
+msgstr "Error share"
+
+msgid "Запуск загрузки"
+msgstr "Running a load"
+
+msgid "Регламентная загрузка выполняется по расписанию на стороне сервера. Загрузка набора данных вручную выполняется командой:"
+msgstr "Scheduled loading runs on the server. A dataset can be loaded manually with the command:"
+
+msgid "Сбросить кеш сводок"
+msgstr "Clear summary cache"
+
+msgid "Тема"
+msgstr "Subject"
+
+msgid "Все темы"
+msgstr "All subjects"
+
+msgid "Возраст"
+msgstr "Age"
+
+msgid "Обращений нет."
+msgstr "No enquiries."
+
+msgid "Вложение:"
+msgstr "Attachment:"
+
+msgid "Подготовить ответ"
+msgstr "Prepare a reply"
+
+msgid "Текст ответа"
+msgstr "Reply text"
+
+msgid "Отправить ответ"
+msgstr "Send reply"
+
+msgid "Взять в работу"
+msgstr "Take into work"
+
+msgid "Закрыть без ответа"
+msgstr "Close without reply"
+
+msgid "Автор обращения"
+msgstr "Enquirer"
+
+msgid "Представился"
+msgstr "Gave name"
+
+msgid "Адрес почты"
+msgstr "Email address"
+
+msgid "К списку обращений"
+msgstr "Back to enquiries"
+
+msgid "Выявлено замечаний"
+msgstr "Findings"
+
+msgid "Проверок выполняется"
+msgstr "Checks performed"
+
+msgid "при каждом открытии раздела"
+msgstr "each time the section is opened"
+
+msgid "Методика"
+msgstr "Method"
+
+msgid "Раздел «Методология» →"
+msgstr "Methodology section →"
+
+msgid "Автоматические проверки"
+msgstr "Automatic checks"
+
+msgid "Полнота и согласованность данных"
+msgstr "Data completeness and consistency"
+
+msgid "требует внимания"
+msgstr "needs attention"
+
+msgid "замечание"
+msgstr "remark"
+
+msgid "информация"
+msgstr "information"
+
+#, python-format
+msgid "из %(total)s · %(share)s %%"
+msgstr "of %(total)s · %(share)s %%"
+
+msgid "Как трактовать результаты"
+msgstr "How to interpret the results"
+
+msgid "Перечень проверок составлен по принципу «дефект, искажающий выводы». В него включены только те условия, наличие которых меняет результат агрегации или делает запись недоступной пользователю: объект без координат не попадает на карту, объект без мощности не участвует в расчёте обеспеченности округа, инцидент без привязки к участку — в статистике аварийности."
+msgstr "The list of checks follows the principle of “a defect that distorts conclusions”. It includes only conditions that change an aggregate or make a record unavailable to users: a facility without coordinates does not appear on the map, a facility without stated capacity is excluded from district provision figures, and an incident not linked to a segment is excluded from incident statistics."
+
+msgid "Ненулевое число замечаний не свидетельствует о неисправности системы. Пропуски отражают состояние исходных источников: часть сведений поступает в неполном виде и уточняется при последующих загрузках. Устранение выполняется на стороне поставщика данных — через запрос на уточнение, — либо ручным дополнением в административной панели."
+msgstr "A non-zero number of findings does not indicate a fault in the system. Gaps reflect the state of the upstream sources: some data arrives incomplete and is refined in later loads. Correction is made either by the data provider, through a clarification request, or manually in the administration panel."
+
+msgid "Редактировать →"
+msgstr "Edit →"
+
+msgid "Площадь"
+msgstr "Area"
+
+msgid "Население"
+msgstr "Population"
+
+msgid "Объектов"
+msgstr "Facilities"
+
+msgid "заданы"
+msgstr "set"
+
+msgid "отсутствуют"
+msgstr "missing"
+
+msgid "Класс опасности"
+msgstr "Hazard class"
+
+msgid "неопасный"
+msgstr "non-hazardous"
+
+msgid "Загрузок"
+msgstr "Loads"
+
+msgid "активен"
+msgstr "active"
+
+msgid "отключён"
+msgstr "disabled"
+
+msgid "Порядок изменения справочников"
+msgstr "How reference data is changed"
+
+msgid "Справочники редактируются через штатную административную панель Django с контролем ссылочной целостности: удаление записи, на которую есть ссылки, блокируется. Изменение наименования отражается во всех разделах системы немедленно, изменение кода — только после повторной загрузки данных, так как код используется при сопоставлении записей из внешних источников."
+msgstr "Reference data is edited through the built-in Django administration panel with referential integrity enforced: deleting a record that is referenced elsewhere is blocked. A change of name takes effect across the system immediately; a change of code takes effect only after the data is reloaded, because the code is used to match records from external sources."
+
+msgid "Среда выполнения"
+msgstr "Runtime environment"
+
+msgid "Параметр"
+msgstr "Setting"
+
+msgid "Значение"
+msgstr "Value"
+
+msgid "Хранение"
+msgstr "Storage"
+
+msgid "Заданий на выгрузку"
+msgstr "Export jobs"
+
+msgid "Объём выгрузок"
+msgstr "Export volume"
+
+msgid "Записей аудита"
+msgstr "Audit records"
+
+msgid "Проверка доступности"
+msgstr "Availability check"
+
+msgid "Конечная точка для системы мониторинга возвращает состояние соединения с базой и объёмы ключевых таблиц."
+msgstr "The monitoring endpoint returns the database connection status and the size of the key tables."
+
+msgid "Выполнить проверку"
+msgstr "Run the check"
+
+msgid "Штатная админка Django"
+msgstr "Built-in Django admin"
+
+msgid "Разработка"
+msgstr "Development"
+
+msgid "Поиск"
+msgstr "Search"
+
+msgid "Все роли"
+msgstr "All roles"
+
+msgid "Любое"
+msgstr "Any"
+
+msgid "Активные"
+msgstr "Active"
+
+msgid "Заблокированные"
+msgstr "Blocked"
+
+msgid "Показать"
+msgstr "Apply"
+
+msgid "Очистить"
+msgstr "Clear"
+
+msgid "Применить"
+msgstr "Apply"
+
+msgid "заблокирована"
+msgstr "blocked"
+
+msgid "Заблокировать"
+msgstr "Block"
+
+msgid "Разблокировать"
+msgstr "Unblock"
+
+msgid "Пользователи не найдены."
+msgstr "No users found."
+
+msgid "Объектов в системе"
+msgstr "Facilities in the system"
+
+msgid "Участков сети"
+msgstr "Network segments"
+
+#, python-format
+msgid "%(km)s км под наблюдением"
+msgstr "%(km)s km monitored"
+
+msgid "Грузовых маршрутов"
+msgstr "Freight routes"
+
+msgid "Административных округов"
+msgstr "Administrative districts"
+
+msgid "Назначение системы"
+msgstr "Purpose of the system"
+
+msgid "«ГрузПоток» — информационно-аналитическая система, объединяющая сведения о логистической инфраструктуре Москвы в единой среде: складские мощности и терминалы, магистральную сеть с оценкой загруженности, грузовые коридоры и статистику перевозок."
+msgstr "FreightFlow is an analytical information system that brings together data on Moscow logistics infrastructure in a single environment: storage capacity and terminals, the arterial network with congestion assessment, freight corridors and transport statistics."
+
+msgid "Практическая задача системы — сократить время, необходимое для получения ответа на вопросы вида «где сосредоточены мощности хранения», «какие направления перегружены в утренний пик» и «как изменится нагрузка на округ при росте объёма перевозок». До консолидации данных такие вопросы требовали обращения к нескольким ведомственным источникам и ручного сопоставления разнородных выгрузок."
+msgstr "The practical purpose of the system is to shorten the time needed to answer questions such as “where is storage capacity concentrated”, “which directions are overloaded during the morning peak” and “how will the load on a district change if transport volume grows”. Before the data was consolidated, such questions required consulting several departmental sources and manually reconciling dissimilar extracts."
+
+msgid "Архитектура"
+msgstr "Architecture"
+
+msgid "Система построена на платформе Django и следует классической многослойной организации: слой моделей отвечает за представление предметной области, слой выборок — за агрегацию, представления — за подготовку контекста страниц. Аналитические расчёты вынесены в отдельный модуль и не зависят от способа отображения результата."
+msgstr "The system is built on Django and follows a classic layered structure: the model layer represents the subject domain, the selector layer handles aggregation and the views prepare page context. Analytical calculations are placed in a separate module and do not depend on how the result is displayed."
+
+msgid "Пространственный слой реализован без внешних библиотек геообработки. Хранение и запросы выполняет сама СУБД: в промышленном контуре это PostgreSQL с расширением PostGIS, в контуре разработки и в автотестах — SQLite с текстовым представлением геометрии. Прикладной код одинаков для обоих вариантов, что позволяет разворачивать систему без установки системных зависимостей."
+msgstr "The spatial layer is implemented without external geoprocessing libraries. Storage and queries are handled by the database itself: PostgreSQL with the PostGIS extension in production, and SQLite with a textual geometry representation in development and automated tests. The application code is identical for both, which allows the system to be deployed without installing system dependencies."
+
+msgid "Разграничение доступа"
+msgstr "Access control"
+
+msgid "Предусмотрены четыре роли с вложенной моделью полномочий. «Наблюдатель» работает с реестрами и картой, «Аналитик» дополнительно получает выгрузку отчётов и программный доступ, «Диспетчер» вносит сведения о дорожных событиях, «Администратор» управляет учётными записями, справочниками и настройками. Все значимые действия фиксируются в журнале аудита."
+msgstr "There are four roles with nested permissions. The Viewer works with registers and the map; the Analyst additionally gets report export and programmatic access; the Operator records traffic incidents; the Administrator manages accounts, reference data and settings. All significant actions are recorded in the audit log."
+
+msgid "Открытость данных"
+msgstr "Data openness"
+
+msgid "Реестры и аналитические показатели доступны без авторизации как через веб-интерфейс, так и через программный интерфейс REST со спецификацией OpenAPI. Полнота исходных данных публикуется открыто: показатели заполненности таблиц приведены в разделе источников, а автоматические проверки качества доступны администратору."
+msgstr "Registers and analytical indicators are available without authorisation, both through the web interface and through the REST API with an OpenAPI specification. Source data completeness is published openly: table population figures are given in the sources section, and automatic quality checks are available to the administrator."
+
+msgid "Платформа"
+msgstr "Platform"
+
+msgid "Хранилище"
+msgstr "Storage"
+
+msgid "Состав данных"
+msgstr "Data composition"
+
+msgid "Документы"
+msgstr "Documents"
+
+msgid "Методология расчётов"
+msgstr "Calculation methodology"
+
+msgid "Программный интерфейс"
+msgstr "Programming interface"
+
+msgid "Руководство пользователя"
+msgstr "User guide"
+
+msgid "Округа для сравнения"
+msgstr "Districts to compare"
+
+msgid "Сравнить"
+msgstr "Compare"
+
+msgid "Наибольший индекс"
+msgstr "Highest index"
+
+msgid "Наименьший индекс"
+msgstr "Lowest index"
+
+msgid "Показатель"
+msgstr "Indicator"
+
+msgid "Лидер"
+msgstr "Leader"
+
+msgid "Объектов инфраструктуры"
+msgstr "Infrastructure facilities"
+
+msgid "Дорожных событий"
+msgstr "Traffic incidents"
+
+msgid "Профиль округа"
+msgstr "District profile"
+
+msgid "Весь город"
+msgstr "Whole city"
+
+msgid "Горизонт прогноза"
+msgstr "Forecast horizon"
+
+msgid "3 месяца"
+msgstr "3 months"
+
+msgid "6 месяцев"
+msgstr "6 months"
+
+msgid "9 месяцев"
+msgstr "9 months"
+
+msgid "12 месяцев"
+msgstr "12 months"
+
+msgid "Помесячный прирост тренда"
+msgstr "Monthly trend increment"
+
+msgid "оценка методом наименьших квадратов"
+msgstr "least squares estimate"
+
+msgid "Коэффициент детерминации"
+msgstr "Coefficient of determination"
+
+msgid "доля объяснённой дисперсии"
+msgstr "share of explained variance"
+
+msgid "Средняя ошибка (MAPE)"
+msgstr "Mean error (MAPE)"
+
+msgid "Наблюдений в ряду"
+msgstr "Observations in series"
+
+msgid "Факт и прогноз"
+msgstr "Actual and forecast"
+
+msgid "Объём перевозок, тонн"
+msgstr "Transport volume, tonnes"
+
+msgid "фактические наблюдения"
+msgstr "actual observations"
+
+msgid "прогноз"
+msgstr "forecast"
+
+msgid "Прогнозные значения"
+msgstr "Forecast values"
+
+msgid "Прогноз, т"
+msgstr "Forecast, t"
+
+msgid "Тренд, т"
+msgstr "Trend, t"
+
+msgid "Сезонная поправка"
+msgstr "Seasonal adjustment"
+
+msgid "Как читать прогноз"
+msgstr "How to read the forecast"
+
+msgid "Модель складывает линейный тренд и сезонную составляющую, оценённую как среднее отклонение соответствующего месяца от линии тренда. Простая форма модели выбрана осознанно: на коротком ряде наблюдений сложные модели дают неустойчивые оценки параметров и кажущуюся точность."
+msgstr "The model adds a linear trend and a seasonal component estimated as the average deviation of the corresponding month from the trend line. The simple form is a deliberate choice: on a short series, complex models produce unstable parameter estimates and only apparent accuracy."
+
+#, python-format
+msgid "Средняя абсолютная процентная ошибка ниже 10 %% считается высоким качеством, от 10 до 20 %% — приемлемым, свыше 20 %% — низким: в последнем случае прогноз следует трактовать как ориентировочный."
+msgstr "A mean absolute percentage error below 10 %% is considered high quality, from 10 to 20 %% acceptable, and above 20 %% low: in the latter case the forecast should be treated as indicative only."
+
+msgid "Прогноз описывает продолжение сложившихся тенденций и не учитывает изменения условий — ввод новых мощностей, изменение режима допуска транспорта, крупные ремонтные работы. Для оценки таких изменений предназначен"
+msgstr "The forecast describes a continuation of established trends and does not account for changing conditions — new capacity coming online, changes to vehicle access rules or major roadworks. To assess such changes, use"
+
+msgid "сценарный расчёт"
+msgstr "scenario modelling"
+
+msgid "Наибольшая нагрузка"
+msgstr "Highest load"
+
+msgid "Наименьшая нагрузка"
+msgstr "Lowest load"
+
+msgid "Среднее по городу"
+msgstr "City average"
+
+msgid "Коэффициент вариации"
+msgstr "Coefficient of variation"
+
+msgid "Ранжирование"
+msgstr "Ranking"
+
+msgid "Индекс по округам"
+msgstr "Index by district"
+
+msgid "Индекс"
+msgstr "Index"
+
+msgid "Профиль составляющих"
+msgstr "Component profile"
+
+msgid "Недостаточно данных для расчёта."
+msgstr "Not enough data to calculate."
+
+msgid "Как устроен расчёт"
+msgstr "How the calculation works"
+
+msgid "Четыре показателя округа нормируются методом «минимум — максимум», умножаются на веса и суммируются. Результат приводится к стобалльной шкале."
+msgstr "Four district indicators are normalised by the min-max method, multiplied by their weights and summed. The result is expressed on a hundred-point scale."
+
+msgid "Подробнее о методике"
+msgstr "More about the method"
+
+msgid "Как читать индекс"
+msgstr "How to read the index"
+
+msgid "Индекс отражает положение округа"
+msgstr "The index reflects the district's position"
+
+msgid "относительно других округов"
+msgstr "relative to other districts"
+
+msgid ", а не абсолютный уровень нагрузки. Округ с индексом 100 имеет наибольшие значения показателей в текущей выборке, а не «предельно возможные»."
+msgstr ", rather than an absolute level of load. A district with an index of 100 has the highest indicator values in the current sample, not the highest possible ones."
+
+msgid "Высокий индекс не означает проблемы сам по себе: он может отражать концентрацию складских мощностей — то есть развитость инфраструктуры. Смысл конкретного значения раскрывают составляющие: сочетание высокой загруженности при низких мощностях указывает на транзитную перегрузку, обратное сочетание — на логистический узел с достаточной пропускной способностью."
+msgstr "A high index does not in itself indicate a problem: it may reflect a concentration of storage capacity, that is, well-developed infrastructure. The components reveal the meaning of a particular value: high congestion combined with low capacity points to transit overload, while the reverse combination indicates a logistics hub with sufficient throughput."
+
+#, python-format
+msgid "Изменение объёма перевозок, %%"
+msgstr "Change in transport volume, %%"
+
+msgid "Рост спроса на доставку или его снижение"
+msgstr "Increase or decrease in delivery demand"
+
+#, python-format
+msgid "Изменение складских мощностей, %%"
+msgstr "Change in storage capacity, %%"
+
+msgid "Ввод новых объектов или вывод существующих"
+msgstr "Commissioning new facilities or withdrawing existing ones"
+
+#, python-format
+msgid "Изменение пропускной способности сети, %%"
+msgstr "Change in network throughput, %%"
+
+msgid "Реконструкция магистралей или их ограничение"
+msgstr "Reconstruction of arterials or their restriction"
+
+msgid "Рассчитать"
+msgstr "Calculate"
+
+msgid "Базовый вариант"
+msgstr "Baseline"
+
+msgid "Среднее изменение индекса"
+msgstr "Average index change"
+
+msgid "баллов по всем округам"
+msgstr "points across all districts"
+
+msgid "Округов с ростом нагрузки"
+msgstr "Districts with rising load"
+
+msgid "Округов со снижением"
+msgstr "Districts with falling load"
+
+msgid "Параметры сценария"
+msgstr "Scenario parameters"
+
+msgid "Результат моделирования"
+msgstr "Modelling result"
+
+msgid "Индекс нагрузки при заданных условиях"
+msgstr "Load index under the given conditions"
+
+msgid "Базовый индекс"
+msgstr "Baseline index"
+
+msgid "Сценарный индекс"
+msgstr "Scenario index"
+
+msgid "Изменение"
+msgstr "Change"
+
+msgid "нагрузка растёт"
+msgstr "load rising"
+
+msgid "нагрузка снижается"
+msgstr "load falling"
+
+msgid "без существенных изменений"
+msgstr "no significant change"
+
+msgid "Модель отклика"
+msgstr "Response model"
+
+msgid "Загруженность сети реагирует на изменение условий эластично: рост грузопотока увеличивает её с коэффициентом 0,6, увеличение пропускной способности снижает с коэффициентом 0,4. Складские мощности и объём перевозок входят в расчёт напрямую."
+msgstr "Network congestion responds elastically to changing conditions: growth in freight flow raises it with a coefficient of 0.6, while greater throughput lowers it with a coefficient of 0.4. Storage capacity and transport volume enter the calculation directly."
+
+msgid "После пересчёта показателей выполняется повторное нормирование, поэтому индексы остаются сопоставимыми между округами. Обратите внимание: при равномерном изменении условий во всех округах относительные позиции сохраняются, а меняются лишь абсолютные значения составляющих."
+msgstr "After the indicators are recalculated, normalisation is applied again, so the indices remain comparable across districts. Note that if conditions change uniformly in all districts, relative positions are preserved and only the absolute values of the components change."
+
+msgid "Коэффициенты эластичности заданы экспертно и подлежат уточнению по мере накопления наблюдений. Результат расчёта следует трактовать как оценку направления и порядка изменений, а не как точный прогноз."
+msgstr "The elasticity coefficients are set by expert judgement and are subject to refinement as observations accumulate. The result should be read as an estimate of the direction and order of magnitude of change, not as a precise forecast."
+
+msgid "Число групп"
+msgstr "Number of clusters"
+
+msgid "Недостаточно данных для кластеризации."
+msgstr "Not enough data for clustering."
+
+msgid "О методе"
+msgstr "About the method"
+
+msgid "Начальные центры выбираются по схеме k-means++, снижающей риск попадания в неудачный локальный минимум. Генератор случайных чисел зафиксирован, поэтому при одних и тех же данных результат воспроизводится в точности — свойство, необходимое для проверки расчётов."
+msgstr "Initial centres are chosen using the k-means++ scheme, which reduces the risk of settling in a poor local minimum. The random number generator is seeded, so the same data always yields exactly the same result — a property required for verifying the calculations."
+
+msgid "Названия групп присвоены по возрастанию средней нагрузки и носят описательный характер: содержательная интерпретация требует рассмотрения состава каждой группы."
+msgstr "Cluster names are assigned in ascending order of average load and are descriptive only: a substantive interpretation requires examining the membership of each cluster."
+
+msgid "Базовый адрес"
+msgstr "Base URL"
+
+msgid "Спецификация"
+msgstr "Specification"
+
+msgid "машиночитаемое описание всех методов"
+msgstr "machine-readable description of all methods"
+
+msgid "Справочный перечень"
+msgstr "Reference list"
+
+msgid "Основные конечные точки"
+msgstr "Main endpoints"
+
+msgid "Назначение"
+msgstr "Purpose"
+
+msgid "Параметры"
+msgstr "Parameters"
+
+msgid "Пример запроса"
+msgstr "Example request"
+
+msgid "Пример ответа"
+msgstr "Example response"
+
+msgid "Авторизация"
+msgstr "Authorisation"
+
+msgid "Справочники и реестры доступны без авторизации. Персональный токен требуется только для повышенных ограничений на частоту обращений; он выпускается в личном кабинете пользователям с ролью «Аналитик» и выше."
+msgstr "Reference data and registers are available without authorisation. A personal token is required only for higher request rate limits; it is issued in the personal area to users with the Analyst role and above."
+
+msgid "Authorization: Token ВАШ_ТОКЕН"
+msgstr "Authorization: Token YOUR_TOKEN"
+
+msgid "Управление токеном"
+msgstr "Token management"
+
+msgid "Ограничения на частоту"
+msgstr "Rate limits"
+
+msgid "Без авторизации"
+msgstr "Without authorisation"
+
+msgid "60 запросов в минуту"
+msgstr "60 requests per minute"
+
+msgid "600 запросов в минуту"
+msgstr "600 requests per minute"
+
+msgid "При превышении возвращается код 429 и заголовок Retry-After с числом секунд до следующей попытки."
+msgstr "Exceeding the limit returns code 429 and a Retry-After header with the number of seconds until the next attempt."
+
+msgid "Формат геометрии"
+msgstr "Geometry format"
+
+msgid "Пространственные данные передаются в формате GeoJSON в системе координат WGS-84, порядок координат — долгота, широта. Ответ можно передать в картографическую библиотеку без промежуточных преобразований."
+msgstr "Spatial data is delivered as GeoJSON in the WGS-84 coordinate system, with coordinates ordered longitude then latitude. The response can be passed to a mapping library without intermediate conversion."
+
+msgid "Разделы системы по теме"
+msgstr "Related sections"
+
+msgid "Профили округов"
+msgstr "District profiles"
+
+msgid "Ещё в рубрике"
+msgstr "More in this category"
+
+msgid "Замечание к материалу?"
+msgstr "A remark about this article?"
+
+msgid "Сообщите о неточности через форму обратной связи."
+msgstr "Report an inaccuracy through the feedback form."
+
+msgid "Написать"
+msgstr "Write"
+
+msgid "Читать"
+msgstr "Read"
+
+msgid "Поиск по материалам"
+msgstr "Search publications"
+
+msgid "Ключевое слово"
+msgstr "Keyword"
+
+msgid "Все рубрики"
+msgstr "All categories"
+
+msgid "Категорий в классификаторе"
+msgstr "Categories in the classifier"
+
+msgid "Опасных грузов"
+msgstr "Hazardous cargo"
+
+msgid "требуют согласования маршрута и времени движения"
+msgstr "require route and timing approval"
+
+msgid "Классификация"
+msgstr "Classification"
+
+msgid "ДОПОГ / ADR"
+msgstr "ADR"
+
+msgid "классы опасности от 1 до 9"
+msgstr "hazard classes 1 to 9"
+
+msgid "Объём перевозок"
+msgstr "Transport volume"
+
+msgid "Доля"
+msgstr "Share"
+
+msgid "Рейсов"
+msgstr "Trips"
+
+msgid "О классификации опасных грузов"
+msgstr "About hazardous cargo classification"
+
+msgid "Класс опасности определяется Европейским соглашением о международной дорожной перевозке опасных грузов (ДОПОГ). Перевозка грузов с ненулевым классом требует специального разрешения, согласования маршрута и временных интервалов движения, а также применения транспортных средств соответствующего исполнения. Эти ограничения напрямую влияют на выбор коридоров: часть направлений для таких перевозок недоступна."
+msgstr "The hazard class is defined by the European Agreement concerning the International Carriage of Dangerous Goods by Road (ADR). Carrying cargo with a non-zero class requires a special permit, approval of the route and travel time windows, and vehicles of the appropriate design. These restrictions directly affect corridor selection: some directions are unavailable for such transport."
+
+msgid "Грузопоток за период"
+msgstr "Freight flow for the period"
+
+msgid "Плотность населения"
+msgstr "Population density"
+
+msgid "чел/км²"
+msgstr "people/km²"
+
+msgid "Помесячная динамика"
+msgstr "Monthly trend"
+
+msgid "Грузопоток округа, тонн"
+msgstr "District freight flow, tonnes"
+
+msgid "Крупнейшие по мощности"
+msgstr "Largest by capacity"
+
+msgid "Объекты инфраструктуры округа"
+msgstr "District infrastructure facilities"
+
+msgid "Все объекты →"
+msgstr "All facilities →"
+
+msgid "Мощность, т"
+msgstr "Capacity, t"
+
+msgid "Объекты не зарегистрированы."
+msgstr "No facilities registered."
+
+msgid "Состав по типам объектов"
+msgstr "Breakdown by facility type"
+
+msgid "Нет данных."
+msgstr "No data."
+
+msgid "Участки не закреплены за округом."
+msgstr "Segments are not assigned to a district."
+
+msgid "Показать округ на карте"
+msgstr "Show district on the map"
+
+msgid "Округов"
+msgstr "Districts"
+
+msgid "Мощность хранения"
+msgstr "Storage capacity"
+
+msgid "Протяжённость сети"
+msgstr "Network length"
+
+msgid "Ранжирование по грузопотоку"
+msgstr "Ranked by freight flow"
+
+msgid "Мощность"
+msgstr "Capacity"
+
+msgid "Доля грузопотока"
+msgstr "Share of freight flow"
+
+msgid "Дороги, км"
+msgstr "Roads, km"
+
+msgid "Обстановка"
+msgstr "Conditions"
+
+msgid "Итог загрузки"
+msgstr "Load result"
+
+msgid "Всего запусков"
+msgstr "Total runs"
+
+msgid "Длительность"
+msgstr "Duration"
+
+msgid "Сообщение"
+msgstr "Message"
+
+msgid "Представьтесь"
+msgstr "Your name"
+
+msgid "Адрес для ответа"
+msgstr "Reply address"
+
+msgid "Необязательно"
+msgstr "Optional"
+
+msgid "Опишите вопрос подробно: если речь о конкретной записи, укажите её название или ссылку на страницу."
+msgstr "Describe the issue in detail: if it concerns a specific record, give its name or a link to the page."
+
+msgid "PDF, изображение, таблица или документ до 10 МБ"
+msgstr "PDF, image, spreadsheet or document up to 10 MB"
+
+msgid "Отправить обращение"
+msgstr "Send enquiry"
+
+msgid "Сначала посмотреть справку"
+msgstr "Check the help first"
+
+msgid "Как обрабатываются обращения"
+msgstr "How enquiries are handled"
+
+msgid "Срок ответа"
+msgstr "Response time"
+
+msgid "до 3 рабочих дней"
+msgstr "up to 3 working days"
+
+msgid "Обработано обращений"
+msgstr "Enquiries handled"
+
+msgid "Кто отвечает"
+msgstr "Who replies"
+
+msgid "администратор системы"
+msgstr "the system administrator"
+
+msgid "Замечания к данным передаются поставщику источника, предложения по развитию системы включаются в план доработок. Ответ направляется на указанный адрес электронной почты."
+msgstr "Data remarks are forwarded to the source provider, and improvement suggestions are added to the development plan. A reply is sent to the email address given."
+
+msgid "Возможно, ответ уже есть"
+msgstr "The answer may already be there"
+
+msgid "Справка по работе с системой"
+msgstr "Help on using the system"
+
+msgid "Как рассчитываются показатели"
+msgstr "How indicators are calculated"
+
+msgid "Откуда берутся данные"
+msgstr "Where the data comes from"
+
+msgid "Программный доступ к данным"
+msgstr "Programmatic data access"
+
+msgid "Обращение принято"
+msgstr "Enquiry received"
+
+msgid "Ответ будет направлен на указанный адрес электронной почты в течение трёх рабочих дней. Номер обращения указан в письме-подтверждении."
+msgstr "A reply will be sent to the given email address within three working days. The enquiry number is stated in the confirmation letter."
+
+msgid "На главную"
+msgstr "To the home page"
+
+msgid "Все округа"
+msgstr "All districts"
+
+msgid "Все категории"
+msgstr "All categories"
+
+msgid "Все направления"
+msgstr "All directions"
+
+msgid "Средняя загрузка рейса"
+msgstr "Average load per trip"
+
+msgid "Изменение за период"
+msgstr "Change over the period"
+
+msgid "последний месяц к первому"
+msgstr "last month against the first"
+
+msgid "Объём грузопотока, тонн"
+msgstr "Freight flow volume, tonnes"
+
+msgid "Прогноз →"
+msgstr "Forecast →"
+
+msgid "Под заданные условия отбора данных нет."
+msgstr "No data matches the selected filters."
+
+msgid "Структура"
+msgstr "Structure"
+
+msgid "Классификатор →"
+msgstr "Classifier →"
+
+msgid "Направления"
+msgstr "Directions"
+
+msgid "Ввоз, вывоз и транзит"
+msgstr "Inbound, outbound and transit"
+
+msgid "Объём"
+msgstr "Volume"
+
+msgid "Средняя загрузка"
+msgstr "Average load"
+
+msgid "Не нашли ответа?"
+msgstr "Did not find an answer?"
+
+msgid "Задайте вопрос через форму обратной связи — обращения рассматривает администратор системы."
+msgstr "Ask a question through the feedback form — enquiries are reviewed by the system administrator."
+
+msgid "Написать в поддержку"
+msgstr "Contact support"
+
+msgid "Оперативная сводка"
+msgstr "Operational summary"
+
+msgid "Открыть карту"
+msgstr "Open map"
+
+msgid "Состояние улично-дорожной сети"
+msgstr "Road network status"
+
+#, python-format
+msgid "%(value)s из 10"
+msgstr "%(value)s out of 10"
+
+msgid "Все участки сети"
+msgstr "All network segments"
+
+msgid "свободно (0–4)"
+msgstr "free flow (0–4)"
+
+msgid "затруднения (5–6)"
+msgstr "delays (5–6)"
+
+msgid "пробки (7–8)"
+msgstr "congestion (7–8)"
+
+msgid "движение остановлено (9–10)"
+msgstr "traffic halted (9–10)"
+
+msgid "каждый сегмент — участок сети, наведите для названия"
+msgstr "each segment is a network link; hover for its name"
+
+msgid "суммарно по всем объектам"
+msgstr "total across all facilities"
+
+msgid "Перевезено грузов"
+msgstr "Cargo transported"
+
+#, python-format
+msgid "%(count)s влияют на грузовой транспорт"
+msgstr "%(count)s affect freight traffic"
+
+msgid "Подробнее →"
+msgstr "More →"
+
+msgid "объём перевозок, т"
+msgstr "transport volume, t"
+
+msgid "Данные о грузопотоках отсутствуют."
+msgstr "No freight flow data available."
+
+msgid "Направления перевозок"
+msgstr "Transport directions"
+
+msgid "Нет данных по направлениям."
+msgstr "No data by direction."
+
+msgid "Объекты по типам"
+msgstr "Facilities by type"
+
+msgid "Рейтинг"
+msgstr "Ranking"
+
+msgid "Округа с наибольшим грузопотоком"
+msgstr "Districts with the highest freight flow"
+
+msgid "Все округа →"
+msgstr "All districts →"
+
+msgid "Требуют внимания"
+msgstr "Need attention"
+
+msgid "Наиболее загруженные участки"
+msgstr "Most congested segments"
+
+msgid "Обстановка →"
+msgstr "Conditions →"
+
+msgid "Балл"
+msgstr "Score"
+
+msgid "Скорость"
+msgstr "Speed"
+
+msgid "Замеры обстановки отсутствуют."
+msgstr "No condition readings available."
+
+msgid "Журнал событий"
+msgstr "Incident log"
+
+msgid "Последние дорожные инциденты"
+msgstr "Latest traffic incidents"
+
+msgid "груз"
+msgstr "cargo"
+
+msgid "Инциденты не зарегистрированы."
+msgstr "No incidents registered."
+
+msgid "Аналитические обзоры"
+msgstr "Analytical reviews"
+
+msgid "Все материалы →"
+msgstr "All articles →"
+
+msgid "Материалы ещё не опубликованы."
+msgstr "No publications yet."
+
+msgid "Уровень серьёзности"
+msgstr "Severity level"
+
+msgid "Грузовой транспорт"
+msgstr "Freight traffic"
+
+msgid "Описание события"
+msgstr "Incident description"
+
+msgid "Участок сети"
+msgstr "Network segment"
+
+msgid "Окрестность события"
+msgstr "Incident vicinity"
+
+msgid "Обстановка на участке"
+msgstr "Conditions on the segment"
+
+msgid "Замеры за шесть часов до регистрации события и шесть часов после его устранения — позволяют оценить фактическое влияние на движение."
+msgstr "Readings from six hours before the incident was reported to six hours after it was resolved — these allow the actual effect on traffic to be assessed."
+
+msgid "Место события"
+msgstr "Incident location"
+
+msgid "Другие события на участке"
+msgstr "Other incidents on the segment"
+
+msgid "Открытые"
+msgstr "Open"
+
+msgid "Устранённые"
+msgstr "Resolved"
+
+msgid "Серьёзность не ниже"
+msgstr "Severity at least"
+
+msgid "Любая"
+msgstr "Any"
+
+msgid "Только влияющие на грузовые перевозки"
+msgstr "Affecting freight transport only"
+
+msgid "Найдено событий"
+msgstr "Incidents found"
+
+msgid "Открыто сейчас"
+msgstr "Currently open"
+
+msgid "Влияют на грузовой транспорт"
+msgstr "Affect freight traffic"
+
+msgid "Всего за период"
+msgstr "Total for the period"
+
+msgid "Событие"
+msgstr "Incident"
+
+msgid "Зарегистрировано"
+msgstr "Registered"
+
+msgid "открыт"
+msgstr "open"
+
+msgid "устранён"
+msgstr "resolved"
+
+msgid "События не найдены."
+msgstr "No incidents found."
+
+msgid "Пространственный обзор"
+msgstr "Spatial overview"
+
+msgid "Слои карты"
+msgstr "Map layers"
+
+msgid "Дорожные события"
+msgstr "Traffic incidents"
+
+msgid "Округа с показателями"
+msgstr "Districts with indicators"
+
+msgid "Изменение условий перезагружает включённые слои."
+msgstr "Changing the filters reloads the active layers."
+
+msgid "Что рядом с точкой"
+msgstr "What is nearby"
+
+msgid "Радиус поиска, км"
+msgstr "Search radius, km"
+
+msgid "Состав исходных данных"
+msgstr "Source data composition"
+
+msgid "Система консолидирует сведения из восьми источников, различающихся по природе, полноте и регламенту обновления. Атрибутивная часть поступает из ведомственных информационных систем и с портала открытых данных, пространственная — из геоинформационных сервисов, телеметрия дорожной обстановки — из системы мониторинга движения."
+msgstr "The system consolidates data from eight sources that differ in nature, completeness and update schedule. Attribute data comes from departmental information systems and the open data portal, spatial data from geographic information services, and road condition telemetry from the traffic monitoring system."
+
+msgid "Все поступающие записи проходят приведение к единой схеме хранения: координаты переводятся в систему WGS-84, отметки времени — в московский часовой пояс, единицы измерения — в тонны, километры и километры в час. Записи, не удовлетворяющие ограничениям целостности, отклоняются, а их число фиксируется в журнале загрузок."
+msgstr "All incoming records are harmonised to a single storage schema: coordinates are converted to WGS-84, timestamps to Moscow time, and units to tonnes, kilometres and kilometres per hour. Records that fail integrity constraints are rejected, and their number is recorded in the load log."
+
+msgid "Шкала загруженности"
+msgstr "Congestion scale"
+
+msgid "Загруженность участка выражается целым баллом от нуля до десяти по шкале, принятой в практике городского мониторинга движения. Нулевое значение соответствует свободному движению с разрешённой скоростью, десятое — полной остановке потока. Для группировки в интерфейсе применяются четыре интервала."
+msgstr "Segment congestion is expressed as an integer score from zero to ten on the scale used in urban traffic monitoring practice. Zero corresponds to free flow at the speed limit, ten to a complete standstill. Four bands are used for grouping in the interface."
+
+msgid "— свободное движение и незначительные затруднения;"
+msgstr "— free flow and minor delays;"
+
+msgid "— затруднённое движение, скорость ниже разрешённой;"
+msgstr "— heavy traffic, speed below the limit;"
+
+msgid "— пробки, движение с частыми остановками;"
+msgstr "— congestion, frequent stops;"
+
+msgid "— движение практически остановлено."
+msgstr "— traffic almost at a standstill."
+
+msgid "Средняя загруженность сети рассчитывается по последнему замеру каждого участка, а не по всем записям за период. Это принципиально: участки с более частой телеметрией иначе получили бы непропорционально больший вес в итоговой оценке."
+msgstr "Average network congestion is calculated from the latest reading for each segment rather than from all readings in the period. This matters: otherwise segments with more frequent telemetry would carry disproportionate weight in the result."
+
+msgid "Композитный индекс логистической нагрузки"
+msgstr "Composite logistics load index"
+
+msgid "Показатели округа измеряются в разных единицах, поэтому прямое их сложение лишено смысла. Применяется нормирование методом «минимум — максимум»: каждый показатель линейно отображается на отрезок от нуля до единицы, где ноль соответствует наименьшему значению в выборке, единица — наибольшему."
+msgstr "District indicators are measured in different units, so adding them directly would be meaningless. Min-max normalisation is applied: each indicator is mapped linearly onto the interval from zero to one, where zero is the smallest value in the sample and one the largest."
+
+msgid "Индекс = 0,30 · мощности + 0,30 · грузопоток + 0,25 · загруженность + 0,15 · аварийность"
+msgstr "Index = 0.30 · capacity + 0.30 · freight flow + 0.25 · congestion + 0.15 · incident rate"
+
+msgid "Результат умножается на сто и округляется до одного знака. Индекс отражает"
+msgstr "The result is multiplied by one hundred and rounded to one decimal place. The index reflects"
+
+msgid "относительное"
+msgstr "relative"
+
+msgid "положение округа: при изменении состава выборки значения пересчитываются. Поэтому он пригоден для ранжирования и выявления полярных случаев, но не является абсолютной мерой нагрузки."
+msgstr "position of a district: values are recalculated whenever the sample changes. It is therefore suitable for ranking and for identifying extremes, but it is not an absolute measure of load."
+
+msgid "Разбиение на однородные группы выполняется методом k-средних в пространстве четырёх стандартизованных показателей. Стандартизация обязательна: без неё расстояние между округами определялось бы почти исключительно объёмом грузопотока, измеряемым десятками тысяч тонн."
+msgstr "Grouping into homogeneous clusters is performed by k-means in the space of four standardised indicators. Standardisation is essential: without it, the distance between districts would be determined almost entirely by freight volume, measured in tens of thousands of tonnes."
+
+msgid "Начальные центры выбираются по схеме k-means++, снижающей вероятность попадания в неудачный локальный минимум. Генератор случайных чисел зафиксирован, поэтому результат воспроизводим при повторных запусках — свойство, существенное для проверяемости расчётов."
+msgstr "Initial centres are chosen using the k-means++ scheme, which reduces the chance of settling in a poor local minimum. The random number generator is seeded, so the result is reproducible across runs — a property essential for verifiability."
+
+msgid "Прогнозирование грузопотока"
+msgstr "Freight flow forecasting"
+
+msgid "Применяется аддитивная модель: линейный тренд, оценённый методом наименьших квадратов, плюс сезонная составляющая, рассчитанная как среднее отклонение соответствующего месяца от линии тренда."
+msgstr "An additive model is used: a linear trend estimated by least squares plus a seasonal component calculated as the average deviation of the corresponding month from the trend line."
+
+msgid "Выбор в пользу простой модели обусловлен длиной ряда наблюдений. На коротких рядах методы класса SARIMA дают неустойчивые оценки параметров, и кажущаяся точность модели не соответствует её фактической предсказательной способности. Качество аппроксимации характеризуется коэффициентом детерминации и средней абсолютной процентной ошибкой; оба показателя выводятся на странице прогноза."
+msgstr "The choice of a simple model is driven by the length of the observation series. On short series, SARIMA-class methods give unstable parameter estimates, and the apparent accuracy of the model does not match its actual predictive power. Fit quality is characterised by the coefficient of determination and the mean absolute percentage error; both are shown on the forecast page."
+
+msgid "Сценарное моделирование"
+msgstr "Scenario modelling"
+
+msgid "Отклик загруженности сети на изменение условий описывается эластичной зависимостью: рост грузопотока увеличивает загруженность с коэффициентом 0,6, увеличение пропускной способности сети снижает её с коэффициентом 0,4. Значения коэффициентов заданы экспертно и подлежат уточнению по мере накопления наблюдений."
+msgstr "The response of network congestion to changing conditions is described by an elastic relationship: growth in freight flow raises congestion with a coefficient of 0.6, while greater network throughput lowers it with a coefficient of 0.4. The coefficients are set by expert judgement and are subject to refinement as observations accumulate."
+
+msgid "Ограничения применения"
+msgstr "Limits of application"
+
+msgid "Результаты расчётов носят информационно-аналитический характер. Полнота исходных данных влияет на достоверность агрегатов: объект без указания мощности не участвует в расчёте обеспеченности округа, инцидент без привязки к участку — в статистике аварийности. Текущие показатели полноты приведены ниже и в разделе источников данных."
+msgstr "The results are informational and analytical in nature. Source data completeness affects the reliability of aggregates: a facility without stated capacity is excluded from district provision figures, and an incident not linked to a segment is excluded from incident statistics. Current completeness figures are given below and in the data sources section."
+
+msgid "Полнота данных"
+msgstr "Data completeness"
+
+msgid "Смежные разделы"
+msgstr "Related sections"
+
+msgid "В избранное"
+msgstr "Add to favourites"
+
+msgid "Показать на карте"
+msgstr "Show on the map"
+
+msgid "Характеристики объекта"
+msgstr "Facility characteristics"
+
+msgid "Удельная мощность"
+msgstr "Capacity per area"
+
+msgid "Расположение"
+msgstr "Location"
+
+msgid "В радиусе трёх километров"
+msgstr "Within three kilometres"
+
+msgid "Соседние объекты"
+msgstr "Neighbouring facilities"
+
+msgid "Расстояние"
+msgstr "Distance"
+
+msgid "Загруженность"
+msgstr "Congestion"
+
+msgid "Открыть профиль округа"
+msgstr "Open district profile"
+
+msgid "Тот же округ"
+msgstr "Same district"
+
+msgid "Другие объекты"
+msgstr "Other facilities"
+
+msgid "Название или адрес объекта"
+msgstr "Facility name or address"
+
+msgid "Любой источник"
+msgstr "Any source"
+
+msgid "Только круглосуточные"
+msgstr "Round-the-clock only"
+
+msgid "Найдено объектов"
+msgstr "Facilities found"
+
+msgid "Суммарная мощность"
+msgstr "Total capacity"
+
+msgid "Суммарная площадь"
+msgstr "Total area"
+
+msgid "Показано на странице"
+msgstr "Shown on this page"
+
+#, python-format
+msgid "страница %(page)s из %(total)s"
+msgstr "page %(page)s of %(total)s"
+
+msgid "круглосуточно"
+msgstr "round the clock"
+
+msgid "Текущая загруженность"
+msgstr "Current congestion"
+
+msgid "Скорость потока"
+msgstr "Traffic speed"
+
+msgid "км/ч"
+msgstr "km/h"
+
+msgid "Средний балл за период"
+msgstr "Average score for the period"
+
+msgid "Пропускная способность"
+msgstr "Throughput"
+
+msgid "Динамика"
+msgstr "Trend over time"
+
+msgid "Загруженность участка по времени"
+msgstr "Segment congestion over time"
+
+msgid "Шкала загруженности: 0 — свободное движение, 10 — движение остановлено."
+msgstr "Congestion scale: 0 — free flow, 10 — traffic halted."
+
+msgid "Замеры обстановки по участку отсутствуют."
+msgstr "No condition readings for this segment."
+
+msgid "Трасса участка"
+msgstr "Segment alignment"
+
+msgid "Характеристики"
+msgstr "Characteristics"
+
+msgid "Класс"
+msgstr "Class"
+
+msgid "Протяжённость"
+msgstr "Length"
+
+msgid "Разрешённая скорость"
+msgstr "Speed limit"
+
+msgid "Инциденты на участке"
+msgstr "Incidents on the segment"
+
+msgid "Название магистрали"
+msgstr "Arterial name"
+
+msgid "Все классы"
+msgstr "All classes"
+
+msgid "Участков под мониторингом"
+msgstr "Monitored segments"
+
+msgid "Суммарная протяжённость"
+msgstr "Total length"
+
+msgid "Оперативная обстановка"
+msgstr "Current conditions"
+
+msgid "Сводка загруженности →"
+msgstr "Congestion summary →"
+
+msgid "Длина, км"
+msgstr "Length, km"
+
+msgid "Полос"
+msgstr "Lanes"
+
+msgid "Текущее состояние"
+msgstr "Current state"
+
+msgid "нет замеров"
+msgstr "no readings"
+
+msgid "Участки не найдены."
+msgstr "No segments found."
+
+msgid "Время в пути"
+msgstr "Travel time"
+
+msgid "Интенсивность"
+msgstr "Intensity"
+
+msgid "ТС/сут"
+msgstr "veh/day"
+
+msgid "Транспортная работа"
+msgstr "Transport work"
+
+msgid "ТС·км"
+msgstr "veh·km"
+
+msgid "суточная, по маршруту"
+msgstr "daily, per route"
+
+msgid "Трасса маршрута"
+msgstr "Route alignment"
+
+msgid "Статистика перевозок"
+msgstr "Transport statistics"
+
+msgid "Показатели по периодам"
+msgstr "Indicators by period"
+
+msgid "Категория"
+msgstr "Category"
+
+msgid "Статистика отсутствует."
+msgstr "No statistics available."
+
+msgid "Структура груза"
+msgstr "Cargo structure"
+
+msgid "Схожие маршруты"
+msgstr "Similar routes"
+
+msgid "Маршрут, регион отправления или назначения"
+msgstr "Route, origin or destination region"
+
+msgid "Маршрутов"
+msgstr "Routes"
+
+msgid "Интенсивность движения"
+msgstr "Traffic intensity"
+
+msgid "Структура по типам"
+msgstr "Breakdown by type"
+
+msgid "Отправление → Назначение"
+msgstr "Origin → Destination"
+
+msgid "Время, ч"
+msgstr "Time, h"
+
+msgid "Маршруты не найдены."
+msgstr "No routes found."
+
+msgid "Избранное, сохранённые виды, выгрузки и подписки"
+msgstr "Favourites, saved views, exports and subscriptions"
+
+msgid "Обзор кабинета"
+msgstr "Account overview"
+
+msgid "Служебные страницы"
+msgstr "Service pages"
+
+msgid "Вход, регистрация и сведения о системе"
+msgstr "Sign-in, registration and system information"
+
+msgid "Документация API"
+msgstr "API documentation"
+
+msgid "Всего загрузок"
+msgstr "Total loads"
+
+msgid "Состояние источника"
+msgstr "Source status"
+
+msgid "Хронология"
+msgstr "Chronology"
+
+msgid "Последние загрузки"
+msgstr "Latest loads"
+
+msgid "Загрузки не выполнялись."
+msgstr "No loads have been run."
+
+msgid "Сведения об источнике"
+msgstr "Source details"
+
+msgid "Периодичность"
+msgstr "Frequency"
+
+msgid "ссылка"
+msgstr "link"
+
+msgid "Записи по источнику"
+msgstr "Records from this source"
+
+msgid "Участки дорог"
+msgstr "Road segments"
+
+msgid "Источников данных"
+msgstr "Data sources"
+
+msgid "История обновлений →"
+msgstr "Update history →"
+
+msgid "Методика обработки"
+msgstr "Processing method"
+
+msgid "Реестр источников"
+msgstr "Source register"
+
+msgid "Отклонено"
+msgstr "Rejected"
+
+msgid "Последняя загрузка"
+msgstr "Last load"
+
+msgid "Контроль полноты"
+msgstr "Completeness control"
+
+msgid "Наполненность основных таблиц"
+msgstr "Population of main tables"
+
+msgid "Вся территория города"
+msgstr "The whole city"
+
+msgid "Средняя загруженность"
+msgstr "Average congestion"
+
+msgid "Участков в сводке"
+msgstr "Segments in the summary"
+
+msgid "Час максимальной нагрузки"
+msgstr "Peak hour"
+
+msgid "Средняя скорость за неделю"
+msgstr "Average speed for the week"
+
+msgid "Две недели наблюдений"
+msgstr "Two weeks of observations"
+
+msgid "Суточный профиль загруженности"
+msgstr "Daily congestion profile"
+
+msgid "По горизонтали — час суток, по вертикали — средний балл загруженности по всем участкам сети."
+msgstr "The horizontal axis is the hour of day; the vertical axis is the average congestion score across all segments."
+
+msgid "Распределение"
+msgstr "Distribution"
+
+msgid "Участки по состояниям"
+msgstr "Segments by state"
+
+msgid "Замеры отсутствуют."
+msgstr "No readings available."
+
+msgid "Обстановка по участкам"
+msgstr "Conditions by segment"
+
+msgid "Отсортировано по убыванию загруженности"
+msgstr "Sorted by descending congestion"
+
+msgid "Время проезда"
+msgstr "Travel time"
+
+msgid "Плотность"
+msgstr "Density"
+
+msgid "Замер"
+msgstr "Reading"
+
+msgid "Данные мониторинга отсутствуют."
+msgstr "No monitoring data available."
+
+msgid "Доля от общего числа"
+msgstr "Share of the total"
+
+msgid "Вы находитесь здесь"
+msgstr "You are here"
+
+msgid "Выгрузить:"
+msgstr "Export:"
+
+msgid "Выгрузка доступна с роли «Аналитик»"
+msgstr "Export requires the Analyst role"
+
+msgid "Выгрузка недоступна"
+msgstr "Export unavailable"
+
+msgid "Основные разделы"
+msgstr "Main sections"
+
+msgid "Страницы списка"
+msgstr "List pages"
+
+msgid "Записи"
+msgstr "Records"
+
+msgid "Предыдущая страница"
+msgstr "Previous page"
+
+msgid "Следующая страница"
+msgstr "Next page"
+
+msgid "Неверное имя пользователя или пароль. Проверьте раскладку клавиатуры и регистр символов."
+msgstr "Incorrect username or password. Check the keyboard layout and letter case."
+
+msgid "Имя пользователя"
+msgstr "Username"
+
+msgid "Пароль"
+msgstr "Password"
+
+msgid "Нет учётной записи?"
+msgstr "No account yet?"
+
+msgid "Зарегистрируйтесь"
+msgstr "register"
+
+msgid "— роль «Наблюдатель» назначается автоматически."
+msgstr "— the Viewer role is assigned automatically."
+
+msgid "Демонстрационный доступ"
+msgstr "Demonstration access"
+
+msgid "Учётные записи стенда"
+msgstr "Demonstration accounts"
+
+msgid "Для ознакомления с возможностями ролей подготовлены учётные записи с паролем"
+msgstr "To explore the roles, demonstration accounts are provided with the password"
+
+msgid "Учётные записи создаются командой"
+msgstr "Accounts are created by the command"
+
+msgid "и предназначены только для учебного контура."
+msgstr "and are intended for the demonstration environment only."
+
+msgid "Пароль изменён"
+msgstr "Password changed"
+
+msgid "Новый пароль вступил в силу. Используйте его при следующем входе в систему."
+msgstr "The new password is now in effect. Use it the next time you sign in."
+
+msgid "В личный кабинет"
+msgstr "To the personal area"
+
+msgid "Латинские буквы, цифры и символы @ . + - _"
+msgstr "Latin letters, digits and @ . + - _"
+
+msgid "Повторите пароль"
+msgstr "Repeat password"
+
+msgid "Создать учётную запись"
+msgstr "Create account"
+
+msgid "Уже зарегистрированы?"
+msgstr "Already registered?"
+
+msgid "Войдите"
+msgstr "sign in"
+
+msgid "Требования к паролю"
+msgstr "Password requirements"
+
+msgid "не менее восьми символов;"
+msgstr "at least eight characters;"
+
+msgid "не совпадает с именем пользователя и другими данными профиля;"
+msgstr "does not match the username or other profile details;"
+
+msgid "не входит в перечень распространённых паролей;"
+msgstr "is not among commonly used passwords;"
+
+msgid "состоит не только из цифр."
+msgstr "not made up of digits alone."
+
+msgid "Что даёт регистрация"
+msgstr "What registration provides"
+
+msgid "Избранное — закладки на объекты, округа и участки сети"
+msgstr "Favourites — bookmarks for facilities, districts and network segments"
+
+msgid "Сохранённые виды — настроенные условия отбора"
+msgstr "Saved views — stored filter settings"
+
+msgid "Подписки на дорожные события выбранного округа"
+msgstr "Subscriptions to traffic incidents in a selected district"
+
+msgid "Выгрузка отчётов и доступ к API — с роли «Аналитик»"
+msgstr "Report export and API access — from the Analyst role"
+
+msgid "Расширенные роли назначает администратор системы по запросу через форму обратной связи."
+msgstr "Extended roles are assigned by the system administrator on request through the feedback form."

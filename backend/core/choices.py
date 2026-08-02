@@ -1,0 +1,144 @@
+"""Перечисления предметной области.
+
+Значения строковых констант совпадают с кодами, записанными в таблицах базы
+данных и в ограничениях CHECK файла ``db/001_schema.sql``. Подписи вынесены
+в перечисления, чтобы человекочитаемые названия задавались в одном месте и
+переводились средствами Django (ru/en).
+"""
+
+from __future__ import annotations
+
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+
+
+class SourceType(models.TextChoices):
+    """Способ получения данных из внешнего источника."""
+
+    API = "api", _("Программный интерфейс (API)")
+    CSV = "csv", _("Выгрузка CSV")
+    OPEN_DATA = "open_data", _("Портал открытых данных")
+    GIS_SERVICE = "gis_service", _("Геоинформационный сервис")
+    MANUAL = "manual", _("Ручной ввод")
+
+
+class UpdateFrequency(models.TextChoices):
+    """Регламентный период обновления источника."""
+
+    HOURLY = "hourly", _("Ежечасно")
+    DAILY = "daily", _("Ежедневно")
+    WEEKLY = "weekly", _("Еженедельно")
+    MONTHLY = "monthly", _("Ежемесячно")
+    QUARTERLY = "quarterly", _("Ежеквартально")
+
+
+class RoadClass(models.TextChoices):
+    """Классификация участков улично-дорожной сети."""
+
+    HIGHWAY = "highway", _("Магистраль скоростного движения")
+    ARTERIAL = "arterial", _("Магистраль общегородского значения")
+    COLLECTOR = "collector", _("Улица районного значения")
+
+
+class RouteType(models.TextChoices):
+    """Направление грузового маршрута относительно города."""
+
+    INBOUND = "inbound", _("Ввоз в город")
+    OUTBOUND = "outbound", _("Вывоз из города")
+    TRANSIT = "transit", _("Транзит")
+
+
+class FlowDirection(models.TextChoices):
+    """Направление грузопотока в статистике."""
+
+    IN = "in", _("Ввоз")
+    OUT = "out", _("Вывоз")
+    TRANSIT = "transit", _("Транзит")
+
+
+class PeriodType(models.TextChoices):
+    """Гранулярность агрегации статистики."""
+
+    DAY = "day", _("Сутки")
+    WEEK = "week", _("Неделя")
+    MONTH = "month", _("Месяц")
+    QUARTER = "quarter", _("Квартал")
+    YEAR = "year", _("Год")
+
+
+class IncidentType(models.TextChoices):
+    """Тип дорожного события."""
+
+    ACCIDENT = "accident", _("Дорожно-транспортное происшествие")
+    ROADWORKS = "roadworks", _("Дорожные работы")
+    RESTRICTION = "restriction", _("Ограничение движения")
+    WEATHER = "weather", _("Погодные условия")
+    EVENT = "event", _("Массовое мероприятие")
+    OTHER = "other", _("Прочее")
+
+
+class EtlStatus(models.TextChoices):
+    """Итог выполнения процедуры загрузки данных."""
+
+    RUNNING = "running", _("Выполняется")
+    SUCCESS = "success", _("Успешно")
+    PARTIAL = "partial", _("С замечаниями")
+    FAILED = "failed", _("Ошибка")
+
+
+# ---------------------------------------------------------------------------
+#  Производные шкалы
+# ---------------------------------------------------------------------------
+
+#: Балл загруженности ЦОДД (0–10) → (код состояния, подпись, CSS-модификатор).
+#: Единая шкала используется на карте, в таблицах и в легендах графиков.
+CONGESTION_SCALE: tuple[tuple[int, str, str, str], ...] = (
+    (0, "free", _("Свободно"), "ok"),
+    (3, "light", _("Небольшие затруднения"), "ok"),
+    (5, "moderate", _("Затруднённое движение"), "warn"),
+    (7, "heavy", _("Пробки"), "alert"),
+    (9, "jam", _("Движение парализовано"), "crit"),
+)
+
+#: Уровень серьёзности инцидента (1–5) → подпись и CSS-модификатор.
+SEVERITY_SCALE: dict[int, tuple[str, str]] = {
+    1: (_("Незначительный"), "ok"),
+    2: (_("Умеренный"), "warn"),
+    3: (_("Значительный"), "warn"),
+    4: (_("Серьёзный"), "alert"),
+    5: (_("Критический"), "crit"),
+}
+
+#: Класс опасности ADR → краткое пояснение для карточки категории груза.
+HAZARD_CLASS_LABELS: dict[int, str] = {
+    0: _("Неопасный груз"),
+    1: _("Класс 1 — взрывчатые вещества"),
+    2: _("Класс 2 — газы"),
+    3: _("Класс 3 — легковоспламеняющиеся жидкости"),
+    4: _("Класс 4 — легковоспламеняющиеся твёрдые вещества"),
+    5: _("Класс 5 — окисляющие вещества"),
+    6: _("Класс 6 — токсичные и инфекционные вещества"),
+    7: _("Класс 7 — радиоактивные материалы"),
+    8: _("Класс 8 — коррозионные вещества"),
+    9: _("Класс 9 — прочие опасные вещества"),
+}
+
+
+def congestion_state(level: int | float | None) -> tuple[str, str, str]:
+    """Определить состояние движения по баллу загруженности.
+
+    Возвращает кортеж ``(код, подпись, CSS-модификатор)``. Для отсутствующего
+    значения выдаётся нейтральное состояние «нет данных».
+    """
+    if level is None:
+        return "unknown", _("Нет данных"), "muted"
+    result = CONGESTION_SCALE[0]
+    for threshold, code, label, tone in CONGESTION_SCALE:
+        if level >= threshold:
+            result = (threshold, code, label, tone)
+    return result[1], result[2], result[3]
+
+
+def severity_state(severity: int | None) -> tuple[str, str]:
+    """Определить подпись и тон оформления по уровню серьёзности инцидента."""
+    return SEVERITY_SCALE.get(int(severity or 1), ("Неизвестно", "muted"))

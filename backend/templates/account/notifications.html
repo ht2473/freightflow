@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% include "partials/_tabs.html" %}
+
+<div class="row row--between" style="margin-bottom:var(--sp-4)">
+    <div class="segmented">
+        <a href="{% url 'accounts:notifications' %}"
+           class="{% if not only_unread %}is-active{% endif %}">{% trans 'Все' %}</a>
+        <a href="{% url 'accounts:notifications' %}?unread=1"
+           class="{% if only_unread %}is-active{% endif %}">{% trans 'Непрочитанные' %}</a>
+    </div>
+    {% if unread %}
+        <form method="post" action="{% url 'accounts:notifications_read' %}">
+            {% csrf_token %}
+            <button class="button button--sm" type="submit">{% trans 'Отметить все прочитанными' %}</button>
+        </form>
+    {% endif %}
+</div>
+
+{% if page_obj.object_list %}
+    <div class="stack">
+        {% for item in page_obj.object_list %}
+            <article class="card{% if not item.is_read %} card--accent{% endif %}">
+                <div class="row row--between">
+                    <div>
+                        <span class="badge badge--{% if item.level == 'alert' %}alert{% elif item.level == 'warning' %}warn{% else %}plain{% endif %}">
+                            {{ item.get_level_display }}
+                        </span>
+                        <h3 style="font-size:var(--fs-md);margin:var(--sp-2) 0">{{ item.title }}</h3>
+                        <p class="small muted">{{ item.body }}</p>
+                    </div>
+                    <span class="small faint nowrap">{{ item.created_at|date:"d.m.Y H:i" }}</span>
+                </div>
+                {% if item.url %}
+                    <a class="button button--sm" style="margin-top:var(--sp-3)"
+                       href="{{ item.url }}">{% trans 'Перейти' %}</a>
+                {% endif %}
+            </article>
+        {% endfor %}
+    </div>
+    {% include "partials/_pagination.html" %}
+{% else %}
+    {% include "partials/_empty.html" with empty_title="Уведомлений нет" empty_text="Уведомления приходят по оформленным подпискам на дорожные события." empty_action_url="/account/subscriptions/" empty_action_title="Настроить подписки" %}
+{% endif %}
+{% endblock %}

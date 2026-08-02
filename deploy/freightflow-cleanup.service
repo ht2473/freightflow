@@ -1,0 +1,12 @@
+# Разовая задача очистки устаревших файлов отчётов.
+[Unit]
+Description=Очистка устаревших выгрузок ИС «ГрузПоток»
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=freightflow
+Group=freightflow
+WorkingDirectory=/opt/freightflow
+EnvironmentFile=/opt/freightflow/.env
+ExecStart=/opt/freightflow/.venv/bin/python backend/manage.py cleanup_exports

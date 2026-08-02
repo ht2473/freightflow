@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% include "partials/_tabs.html" %}
+
+<div class="grid grid--2">
+    <article class="card card--flush">
+        <div class="card__head">
+            <h3>{% trans 'Административные округа' %}</h3>
+            <a class="small" href="/django-admin/core/district/">{% trans 'Редактировать →' %}</a>
+        </div>
+        <div class="table-wrap" style="border:none">
+            <table class="data">
+                <thead><tr><th>{% trans 'Округ' %}</th><th class="num">{% trans 'Площадь' %}</th>
+                    <th class="num">{% trans 'Население' %}</th><th class="num">{% trans 'Объектов' %}</th><th>{% trans 'Координаты' %}</th></tr></thead>
+                <tbody>
+                    {% for item in districts %}
+                        <tr>
+                            <td>
+                                <span class="table-title">{{ item.short_name }}</span>
+                                <span class="table-sub">{{ item.name }}</span>
+                            </td>
+                            <td class="num">{{ item.area_sq_km|spaced:1 }}</td>
+                            <td class="num">{{ item.population|spaced }}</td>
+                            <td class="num">{{ item.objects_count }}</td>
+                            <td>
+                                {% if item.center %}
+                                    <span class="badge badge--ok">{% trans 'заданы' %}</span>
+                                {% else %}
+                                    <span class="badge badge--warn">{% trans 'отсутствуют' %}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </article>
+
+    <article class="card card--flush">
+        <div class="card__head">
+            <h3>{% trans 'Типы объектов инфраструктуры' %}</h3>
+            <a class="small" href="/django-admin/core/infrastructuretype/">{% trans 'Редактировать →' %}</a>
+        </div>
+        <div class="table-wrap" style="border:none">
+            <table class="data">
+                <thead><tr><th>{% trans 'Код' %}</th><th>{% trans 'Наименование' %}</th><th class="num">{% trans 'Объектов' %}</th></tr></thead>
+                <tbody>
+                    {% for item in types %}
+                        <tr>
+                            <td class="mono small faint">{{ item.code }}</td>
+                            <td>
+                                <span class="table-title">{{ item.name }}</span>
+                                <span class="table-sub">{{ item.description|truncatechars:60|dash }}</span>
+                            </td>
+                            <td class="num">{{ item.objects_count }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </article>
+
+    <article class="card card--flush">
+        <div class="card__head">
+            <h3>{% trans 'Категории грузов' %}</h3>
+            <a class="small" href="/django-admin/core/cargocategory/">{% trans 'Редактировать →' %}</a>
+        </div>
+        <div class="table-wrap" style="border:none">
+            <table class="data">
+                <thead><tr><th>{% trans 'Код' %}</th><th>{% trans 'Наименование' %}</th>
+                    <th>{% trans 'Класс опасности' %}</th><th class="num">{% trans 'Записей' %}</th></tr></thead>
+                <tbody>
+                    {% for item in categories %}
+                        <tr>
+                            <td class="mono small faint">{{ item.code }}</td>
+                            <td>{{ item.name }}</td>
+                            <td>
+                                {% if item.is_hazardous %}
+                                    <span class="badge badge--alert">класс {{ item.hazard_class }}</span>
+                                {% else %}
+                                    <span class="badge badge--ok">{% trans 'неопасный' %}</span>
+                                {% endif %}
+                            </td>
+                            <td class="num">{{ item.flows_count }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </article>
+
+    <article class="card card--flush">
+        <div class="card__head">
+            <h3>{% trans 'Источники данных' %}</h3>
+            <a class="small" href="/django-admin/core/datasource/">{% trans 'Редактировать →' %}</a>
+        </div>
+        <div class="table-wrap" style="border:none">
+            <table class="data">
+                <thead><tr><th>{% trans 'Код' %}</th><th>{% trans 'Наименование' %}</th>
+                    <th>{% trans 'Тип' %}</th><th class="num">{% trans 'Загрузок' %}</th><th>{% trans 'Состояние' %}</th></tr></thead>
+                <tbody>
+                    {% for item in sources %}
+                        <tr>
+                            <td class="mono small faint">{{ item.code }}</td>
+                            <td><a href="{{ item.get_absolute_url }}">{{ item.name }}</a></td>
+                            <td class="small muted">{{ item.get_source_type_display }}</td>
+                            <td class="num">{{ item.runs_count }}</td>
+                            <td>
+                                {% if item.is_active %}
+                                    <span class="badge badge--ok">{% trans 'активен' %}</span>
+                                {% else %}
+                                    <span class="badge">{% trans 'отключён' %}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </article>
+</div>
+
+<div class="card" style="margin-top:var(--sp-5)">
+    <h3 style="margin-bottom:var(--sp-3)">{% trans 'Порядок изменения справочников' %}</h3>
+    <p class="small muted">{% trans 'Справочники редактируются через штатную административную панель Django с контролем ссылочной целостности: удаление записи, на которую есть ссылки, блокируется. Изменение наименования отражается во всех разделах системы немедленно, изменение кода — только после повторной загрузки данных, так как код используется при сопоставлении записей из внешних источников.' %}</p>
+</div>
+{% endblock %}

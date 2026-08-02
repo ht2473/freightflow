@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+<div class="grid grid--3" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Источников данных' %}</span>
+        <span class="metric__value">{{ rows|length }}</span>
+        <span class="metric__note">активных: {{ active_count }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Журнал загрузок' %}</span>
+        <span class="metric__value" style="font-size:var(--fs-md)">
+            <a href="{% url 'core:etl_log' %}">{% trans 'История обновлений →' %}</a>
+        </span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Методика обработки' %}</span>
+        <span class="metric__value" style="font-size:var(--fs-md)">
+            <a href="{% url 'core:methodology' %}">{% trans 'Раздел «Методология» →' %}</a>
+        </span>
+    </div>
+</div>
+
+<section class="section">
+    <h2 style="margin-bottom:var(--sp-4)">{% trans 'Реестр источников' %}</h2>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+                <tr><th>{% trans 'Источник' %}</th><th>{% trans 'Тип' %}</th><th>{% trans 'Периодичность' %}</th>
+                    <th class="num">{% trans 'Загрузок' %}</th><th class="num">{% trans 'Записей' %}</th>
+                    <th class="num">{% trans 'Отклонено' %}</th><th>{% trans 'Последняя загрузка' %}</th><th>{% trans 'Состояние' %}</th></tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                    <tr data-href="{{ row.source.get_absolute_url }}">
+                        <td>
+                            <span class="table-title">{{ row.source.name }}</span>
+                        </td>
+                        <td class="small">{{ row.source.get_source_type_display }}</td>
+                        <td class="small muted">{{ row.source.get_update_frequency_display|dash }}</td>
+                        <td class="num">{{ row.runs }}</td>
+                        <td class="num">{{ row.loaded|spaced }}</td>
+                        <td class="num">{{ row.errors|spaced }}</td>
+                        <td class="small faint">{{ row.last_at|date:"d.m.Y H:i"|dash }}</td>
+                        <td>
+                            {% if row.source.is_active %}
+                                <span class="badge badge--ok">{% trans 'активен' %}</span>
+                            {% else %}
+                                <span class="badge">{% trans 'отключён' %}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="section">
+    <div class="section__head">
+        <div>
+            <p class="eyebrow">{% trans 'Контроль полноты' %}</p>
+            <h2>{% trans 'Наполненность основных таблиц' %}</h2>
+        </div>
+    </div>
+    <div class="grid grid--3">
+        {% for row in coverage %}
+            <div class="card">
+                <p class="eyebrow">{{ row.title }}</p>
+                <h3 style="margin:var(--sp-2) 0">{{ row.title }}</h3>
+                <p class="metric__value" style="font-size:var(--fs-xl)">{{ row.count|spaced }}</p>
+                {% if row.geo is not None %}
+                    <p class="small muted" style="margin-top:var(--sp-2)">
+                        с координатами: {{ row.geo|spaced }}
+                        ({{ row.geo|ratio:row.count|percent:0 }})
+                    </p>
+                    <div class="bar" style="margin-top:6px">
+                        <div class="bar__fill bar__fill--ok"
+                             style="width:{{ row.geo|ratio:row.count }}%"></div>
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

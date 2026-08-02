@@ -1,0 +1,70 @@
+# =============================================================================
+#  Системная служба ИС «ГрузПоток» (развёртывание без контейнеров)
+#
+#  Установка:
+#      sudo cp deploy/freightflow.service /etc/systemd/system/
+#      sudo systemctl daemon-reload
+#      sudo systemctl enable --now freightflow
+#
+#  Наблюдение:
+#      sudo systemctl status freightflow
+#      sudo journalctl -u freightflow -f
+# =============================================================================
+
+[Unit]
+Description=Информационная система «ГрузПоток»
+Documentation=file:///opt/freightflow/docs/DEPLOY.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+Requires=postgresql.service
+
+[Service]
+Type=notify
+User=freightflow
+Group=freightflow
+WorkingDirectory=/opt/freightflow
+
+EnvironmentFile=/opt/freightflow/.env
+Environment="PATH=/opt/freightflow/.venv/bin"
+Environment="DJANGO_SETTINGS_MODULE=config.settings"
+
+# Миграции применяются до запуска сервера: часть запросов иначе пришлась бы
+# на базу с устаревшей схемой.
+ExecStartPre=/opt/freightflow/.venv/bin/python backend/manage.py migrate --noinput
+ExecStartPre=/opt/freightflow/.venv/bin/python backend/manage.py collectstatic --noinput
+
+ExecStart=/opt/freightflow/.venv/bin/gunicorn config.wsgi:application \
+    --chdir /opt/freightflow/backend \
+    --bind unix:/run/freightflow/gunicorn.sock \
+    --workers 3 \
+    --threads 2 \
+    --timeout 60 \
+    --graceful-timeout 30 \
+    --access-logfile /opt/freightflow/logs/access.log \
+    --error-logfile /opt/freightflow/logs/error.log \
+    --capture-output
+
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=5
+
+RuntimeDirectory=freightflow
+RuntimeDirectoryMode=0755
+
+# --- Ограничение полномочий службы -------------------------------------------
+# Приложению нужен доступ на запись только к трём каталогам; остальная
+# файловая система монтируется только для чтения.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+ReadWritePaths=/opt/freightflow/logs /opt/freightflow/media /opt/freightflow/staticfiles
+
+[Install]
+WantedBy=multi-user.target

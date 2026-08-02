@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% include "partials/_tabs.html" %}
+
+{% if page_obj.object_list %}
+    <div class="grid grid--3">
+        {% for item in page_obj.object_list %}
+            <article class="card">
+                <p class="eyebrow">{{ item.get_kind_display }}</p>
+                <h3 style="margin:var(--sp-2) 0 var(--sp-3);font-size:var(--fs-md)">{{ item.title }}</h3>
+                <dl class="facts">
+                    <div><dt>{% trans 'Элементов в наборе' %}</dt><dd>{{ item.size }}</dd></div>
+                    <div><dt>{% trans 'Создан' %}</dt><dd>{{ item.created_at|date:"d.m.Y" }}</dd></div>
+                </dl>
+                {% if item.kind == "district" %}
+                    <a class="button button--block button--primary" style="margin-top:var(--sp-4)"
+                       href="{% url 'analytics:compare' %}?{% for id in item.member_ids %}district={{ id }}&{% endfor %}">{% trans 'Сравнить округа' %}</a>
+                {% endif %}
+            </article>
+        {% endfor %}
+    </div>
+    {% include "partials/_pagination.html" %}
+{% else %}
+    {% include "partials/_empty.html" with empty_title="Наборов сравнения нет" empty_text="Наборы формируются в разделе аналитики: отметьте несколько округов и сохраните подборку для повторного использования." empty_action_url="/analytics/compare/" empty_action_title="Перейти к сравнению" %}
+{% endif %}
+{% endblock %}

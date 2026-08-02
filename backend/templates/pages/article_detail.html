@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block page_header %}
+<header class="page-header">
+    <div class="page-header__row">
+        <div>
+            <p class="eyebrow">{{ article.category.name }}</p>
+            <h1>{{ article.title }}</h1>
+            <p class="lead">{{ article.lead }}</p>
+            <p class="small faint" style="margin-top:var(--sp-3)">
+                {{ article.published_at|date:"d.m.Y" }} ·
+                {{ article.reading_minutes }} мин чтения ·
+                {{ article.view_count }} просмотров
+                {% if article.author %}· {{ article.author.get_full_name|default:article.author.username }}{% endif %}
+            </p>
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid--sidebar">
+    <article class="prose">
+        {% for paragraph in article.paragraphs %}
+            <p>{{ paragraph }}</p>
+        {% endfor %}
+    </article>
+
+    <aside class="stack">
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Разделы системы по теме' %}</h3>
+            <div class="stack stack--tight small">
+                <a href="{% url 'core:district_list' %}">{% trans 'Профили округов' %}</a>
+                <a href="{% url 'core:traffic' %}">{% trans 'Дорожная обстановка' %}</a>
+                <a href="{% url 'analytics:index' %}">{% trans 'Индекс логистической нагрузки' %}</a>
+                <a href="{% url 'core:methodology' %}">{% trans 'Методология расчётов' %}</a>
+            </div>
+        </div>
+
+        {% if related %}
+            <div class="card">
+                <h3 style="margin-bottom:var(--sp-3)">{% trans 'Ещё в рубрике' %}</h3>
+                <div class="stack stack--tight">
+                    {% for item in related %}
+                        <a href="{{ item.get_absolute_url }}" style="color:inherit">
+                            <span class="table-title">{{ item.title }}</span>
+                            <span class="table-sub">{{ item.published_at|date:"d.m.Y" }}</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Замечание к материалу?' %}</h3>
+            <p class="small muted" style="margin-bottom:var(--sp-3)">{% trans 'Сообщите о неточности через форму обратной связи.' %}</p>
+            <a class="button button--block" href="{% url 'content:feedback' %}">{% trans 'Написать' %}</a>
+        </div>
+    </aside>
+</div>
+{% endblock %}

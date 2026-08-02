@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+<div class="grid grid--3" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Категорий в классификаторе' %}</span>
+        <span class="metric__value">{{ categories|length }}</span>
+    </div>
+    <div class="metric metric--warn">
+        <span class="metric__label">{% trans 'Опасных грузов' %}</span>
+        <span class="metric__value">{{ hazardous_count }}</span>
+        <span class="metric__note">{% trans 'требуют согласования маршрута и времени движения' %}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Классификация' %}</span>
+        <span class="metric__value" style="font-size:var(--fs-md)">{% trans 'ДОПОГ / ADR' %}</span>
+        <span class="metric__note">{% trans 'классы опасности от 1 до 9' %}</span>
+    </div>
+</div>
+
+<div class="table-wrap">
+    <table class="data">
+        <thead>
+            <tr>
+                <th>{% trans 'Категория груза' %}</th>
+                <th>{% trans 'Код' %}</th>
+                <th>{% trans 'Класс опасности' %}</th>
+                <th class="num">{% trans 'Объём перевозок' %}</th>
+                <th>{% trans 'Доля' %}</th>
+                <th class="num">{% trans 'Рейсов' %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in categories %}
+                <tr>
+                    <td>
+                        <span class="table-title">{{ item.category.name }}</span>
+                        <span class="table-sub">{{ item.category.hazard_label }}</span>
+                    </td>
+                    <td>
+                        {% if item.category.is_hazardous %}
+                            <span class="badge badge--alert">класс {{ item.category.hazard_class }}</span>
+                        {% else %}
+                            <span class="badge badge--ok">{% trans 'неопасный' %}</span>
+                        {% endif %}
+                    </td>
+                    <td class="num">{{ item.volume|tons }}</td>
+                    <td style="min-width:120px">
+                        <div class="bar">
+                            <div class="bar__fill{% if item.category.is_hazardous %} bar__fill--alert{% endif %}"
+                                 style="width:{{ item.volume|ratio:max_volume }}%"></div>
+                        </div>
+                    </td>
+                    <td class="num">{{ item.vehicles|spaced }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<section class="section" style="margin-top:var(--sp-6)">
+    <div class="card">
+        <h3 style="margin-bottom:var(--sp-3)">{% trans 'О классификации опасных грузов' %}</h3>
+        <div class="prose">
+            <p class="small muted">{% trans 'Класс опасности определяется Европейским соглашением о международной дорожной перевозке опасных грузов (ДОПОГ). Перевозка грузов с ненулевым классом требует специального разрешения, согласования маршрута и временных интервалов движения, а также применения транспортных средств соответствующего исполнения. Эти ограничения напрямую влияют на выбор коридоров: часть направлений для таких перевозок недоступна.' %}</p>
+        </div>
+    </div>
+</section>
+{% endblock %}
