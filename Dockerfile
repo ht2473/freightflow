@@ -21,19 +21,14 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
         build-essential libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml ./
+# Устанавливается только состав времени выполнения и только из requirements.txt.
+# Список версий не дублируется в этом файле намеренно: продублированный
+# перечень расходился с pyproject.toml молча, и образ мог собираться
+# с версиями, на которых не прогонялись тесты.
+COPY requirements.txt ./
 RUN python -m venv /opt/venv \
     && /opt/venv/bin/pip install --upgrade pip setuptools wheel \
-    && /opt/venv/bin/pip install \
-        "django==6.0.7" \
-        "djangorestframework==3.17.1" \
-        "drf-spectacular==0.30.0" \
-        "psycopg[binary]==3.3.4" \
-        "whitenoise==6.11.0" \
-        "gunicorn==23.0.0" \
-        "openpyxl==3.1.5" \
-        "python-docx==1.2.0" \
-        "reportlab==4.4.4"
+    && /opt/venv/bin/pip install -r requirements.txt
 
 # --- Этап 2: образ приложения -------------------------------------------------
 FROM python:3.12-slim

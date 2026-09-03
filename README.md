@@ -139,7 +139,7 @@ cd freightflow
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
+pip install -r requirements.txt -r requirements-dev.txt
 
 cp .env.example .env                # заполните FF_SECRET_KEY
 python backend/manage.py migrate

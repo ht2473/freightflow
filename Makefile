@@ -27,7 +27,7 @@ venv:  ## Создать виртуальное окружение
 	$(PIP) install --upgrade pip setuptools wheel
 
 install: venv  ## Установить зависимости, включая инструменты разработки
-	$(PIP) install -e ".[dev]"
+	$(PIP) install -r requirements.txt -r requirements-dev.txt
 
 # --- База данных ---------------------------------------------------------------
 
