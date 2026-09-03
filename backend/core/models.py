@@ -104,22 +104,6 @@ class InfrastructureType(models.Model):
     def __str__(self) -> str:
         return self.name
 
-    @property
-    def icon(self) -> str:
-        """Имя SVG-символа для карты и списков.
-
-        Символы объявлены в спрайте ``static/img/sprite.svg``; для незнакомого
-        кода используется универсальная пиктограмма склада.
-        """
-        return {
-            "warehouse": "warehouse",
-            "terminal": "terminal",
-            "cargo_yard": "yard",
-            "parking": "parking",
-            "checkpoint": "checkpoint",
-            "distribution": "distribution",
-        }.get(self.code, "warehouse")
-
 
 class CargoCategory(models.Model):
     """Категория перевозимого груза с указанием класса опасности ADR."""

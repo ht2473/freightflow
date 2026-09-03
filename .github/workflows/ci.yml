@@ -102,6 +102,20 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -e ".[dev]"
+      # Сборка статики предшествует проверке намеренно. Хранилище с манифестом
+      # разрешает имена файлов по нему, и отсутствие манифеста проявляется не
+      # при сборке, а на каждой странице промышленного контура. Такой отказ уже
+      # случался: ссылка на несуществующую карту исходников в leaflet.js роняла
+      # collectstatic, манифест не создавался, и приложение отвечало пятисотыми.
+      # Здесь эта ветвь исполняется на каждом изменении.
+      - name: Сборка статики промышленного контура
+        env:
+          FF_SECRET_KEY: ci-only-secret-key-not-used-in-production-Bp7xQm2vTz9Kd4Lw
+          FF_DEBUG: "False"
+          FF_ALLOWED_HOSTS: freightflow.example.ru
+          FF_DB_ENGINE: sqlite
+        run: python backend/manage.py collectstatic --noinput --clear
+
       - name: Проверка конфигурации промышленного контура
         env:
           FF_SECRET_KEY: ci-only-secret-key-not-used-in-production-Bp7xQm2vTz9Kd4Lw

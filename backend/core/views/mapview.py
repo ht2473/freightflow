@@ -120,7 +120,6 @@ def layer_objects(request) -> JsonResponse:
             "name": obj.name,
             "type": obj.type.name,
             "type_code": obj.type.code,
-            "icon": obj.type.icon,
             "district": obj.district.short_name,
             "address": obj.address or "",
             "capacity": float(obj.capacity_tons) if obj.capacity_tons else None,
