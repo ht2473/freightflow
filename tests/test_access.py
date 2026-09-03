@@ -49,7 +49,7 @@ class TestAnonymousAccess:
 
     def test_export_requires_login(self, client, db):
         """Выгрузка отчётов требует авторизации."""
-        response = client.get(reverse("exports:create"), {"dataset": "objects"})
+        response = client.post(reverse("exports:create"), {"dataset": "objects"})
         assert response.status_code in (302, 403)
 
 
@@ -85,7 +85,7 @@ class TestRolePermissions:
     def test_viewer_cannot_export(self, client, users, full_dataset):
         """Наблюдателю выгрузка отчётов недоступна."""
         client.force_login(users["viewer"])
-        response = client.get(
+        response = client.post(
             reverse("exports:create"), {"dataset": "objects", "format": "csv"}
         )
         assert response.status_code == 403
@@ -95,7 +95,7 @@ class TestRolePermissions:
         from accounts.models import ExportJob
 
         client.force_login(users["analyst"])
-        client.get(reverse("exports:create"), {"dataset": "objects", "format": "csv"})
+        client.post(reverse("exports:create"), {"dataset": "objects", "format": "csv"})
         assert ExportJob.objects.filter(status="done").exists()
 
 
@@ -188,7 +188,7 @@ class TestAuditTrail:
         from accounts.models import AuditEvent
 
         client.force_login(users["analyst"])
-        client.get(reverse("exports:create"), {"dataset": "objects", "format": "csv"})
+        client.post(reverse("exports:create"), {"dataset": "objects", "format": "csv"})
         assert AuditEvent.objects.filter(action="export").exists()
 
     def test_role_change_recorded(self, client, users):

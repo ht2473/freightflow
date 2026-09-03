@@ -8,8 +8,10 @@ from accounts.models import AuditEvent, ExportJob, profile_for
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.http import QueryDict
 from django.shortcuts import redirect
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from .builders import BUILDERS, build_filename, build_geojson, ensure_export_root
 from .datasets import DATASET_TITLES, DATASETS
@@ -18,10 +20,16 @@ logger = logging.getLogger("freightflow.exports")
 
 
 @login_required
+@require_POST
 def create(request):
     """Сформировать отчёт по набору данных и условиям отбора.
 
-    Условия отбора берутся из параметров запроса — тех же, что и на странице,
+    Метод POST выбран не формально. Обработчик создаёт запись задания, пишет
+    файл на диск и оставляет запись в журнале аудита; по ссылке такие действия
+    выполняться не должны — их запускает предзагрузка ссылок браузером и обход
+    роботом, и они проходят мимо защиты от подделки запросов.
+
+    Условия отбора приходят полем ``filters`` — это строка запроса страницы,
     с которой вызвана выгрузка. Благодаря этому пользователь получает ровно
     ту выборку, которую видит на экране.
     """
@@ -31,9 +39,12 @@ def create(request):
             "Выгрузка отчётов доступна пользователям с ролью «Аналитик» и выше"
         )
 
-    dataset_code = request.GET.get("dataset", "")
-    fmt = request.GET.get("format", "xlsx").lower()
-    back = request.GET.get("next") or "/"
+    dataset_code = request.POST.get("dataset", "")
+    fmt = request.POST.get("format", "xlsx").lower()
+    back = request.POST.get("next") or "/"
+    # Условия отбора разбираются как строка запроса: построители наборов
+    # рассчитаны на QueryDict и умеют работать с повторяющимися параметрами.
+    filters = QueryDict(request.POST.get("filters", ""))
 
     if dataset_code not in DATASETS:
         messages.error(request, "Указан неизвестный набор данных для выгрузки.")
@@ -55,11 +66,11 @@ def create(request):
         title=DATASET_TITLES.get(dataset_code, dataset_code),
         dataset=dataset_code,
         fmt=fmt,
-        query=request.GET.urlencode()[:1000],
+        query=filters.urlencode()[:1000],
     )
 
     try:
-        dataset = builder(request.GET)
+        dataset = builder(filters)
         root = ensure_export_root()
         file_name = build_filename(dataset, fmt)
         path = root / file_name

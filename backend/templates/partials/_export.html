@@ -1,23 +1,30 @@
-{% load ff i18n %}
-{# Панель выгрузки отчёта. Условия отбора текущей страницы передаются в     #}
-{# запрос без изменений, поэтому пользователь получает ровно ту выборку,    #}
-{# которую видит на экране.                                                 #}
+{% load i18n %}
+{# Панель выгрузки отчёта.                                                  #}
+{#                                                                          #}
+{# Форма отправляется методом POST. Формирование отчёта создаёт запись      #}
+{# задания, пишет файл на диск и оставляет след в журнале аудита — то есть  #}
+{# изменяет состояние системы, а такие действия не должны выполняться по    #}
+{# ссылке: их запускает предзагрузка ссылок браузером и любой обход         #}
+{# роботом, и они проходят мимо защиты от подделки запросов.                #}
+{#                                                                          #}
+{# Условия отбора текущей страницы передаются скрытым полем без изменений,  #}
+{# поэтому пользователь получает ровно ту выборку, которую видит на экране. #}
 {% if user.is_authenticated and user.profile.can_export %}
-    <div class="segmented" role="group" aria-label="{% trans 'Выгрузка отчёта' %}">
+    <form method="post" action="{% url 'exports:create' %}" class="segmented"
+          role="group" aria-label="{% trans 'Выгрузка отчёта' %}">
+        {% csrf_token %}
+        <input type="hidden" name="dataset" value="{{ export_dataset }}">
+        <input type="hidden" name="filters" value="{{ request.META.QUERY_STRING }}">
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
         <span class="small faint" style="padding:4px 10px">{% trans 'Выгрузить:' %}</span>
-        {% query dataset=export_dataset format="xlsx" next=request.path as q_xlsx %}
-        <a href="{% url 'exports:create' %}{{ q_xlsx }}">XLSX</a>
-        {% query dataset=export_dataset format="docx" next=request.path as q_docx %}
-        <a href="{% url 'exports:create' %}{{ q_docx }}">DOCX</a>
-        {% query dataset=export_dataset format="pdf" next=request.path as q_pdf %}
-        <a href="{% url 'exports:create' %}{{ q_pdf }}">PDF</a>
-        {% query dataset=export_dataset format="csv" next=request.path as q_csv %}
-        <a href="{% url 'exports:create' %}{{ q_csv }}">CSV</a>
+        <button type="submit" name="format" value="xlsx">XLSX</button>
+        <button type="submit" name="format" value="docx">DOCX</button>
+        <button type="submit" name="format" value="pdf">PDF</button>
+        <button type="submit" name="format" value="csv">CSV</button>
         {% if export_geojson %}
-            {% query dataset=export_dataset format="geojson" next=request.path as q_geo %}
-            <a href="{% url 'exports:create' %}{{ q_geo }}">GeoJSON</a>
+            <button type="submit" name="format" value="geojson">GeoJSON</button>
         {% endif %}
-    </div>
+    </form>
 {% elif user.is_authenticated %}
     <a class="button button--sm button--ghost" href="{% url 'accounts:api_access' %}"
        title="{% trans 'Выгрузка доступна с роли «Аналитик»' %}">{% trans 'Выгрузка недоступна' %}</a>

@@ -257,7 +257,7 @@ class TestExportView:
         from accounts.models import ExportJob
 
         client.force_login(users["analyst"])
-        client.get(reverse("exports:create"), {"dataset": "objects", "format": fmt})
+        client.post(reverse("exports:create"), {"dataset": "objects", "format": fmt})
         job = ExportJob.objects.latest("id")
         assert job.status == ExportJob.Status.DONE
         assert (export_root / job.file_name).exists()
@@ -267,7 +267,7 @@ class TestExportView:
         from accounts.models import ExportJob
 
         client.force_login(users["analyst"])
-        client.get(reverse("exports:create"), {"dataset": "неизвестно", "format": "csv"})
+        client.post(reverse("exports:create"), {"dataset": "неизвестно", "format": "csv"})
         assert ExportJob.objects.count() == 0
 
     def test_unknown_format_rejected(self, client, users, full_dataset, export_root):
@@ -275,7 +275,7 @@ class TestExportView:
         from accounts.models import ExportJob
 
         client.force_login(users["analyst"])
-        client.get(reverse("exports:create"), {"dataset": "objects", "format": "exe"})
+        client.post(reverse("exports:create"), {"dataset": "objects", "format": "exe"})
         assert ExportJob.objects.count() == 0
 
     def test_geojson_rejected_for_flat_dataset(self, client, users, full_dataset, export_root):
@@ -283,7 +283,7 @@ class TestExportView:
         from accounts.models import ExportJob
 
         client.force_login(users["analyst"])
-        client.get(reverse("exports:create"), {"dataset": "flows", "format": "geojson"})
+        client.post(reverse("exports:create"), {"dataset": "flows", "format": "geojson"})
         assert ExportJob.objects.count() == 0
 
     def test_download_own_file(self, client, users, full_dataset, export_root):
@@ -291,7 +291,7 @@ class TestExportView:
         from accounts.models import ExportJob
 
         client.force_login(users["analyst"])
-        client.get(reverse("exports:create"), {"dataset": "objects", "format": "csv"})
+        client.post(reverse("exports:create"), {"dataset": "objects", "format": "csv"})
         job = ExportJob.objects.latest("id")
         response = client.get(reverse("accounts:export_download", args=[job.pk]))
         assert response.status_code == 200
@@ -301,13 +301,87 @@ class TestExportView:
         from accounts.models import ExportJob
 
         client.force_login(users["analyst"])
-        client.get(reverse("exports:create"), {"dataset": "objects", "format": "csv"})
+        client.post(reverse("exports:create"), {"dataset": "objects", "format": "csv"})
         job = ExportJob.objects.latest("id")
 
         client.force_login(users["operator"])
         assert client.get(
             reverse("accounts:export_download", args=[job.pk])
         ).status_code == 404
+
+
+class TestExportIsNotIdempotentGet:
+    """Формирование отчёта изменяет состояние и потому недоступно по ссылке.
+
+    Метод: негативное тестирование. Обработчик создаёт запись задания,
+    пишет файл и оставляет запись в журнале аудита. Пока он отвечал на GET,
+    отчёт формировался от предзагрузки ссылки браузером и от обхода роботом,
+    а защита от подделки запросов не применялась вовсе.
+    """
+
+    def test_get_is_rejected(self, client, users, full_dataset, export_root):
+        """Обращение методом GET отклоняется."""
+        from accounts.models import ExportJob
+
+        client.force_login(users["analyst"])
+        response = client.get(
+            reverse("exports:create"), {"dataset": "objects", "format": "csv"}
+        )
+        assert response.status_code == 405
+        assert ExportJob.objects.count() == 0
+
+    def test_post_without_csrf_is_rejected(self, users, full_dataset, export_root):
+        """Отправка без маркера защиты от подделки отклоняется."""
+        from accounts.models import ExportJob
+        from django.test import Client
+
+        enforcing = Client(enforce_csrf_checks=True)
+        enforcing.force_login(users["analyst"])
+        response = enforcing.post(
+            reverse("exports:create"), {"dataset": "objects", "format": "csv"}
+        )
+        assert response.status_code == 403
+        assert ExportJob.objects.count() == 0
+
+
+class TestExportFilters:
+    """Условия отбора переносятся в отчёт со страницы, с которой он вызван."""
+
+    def test_filters_narrow_the_report(self, client, users, full_dataset, export_root):
+        """Отчёт содержит ровно ту выборку, что видна на экране."""
+        from accounts.models import ExportJob
+        from core.models import InfrastructureObject
+
+        client.force_login(users["analyst"])
+        district = InfrastructureObject.objects.first().district
+
+        client.post(reverse("exports:create"), {
+            "dataset": "objects",
+            "format": "csv",
+            "filters": f"district={district.pk}",
+        })
+        narrowed = ExportJob.objects.latest("id")
+
+        client.post(reverse("exports:create"), {"dataset": "objects", "format": "csv"})
+        full = ExportJob.objects.latest("id")
+
+        expected = InfrastructureObject.objects.filter(district=district).count()
+        assert narrowed.row_count == expected
+        assert full.row_count == InfrastructureObject.objects.count()
+        assert narrowed.row_count < full.row_count
+
+    def test_filters_are_recorded_with_the_job(self, client, users, full_dataset,
+                                               export_root):
+        """Условия отбора сохраняются в задании — отчёт воспроизводим."""
+        from accounts.models import ExportJob
+
+        client.force_login(users["analyst"])
+        client.post(reverse("exports:create"), {
+            "dataset": "objects", "format": "csv", "filters": "district=1&type=2",
+        })
+        job = ExportJob.objects.latest("id")
+        assert "district=1" in job.query
+        assert "type=2" in job.query
 
 
 class TestCleanup:

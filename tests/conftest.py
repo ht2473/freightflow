@@ -307,6 +307,25 @@ def neutralize_deployment_settings(settings):
 
 
 @pytest.fixture(autouse=True)
+def isolate_media_root(settings, tmp_path):
+    """Увести файловые артефакты теста во временный каталог.
+
+    Без этого приспособления прогон набора складывал сформированные отчёты
+    в рабочий каталог ``media/exports`` рядом с пользовательскими: там
+    обнаруживались выгрузки с тестовыми фикстурами — «Склад „Центр“»,
+    «Тестовый источник». Помимо мусора это опасно тем, что тест мог
+    наблюдать файл, оставленный предыдущим прогоном, и пройти по чужому
+    результату.
+
+    Каталог выдаётся pytest на каждый тест отдельно, поэтому проверки
+    ещё и перестают зависеть друг от друга.
+    """
+    settings.MEDIA_ROOT = tmp_path / "media"
+    settings.EXPORT_ROOT = tmp_path / "media" / "exports"
+    settings.EXPORT_ROOT.mkdir(parents=True, exist_ok=True)
+
+
+@pytest.fixture(autouse=True)
 def clear_caches():
     """Сбрасывать кеш между тестами.
 
