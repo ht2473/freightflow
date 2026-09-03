@@ -14,6 +14,9 @@ djangorestframework==3.17.1
 drf-spectacular==0.30.0
 psycopg[binary]==3.3.4
 whitenoise==6.11.0
+# Клиент Redis. Настройка FF_REDIS_URL существовала и раньше, но пакет
+# в состав не входил: включение кеша роняло приложение на импорте.
+redis==5.2.1
 gunicorn==23.0.0
 openpyxl==3.1.5
 python-docx==1.2.0

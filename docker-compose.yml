@@ -19,9 +19,13 @@ services:
       POSTGRES_DB: ${FF_DB_NAME:-freightflow}
       POSTGRES_USER: ${FF_DB_USER:-freightflow}
       POSTGRES_PASSWORD: ${FF_DB_PASSWORD:?укажите FF_DB_PASSWORD в файле .env}
-      # Локаль влияет на порядок сортировки кириллических наименований.
-      POSTGRES_INITDB_ARGS: "--locale=ru_RU.UTF-8 --encoding=UTF8"
-      LANG: ru_RU.utf8
+      # Порядок сортировки кириллицы задаётся провайдером ICU. Прежнее
+      # значение "--locale=ru_RU.UTF-8" инициализацию срывало: такой локали
+      # в образе нет — доступны только C, C.UTF-8, en_US.utf8 и POSIX,
+      # initdb отказывал, и контейнер уходил в бесконечный перезапуск.
+      # ICU даёт правильный порядок ("Апельсин, ёж, Ёлка, Яблоко") без
+      # генерации системной локали в образе.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale-provider=icu --icu-locale=ru-RU --locale=C.UTF-8"
     volumes:
       - db_data:/var/lib/postgresql/data
       # Сценарии из этого каталога выполняются при первом создании базы.

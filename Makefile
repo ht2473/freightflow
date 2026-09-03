@@ -12,7 +12,8 @@ MANAGE  := $(PYTHON) backend/manage.py
 
 .DEFAULT_GOAL := help
 .PHONY: help venv install migrate seed demo run test cover lint fix check \
-        static clean docker-up docker-down docker-logs backup
+        static clean browsers dev-up dev-down dev-reset \
+        docker-up docker-down docker-logs backup
 
 help:  ## Показать перечень доступных целей
 	@echo "ИС «ГрузПоток» — доступные операции:"
@@ -59,11 +60,19 @@ static:  ## Собрать статические файлы
 
 # --- Проверки -------------------------------------------------------------------
 
+browsers:  ## Загрузить браузер для проверок Playwright
+	$(PYTHON) -m playwright install --with-deps chromium
+
 test:  ## Выполнить набор автотестов
 	$(PYTEST) -q
 
-test-pg:  ## Выполнить набор автотестов на PostgreSQL
-	FF_DB_ENGINE=postgres $(PYTEST) -q
+test-pg: dev-up  ## Выполнить набор автотестов на PostgreSQL с PostGIS
+	FF_DB_ENGINE=postgres \
+	FF_DB_HOST=127.0.0.1 \
+	FF_DB_PORT=$${FF_DEV_DB_PORT:-55432} \
+	FF_DB_PASSWORD=$${FF_DB_PASSWORD:-freightflow} \
+	FF_REDIS_URL=redis://127.0.0.1:$${FF_DEV_REDIS_PORT:-56379}/1 \
+	$(PYTEST) -q
 
 cover:  ## Выполнить тесты с измерением покрытия
 	$(PYTEST) --cov=backend --cov-report=term-missing --cov-report=html
@@ -83,6 +92,15 @@ load:  ## Нагрузочное испытание (требуется запу
 	.venv/bin/locust -f tests/locustfile.py --host http://127.0.0.1:8000
 
 # --- Контейнеры ------------------------------------------------------------------
+
+dev-up:  ## Поднять контур разработки: PostgreSQL с PostGIS и Redis
+	docker compose -f docker-compose.dev.yml up -d
+
+dev-down:  ## Остановить контур разработки с сохранением данных
+	docker compose -f docker-compose.dev.yml down
+
+dev-reset:  ## Остановить контур разработки и стереть его базу
+	docker compose -f docker-compose.dev.yml down -v
 
 docker-up:  ## Развернуть промышленный контур
 	docker compose up -d --build

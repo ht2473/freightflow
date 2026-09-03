@@ -1,0 +1,75 @@
+# =============================================================================
+#  ИС «ГрузПоток» — контур разработки
+#
+#  Поднимает только службы, которые неудобно ставить на рабочую машину:
+#  PostgreSQL с расширением PostGIS и Redis. Само приложение запускается
+#  на хосте обычным `manage.py runserver` — так правки видны сразу, без
+#  пересборки образа, а отладчик подключается к обычному процессу Python.
+#
+#  Это отличает файл от docker-compose.yml, который разворачивает
+#  промышленный контур целиком, включая gunicorn и nginx.
+#
+#  Порты выведены на хост, поэтому приложение обращается к службам по
+#  127.0.0.1. Значения по умолчанию рассчитаны на локальную работу и
+#  паролей из окружения не требуют: контур не выходит за пределы машины.
+#
+#  Запуск:     docker compose -f docker-compose.dev.yml up -d
+#  Состояние:  docker compose -f docker-compose.dev.yml ps
+#  Остановка:  docker compose -f docker-compose.dev.yml down
+#  Сброс базы: docker compose -f docker-compose.dev.yml down -v
+# =============================================================================
+
+name: freightflow-dev
+
+services:
+
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: freightflow-dev-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${FF_DB_NAME:-freightflow}
+      POSTGRES_USER: ${FF_DB_USER:-freightflow}
+      POSTGRES_PASSWORD: ${FF_DB_PASSWORD:-freightflow}
+      # Порядок сортировки кириллицы задаётся провайдером ICU. Прежнее
+      # значение "--locale=ru_RU.UTF-8" инициализацию срывало: такой локали
+      # в образе нет — доступны только C, C.UTF-8, en_US.utf8 и POSIX,
+      # initdb отказывал, и контейнер уходил в бесконечный перезапуск.
+      # ICU даёт правильный порядок ("Апельсин, ёж, Ёлка, Яблоко") без
+      # генерации системной локали в образе.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale-provider=icu --icu-locale=ru-RU --locale=C.UTF-8"
+    ports:
+      # Нестандартный порт снаружи: на 5432 у разработчика часто уже
+      # слушает системный PostgreSQL, и подключение уходило бы не туда.
+      - "${FF_DEV_DB_PORT:-55432}:5432"
+    volumes:
+      - dev_db_data:/var/lib/postgresql/data
+      # Расширения создаются при первом создании базы. Схему и данные
+      # накатывают миграциями Django, а не сценариями из этого каталога:
+      # контур разработки должен воспроизводить путь, которым база
+      # создаётся на самом деле.
+      - ./deploy/dev-init-extensions.sql:/docker-entrypoint-initdb.d/10-extensions.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${FF_DB_USER:-freightflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  cache:
+    image: redis:7-alpine
+    container_name: freightflow-dev-cache
+    restart: unless-stopped
+    # Сохранение на диск отключено намеренно: в кеше нет ничего, что стоило
+    # бы пережить перезапуск, а запись мешала бы наблюдать поведение системы
+    # с холодным кешем.
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "${FF_DEV_REDIS_PORT:-56379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  dev_db_data:
