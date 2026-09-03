@@ -115,6 +115,13 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.humanize",
+    # WhiteNoise отдаёт статику и в режиме разработки. Иначе её
+    # обслуживает штатный обработчик runserver, который
+    # перехватывает запросы до цепочки middleware и не выставляет
+    # Cache-Control: браузер кеширует файл по своей эвристике и
+    # продолжает исполнять прежний сценарий после его правки.
+    # Приложение обязано стоять перед staticfiles.
+    "whitenoise.runserver_nostatic",
     "django.contrib.staticfiles",
     # Внешние библиотеки.
     "rest_framework",
@@ -137,10 +144,6 @@ MIDDLEWARE = [
     "django.middleware.gzip.GZipMiddleware",
     # Собственные обработчики: сквозной идентификатор запроса и журнал действий.
     "core.middleware.RequestIdMiddleware",
-    # Действует только при включённой отладке: сервер разработки отдаёт
-    # статику без Cache-Control, и браузер продолжал исполнять прежний
-    # сценарий после его правки.
-    "core.middleware.NoStaticCacheInDebugMiddleware",
     "accounts.middleware.AuditMiddleware",
 ]
 
@@ -259,6 +262,18 @@ STORAGES = {
         )
     },
 }
+
+# Заголовки кеширования статики.
+#
+# В отладке файл обязан запрашиваться заново на каждой перезагрузке: иначе
+# страница продолжает исполнять прежний сценарий после его правки, и
+# расхождение выглядит как дефект приложения. В промышленном контуре имена
+# файлов содержат хеш содержимого, поэтому кешировать их можно бессрочно.
+WHITENOISE_MAX_AGE = 0 if DEBUG else 31536000
+
+# В отладке WhiteNoise перечитывает файлы с диска, а не полагается на список,
+# составленный при запуске: иначе новый файл не отдавался бы до перезапуска.
+WHITENOISE_AUTOREFRESH = DEBUG
 
 # Ограничение размера загружаемых файлов импорта (по умолчанию 25 МБ).
 DATA_UPLOAD_MAX_MEMORY_SIZE = env_int("MAX_UPLOAD_MB", 25) * 1024 * 1024

@@ -187,49 +187,48 @@ def test_production_contour_passes_all_checks(settings, tmp_path):
 
 
 class TestStaticCacheHeaders:
-    """Заголовки кеширования статики (core.middleware).
+    """Заголовки кеширования статики.
 
-    Метод: модульное тестирование. Дефект, ради которого написан обработчик,
-    не ломает приложение — он изматывает разработчика: сервер разработки
-    отдаёт статику без Cache-Control, браузер кеширует ответ по своей
-    эвристике, и страница продолжает исполнять прежний сценарий после
-    правки. Расхождение выглядит как дефект приложения.
+    Метод: функциональное тестирование. Дефект, ради которого написана
+    настройка, не ломает приложение — он изматывает разработчика: страница
+    продолжает исполнять прежний сценарий после его правки, и расхождение
+    выглядит как дефект приложения.
 
-    Обработчик проверяется напрямую, а не через тестовый клиент: он исключает
-    себя из цепочки на этапе её сборки, то есть один раз за процесс, и
-    подмена settings.DEBUG внутри отдельной проверки на это уже не влияет.
+    Причина была в том, что статику в отладке обслуживал штатный обработчик
+    runserver: он перехватывает запросы до цепочки middleware и не выставляет
+    Cache-Control, а браузер в отсутствие заголовка кеширует ответ по своей
+    эвристике. Теперь статику и в отладке отдаёт WhiteNoise.
     """
 
-    @staticmethod
-    def _build(settings, debug):
-        from core.middleware import NoStaticCacheInDebugMiddleware
-        from django.core.exceptions import MiddlewareNotUsed
-        from django.http import HttpResponse
+    def test_whitenoise_serves_static_in_debug(self, settings):
+        """WhiteNoise подключён раньше штатного обработчика статики."""
+        apps = settings.INSTALLED_APPS
+        assert "whitenoise.runserver_nostatic" in apps
+        # Порядок существенный: приложение подменяет команду runserver,
+        # и подмена сработает только до django.contrib.staticfiles.
+        assert apps.index("whitenoise.runserver_nostatic") < apps.index(
+            "django.contrib.staticfiles"
+        )
 
-        settings.DEBUG = debug
-        try:
-            return NoStaticCacheInDebugMiddleware(lambda request: HttpResponse("тело"))
-        except MiddlewareNotUsed:
-            return None
+    @pytest.mark.django_db
+    def test_static_response_carries_cache_control(self, client):
+        """Статика отдаётся с явным заголовком кеширования.
 
-    def test_static_is_not_cached_in_debug(self, settings, rf):
-        """В отладке статика отдаётся с запретом на кеширование."""
-        middleware = self._build(settings, debug=True)
-        assert middleware is not None
-
-        response = middleware(rf.get("/static/js/ff-map.js"))
-        assert response.headers["Cache-Control"] == "no-store, must-revalidate"
-
-    def test_pages_are_not_affected(self, settings, rf):
-        """Обычные страницы обработчик не трогает."""
-        middleware = self._build(settings, debug=True)
-        response = middleware(rf.get("/objects/"))
-        assert "Cache-Control" not in response.headers
-
-    def test_disabled_in_production(self, settings):
-        """В промышленном контуре обработчик исключает себя из цепочки.
-
-        Там имена файлов содержат хеш содержимого, поэтому кешировать их
-        можно и нужно бессрочно — запрет только замедлил бы работу.
+        Существенно само наличие заголовка: именно его отсутствие
+        передавало решение браузеру, и тот кешировал файл на своё
+        усмотрение.
         """
-        assert self._build(settings, debug=False) is None
+        response = client.get("/static/js/ff-map.js")
+        assert response.status_code == 200
+        assert "Cache-Control" in response.headers
+
+    def test_cache_settings_are_consistent(self, settings):
+        """Обе настройки кеширования следуют одному признаку отладки.
+
+        Проверяется согласованность, а не конкретное значение: pytest-django
+        принудительно выставляет DEBUG=False уже после разбора настроек,
+        поэтому сравнивать с settings.DEBUG внутри проверки бессмысленно.
+        Рассогласование же означало бы, что статика перечитывается с диска,
+        но отдаётся с бессрочным сроком хранения, — или наоборот.
+        """
+        assert (settings.WHITENOISE_MAX_AGE == 0) == settings.WHITENOISE_AUTOREFRESH
