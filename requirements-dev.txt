@@ -7,3 +7,8 @@ pytest-django==4.11.1
 pytest-cov==7.0.0
 ruff==0.14.0
 locust==2.42.1
+
+# Проверки в управляемом браузере. После установки требуется однократно
+# загрузить сам браузер: python -m playwright install chromium
+playwright==1.56.0
+pytest-playwright==0.7.1

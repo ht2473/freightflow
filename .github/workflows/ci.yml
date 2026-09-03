@@ -92,6 +92,33 @@ jobs:
           FF_DB_PORT: "5432"
         run: pytest -q
 
+  # Проверки в управляемом браузере вынесены в отдельное задание: они требуют
+  # загрузки браузера и идут дольше остальных, поэтому не должны задерживать
+  # быструю обратную связь от модульного набора.
+  #
+  # Задание закрывает разрыв в методике, из-за которого отказ карты оставался
+  # незамеченным: тестовый клиент Django получает разметку, но не исполняет
+  # сценарии, а карта ломалась именно на стороне клиента.
+  tests-browser:
+    name: Проверки в браузере
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Установка зависимостей
+        run: pip install -e ".[dev]"
+      - name: Установка браузера
+        run: python -m playwright install --with-deps chromium
+      - name: Прогон проверок в браузере
+        env:
+          FF_SECRET_KEY: ci-only-secret-key-not-used-in-production-Bp7xQm2vTz9Kd4Lw
+          FF_DEBUG: "False"
+          FF_DB_ENGINE: sqlite
+        run: pytest tests/test_browser.py -q
+
   checks:
     name: Системные проверки Django
     runs-on: ubuntu-latest
