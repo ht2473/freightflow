@@ -137,6 +137,10 @@ MIDDLEWARE = [
     "django.middleware.gzip.GZipMiddleware",
     # Собственные обработчики: сквозной идентификатор запроса и журнал действий.
     "core.middleware.RequestIdMiddleware",
+    # Действует только при включённой отладке: сервер разработки отдаёт
+    # статику без Cache-Control, и браузер продолжал исполнять прежний
+    # сценарий после его правки.
+    "core.middleware.NoStaticCacheInDebugMiddleware",
     "accounts.middleware.AuditMiddleware",
 ]
 

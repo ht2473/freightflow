@@ -9,6 +9,9 @@ from __future__ import annotations
 import time
 import uuid
 
+from django.conf import settings
+from django.core.exceptions import MiddlewareNotUsed
+
 from .logging_filters import current_request_id
 
 # Заголовок, по которому идентификатор запроса можно передать снаружи —
@@ -45,4 +48,32 @@ class RequestIdMiddleware:
         # нагрузочном тестировании для оценки серверного времени ответа.
         response["X-Response-Time-ms"] = f"{elapsed_ms:.1f}"
         request.elapsed_ms = elapsed_ms
+        return response
+
+
+class NoStaticCacheInDebugMiddleware:
+    """Запретить браузеру кешировать статику в режиме отладки.
+
+    Сервер разработки Django отдаёт файлы из ``static/`` без заголовка
+    ``Cache-Control``. Браузер в таком случае применяет эвристику и кеширует
+    ответ на своё усмотрение, из-за чего страница продолжает исполнять прежний
+    сценарий после его правки. Ошибка изматывающая: разметка обновляется,
+    сценарий — нет, и расхождение выглядит как дефект приложения.
+
+    В промышленном контуре обработчик бездействует: там имена файлов содержат
+    хеш содержимого, поэтому кешировать их можно и нужно бессрочно.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        # Проверка выполняется один раз при сборке цепочки обработчиков:
+        # в промышленном контуре обработчик исключает себя целиком и не
+        # тратит время на каждый запрос.
+        if not settings.DEBUG:
+            raise MiddlewareNotUsed
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if request.path.startswith(settings.STATIC_URL):
+            response["Cache-Control"] = "no-store, must-revalidate"
         return response
