@@ -184,6 +184,46 @@ class Geometry:
         pts = self.points
         return sum(haversine_km(pts[i], pts[i + 1]) for i in range(len(pts) - 1))
 
+    def contains(self, lon: float, lat: float) -> bool:
+        """Лежит ли точка внутри полигона.
+
+        Применяется метод трассировки луча: из проверяемой точки мысленно
+        проводится луч, и подсчитывается число пересечений с границей.
+        Нечётное число означает, что точка внутри.
+
+        Точка внутри внутреннего кольца считается лежащей вне полигона:
+        пустота в контуре — не территория объекта.
+
+        Расчёт ведётся в градусах, без перехода к проекции. Для отнесения
+        объекта к административному округу этого достаточно: искажение
+        проекции меняет форму, но не факт вхождения, а границы округов
+        не пересекают меридиан 180°.
+        """
+        if self.geom_type == "POLYGON":
+            return _polygon_contains(self.coordinates, lon, lat)
+        if self.geom_type == "MULTIPOLYGON":
+            return any(_polygon_contains(rings, lon, lat) for rings in self.coordinates)
+        return False
+
+    @property
+    def area_sq_m(self) -> float:
+        """Площадь полигона на сфере, квадратные метры.
+
+        Расчёт ведётся по формуле сферического избытка и не требует выбора
+        проекции: результат не зависит от того, в какой части города лежит
+        объект, и остаётся верным для площадей любого размера — от контура
+        склада до границ административного округа.
+
+        Внутренние кольца (пустоты) вычитаются. Для точки и ломаной
+        возвращается ноль: площади у них нет.
+        """
+        if self.geom_type == "POLYGON":
+            rings = self.coordinates
+            return _polygon_area_sq_m(rings)
+        if self.geom_type == "MULTIPOLYGON":
+            return sum(_polygon_area_sq_m(rings) for rings in self.coordinates)
+        return 0.0
+
     @property
     def lon(self) -> float:
         """Долгота точки. Для линий и полигонов — долгота центроида."""
@@ -300,6 +340,71 @@ def _geojson_type(geom_type: str) -> str:
 # ---------------------------------------------------------------------------
 #  Метрики на сфере
 # ---------------------------------------------------------------------------
+
+
+def _ring_contains(ring: Sequence[Sequence[float]], lon: float, lat: float) -> bool:
+    """Лежит ли точка внутри замкнутого кольца (метод трассировки луча)."""
+    inside = False
+    count = len(ring)
+    for index in range(count):
+        x1, y1 = ring[index][0], ring[index][1]
+        x2, y2 = ring[(index + 1) % count][0], ring[(index + 1) % count][1]
+        # Ребро пересекает горизонтальный луч, если его концы лежат по разные
+        # стороны от широты точки. Несимметричное сравнение исключает двойной
+        # счёт вершин, попавших ровно на луч.
+        if (y1 > lat) != (y2 > lat):
+            crossing_lon = x1 + (lat - y1) * (x2 - x1) / (y2 - y1)
+            if crossing_lon > lon:
+                inside = not inside
+    return inside
+
+
+def _polygon_contains(rings: Sequence[Sequence[Sequence[float]]],
+                      lon: float, lat: float) -> bool:
+    """Лежит ли точка внутри полигона с учётом внутренних колец."""
+    if not rings or not _ring_contains(rings[0], lon, lat):
+        return False
+    return not any(_ring_contains(hole, lon, lat) for hole in rings[1:])
+
+
+def _ring_area_sq_m(ring: Sequence[Sequence[float]]) -> float:
+    """Площадь замкнутого кольца на сфере, квадратные метры.
+
+    Применяется формула сферического избытка::
+
+        S = R² / 2 · |Σ (λ_{i+1} − λ_i) · (2 + sin φ_i + sin φ_{i+1})|
+
+    Здесь λ — долгота, φ — широта в радианах, R — средний радиус Земли.
+    Формула не требует выбора проекции, поэтому результат одинаково верен
+    для контура склада и для границ округа, а искажения проекции
+    не накапливаются к краям города.
+
+    Знак суммы зависит от направления обхода кольца, поэтому берётся модуль:
+    внешние и внутренние кольца различаются по положению в структуре
+    полигона, а не по направлению обхода.
+    """
+    if len(ring) < 4:
+        # Кольцо замкнуто, поэтому у треугольника четыре вершины.
+        # Меньшее число точек площади не образует.
+        return 0.0
+
+    radius_m = EARTH_RADIUS_KM * 1000.0
+    total = 0.0
+    for index in range(len(ring) - 1):
+        lon1, lat1 = math.radians(ring[index][0]), math.radians(ring[index][1])
+        lon2, lat2 = math.radians(ring[index + 1][0]), math.radians(ring[index + 1][1])
+        total += (lon2 - lon1) * (2.0 + math.sin(lat1) + math.sin(lat2))
+
+    return abs(total) * radius_m * radius_m / 2.0
+
+
+def _polygon_area_sq_m(rings: Sequence[Sequence[Sequence[float]]]) -> float:
+    """Площадь полигона: внешнее кольцо за вычетом внутренних."""
+    if not rings:
+        return 0.0
+    outer = _ring_area_sq_m(rings[0])
+    holes = sum(_ring_area_sq_m(ring) for ring in rings[1:])
+    return max(outer - holes, 0.0)
 
 
 def haversine_km(a: Sequence[float], b: Sequence[float]) -> float:

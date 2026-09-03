@@ -160,7 +160,7 @@ class RoadSegmentViewSet(ReadOnlyViewSet):
     serializer_class = serializers.RoadSegmentSerializer
 
     def get_queryset(self):
-        queryset = RoadSegment.objects.select_related("district")
+        queryset = RoadSegment.objects.select_related("district").defer("district__geom")
         district = self._int("district")
         road_class = self.request.query_params.get("class")
         if district:
@@ -212,7 +212,9 @@ class FreightFlowViewSet(ReadOnlyViewSet):
     serializer_class = serializers.FreightFlowSerializer
 
     def get_queryset(self):
-        queryset = FreightFlowStat.objects.select_related("district", "cargo_category", "route")
+        queryset = FreightFlowStat.objects.select_related(
+        "district", "cargo_category", "route"
+    ).defer("district__geom")
         params = self.request.query_params
         district, category = self._int("district"), self._int("category")
         if district:

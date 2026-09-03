@@ -129,7 +129,10 @@ def incident_list(request):
 def incident_detail(request, pk: int):
     """Карточка дорожного инцидента."""
     incident = get_object_or_404(
-        TrafficIncident.objects.select_related("road", "road__district", "source"), pk=pk
+        TrafficIncident.objects.select_related("road", "road__district", "source").defer(
+            "road__district__geom"
+        ),
+        pk=pk,
     )
 
     # Обстановка на участке в окрестности события помогает оценить его влияние.

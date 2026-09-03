@@ -7,7 +7,14 @@
 
 from .fields import GeometryField, LineStringField, MultiPolygonField, PointField
 from .geometry import DEFAULT_SRID, Geometry, GeometryError, feature_collection, haversine_km
-from .queries import annotate_distance, bbox_of, in_bbox, nearest, to_feature_collection
+from .queries import (
+    annotate_distance,
+    bbox_of,
+    in_bbox,
+    nearest,
+    simplify,
+    to_feature_collection,
+)
 
 __all__ = [
     "DEFAULT_SRID",
@@ -23,5 +30,6 @@ __all__ = [
     "haversine_km",
     "in_bbox",
     "nearest",
+    "simplify",
     "to_feature_collection",
 ]

@@ -14,7 +14,7 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_GET
-from geo import to_feature_collection
+from geo import simplify, to_feature_collection
 from geo.queries import in_bbox
 
 from .. import selectors
@@ -28,6 +28,11 @@ from ..models import (
     TrafficIncident,
 )
 from .base import choice_param, int_param, page_context
+
+#: Шаг прореживания границ округов при отдаче на карту. Значение
+#: подобрано по виду контура: при шаге восемь очертания округов
+#: на экранном масштабе неотличимы от исходных.
+DISTRICT_SIMPLIFY_STEP = 8
 
 
 def map_settings() -> dict:
@@ -133,7 +138,11 @@ def layer_objects(request) -> JsonResponse:
 @require_GET
 def layer_roads(request) -> JsonResponse:
     """Слой участков дорожной сети с текущей загруженностью."""
-    queryset = RoadSegment.objects.select_related("district").exclude(geom__isnull=True)
+    queryset = (
+        RoadSegment.objects.select_related("district")
+        .defer("district__geom")
+        .exclude(geom__isnull=True)
+    )
 
     road_class = choice_param(request, "class", RoadClass.values)
     if road_class:
@@ -230,21 +239,37 @@ def layer_incidents(request) -> JsonResponse:
 
 @require_GET
 def layer_districts(request) -> JsonResponse:
-    """Слой центров округов с агрегированными показателями.
+    """Слой округов с агрегированными показателями.
 
-    Границы округов в исходном наборе данных отсутствуют, поэтому округа
-    отображаются метками в условных центрах с числовыми характеристиками.
+    Округ отображается своей границей: показатель, отнесённый к территории,
+    читается по площади, а не по одной метке в условном центре.
+
+    Границы упрощаются перед отдачей. Исходный контур округа содержит до трёх
+    тысяч вершин — на экранном масштабе такая подробность неразличима, но
+    увеличивает ответ в разы.
     """
+    boundaries = {
+        district.id: district.geom
+        for district in District.objects.with_geometry().exclude(geom__isnull=True)
+    }
+
     features = []
     for profile in selectors.district_profiles():
         district = profile["district"]
+        boundary = boundaries.get(district.id)
         center = district.map_center
-        if not center:
+
+        if boundary is not None:
+            geometry = simplify(boundary, every=DISTRICT_SIMPLIFY_STEP).geojson
+        elif center:
+            geometry = {"type": "Point", "coordinates": [center[0], center[1]]}
+        else:
             continue
+
         features.append(
             {
                 "type": "Feature",
-                "geometry": {"type": "Point", "coordinates": [center[0], center[1]]},
+                "geometry": geometry,
                 "properties": {
                     "id": district.id,
                     "name": district.name,

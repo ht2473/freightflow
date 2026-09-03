@@ -233,6 +233,56 @@ def _thin_line(geom: Geometry, step: int) -> Geometry:
     return Geometry("LINESTRING", thinned, geom.srid)
 
 
+#: Наименьшее число вершин, которое сохраняется в кольце при прореживании.
+#: Четыре точки — замкнутый треугольник; меньшее число площади не образует.
+MIN_RING_POINTS = 4
+
+
+def _thin_ring(ring: list[list[float]], step: int) -> list[list[float]]:
+    """Проредить вершины замкнутого кольца, сохранив его замкнутость."""
+    if len(ring) <= MIN_RING_POINTS:
+        return ring
+    thinned = ring[::step]
+    # Замыкание восстанавливается явно: прореживание почти всегда отбрасывает
+    # повторяющуюся последнюю вершину, а незамкнутое кольцо не является
+    # полигоном.
+    if thinned[0] != thinned[-1]:
+        thinned.append(thinned[0])
+    return thinned if len(thinned) >= MIN_RING_POINTS else ring
+
+
+def simplify(geom: Geometry, every: int = 1) -> Geometry:
+    """Проредить вершины геометрии, сохранив её тип и замкнутость.
+
+    Прореживание выполняется отбором каждой N-й вершины. Способ проще
+    алгоритма Дугласа — Пейкера и не учитывает кривизну, но для отдачи границ
+    на экранном масштабе этого достаточно: контур округа в три тысячи вершин
+    неотличим на экране от контура в триста, а ответ становится вдесятеро
+    меньше.
+
+    Для измерения площади прореженная геометрия не годится и не применяется:
+    площадь считается по исходному контуру при загрузке.
+    """
+    if every <= 1:
+        return geom
+
+    if geom.geom_type == "LINESTRING":
+        return _thin_line(geom, every)
+
+    if geom.geom_type == "POLYGON":
+        rings = [_thin_ring(ring, every) for ring in geom.coordinates]
+        return Geometry("POLYGON", rings, geom.srid)
+
+    if geom.geom_type == "MULTIPOLYGON":
+        parts = [
+            [_thin_ring(ring, every) for ring in polygon]
+            for polygon in geom.coordinates
+        ]
+        return Geometry("MULTIPOLYGON", parts, geom.srid)
+
+    return geom
+
+
 def bbox_of(rows: Sequence[Any], field: str = "geom") -> tuple[float, float, float, float] | None:
     """Общий габаритный прямоугольник набора записей."""
     boxes = [

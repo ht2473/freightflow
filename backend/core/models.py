@@ -43,6 +43,33 @@ from .choices import (
 # =============================================================================
 
 
+class DistrictQuerySet(models.QuerySet):
+    """Выборки справочника округов."""
+
+    def with_geometry(self) -> DistrictQuerySet:
+        """Выборка вместе с границами округа.
+
+        Требуется там, где границы действительно нужны: слой карты,
+        отнесение объекта к территории, расчёт площади. Во всех прочих
+        случаях достаточно наименования и показателей.
+        """
+        return self.defer(None)
+
+
+class DistrictManager(models.Manager.from_queryset(DistrictQuerySet)):
+    """Менеджер справочника округов, исключающий границы из выборки.
+
+    Граница округа — мультиполигон в десятки тысяч вершин: справочник из
+    двенадцати записей занимает в текстовом представлении около четырёхсот
+    килобайт, и разбор их при каждом обращении к справочнику обходится
+    дороже всей остальной работы страницы. Границы нужны немногим
+    потребителям, поэтому запрашиваются явно — методом ``with_geometry``.
+    """
+
+    def get_queryset(self) -> DistrictQuerySet:
+        return super().get_queryset().defer("geom")
+
+
 class District(models.Model):
     """Административный округ города Москвы."""
 
@@ -59,6 +86,8 @@ class District(models.Model):
     )
     geom = MultiPolygonField(_("Границы округа"), null=True, blank=True)
     center = PointField(_("Центр округа"), null=True, blank=True)
+
+    objects = DistrictManager()
 
     class Meta:
         db_table = "districts"
@@ -180,8 +209,25 @@ class InfrastructureObjectQuerySet(models.QuerySet):
     """Типовые выборки реестра объектов инфраструктуры."""
 
     def with_refs(self) -> InfrastructureObjectQuerySet:
-        """Подтянуть справочники одним запросом (защита от N+1)."""
-        return self.select_related("type", "district", "source")
+        """Подтянуть справочники одним запросом (защита от N+1).
+
+        Границы округа при этом исключаются. Соединение со справочником
+        округов присоединяет к каждой строке выборки и колонку с границами —
+        мультиполигон в десятки тысяч вершин, который разбирается заново для
+        каждой записи. На реестре в тысячу объектов это давало десятки секунд
+        на запрос при том, что сами границы в списках не используются.
+
+        Контур объекта исключается по той же причине: он нужен на карточке
+        объекта, а не в перечне.
+        """
+        return (
+            self.select_related("type", "district", "source")
+            .defer("district__geom", "footprint")
+        )
+
+    def with_footprint(self) -> InfrastructureObjectQuerySet:
+        """Выборка вместе с контуром объекта — для карточки и выгрузки."""
+        return self.select_related("type", "district", "source").defer("district__geom")
 
     def in_district(self, district_id: int | None) -> InfrastructureObjectQuerySet:
         return self.filter(district_id=district_id) if district_id else self
@@ -639,7 +685,9 @@ class TrafficIncidentQuerySet(models.QuerySet):
         return self.filter(affects_cargo=True)
 
     def with_refs(self) -> TrafficIncidentQuerySet:
-        return self.select_related("road", "road__district", "source")
+        return self.select_related("road", "road__district", "source").defer(
+            "road__district__geom"
+        )
 
 
 class TrafficIncident(models.Model):

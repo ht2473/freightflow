@@ -95,7 +95,7 @@ def object_list(request):
 def object_detail(request, pk: int):
     """Карточка объекта инфраструктуры."""
     obj = get_object_or_404(
-        InfrastructureObject.objects.select_related("type", "district", "source"), pk=pk
+        InfrastructureObject.objects.with_footprint(), pk=pk
     )
 
     # Соседние объекты в радиусе — показывают локальную концентрацию мощностей.
@@ -266,7 +266,9 @@ ROAD_SORTS = {
 
 def road_list(request):
     """Реестр участков улично-дорожной сети."""
-    queryset = RoadSegment.objects.select_related("district", "source")
+    queryset = RoadSegment.objects.select_related("district", "source").defer(
+        "district__geom"
+    )
 
     district_id = int_param(request, "district")
     road_class = choice_param(request, "class", RoadClass.values)
@@ -316,7 +318,10 @@ def road_list(request):
 
 def road_detail(request, pk: int):
     """Карточка участка дорожной сети."""
-    road = get_object_or_404(RoadSegment.objects.select_related("district", "source"), pk=pk)
+    road = get_object_or_404(
+        RoadSegment.objects.select_related("district", "source").defer("district__geom"),
+        pk=pk,
+    )
 
     history = list(
         TrafficCondition.objects.filter(road_id=pk).order_by("-recorded_at")[:200]
@@ -408,6 +413,7 @@ def route_detail(request, pk: int):
     flows = (
         FreightFlowStat.objects.filter(route_id=pk)
         .select_related("cargo_category", "district")
+        .defer("district__geom")
         .order_by("-period_date")[:24]
     )
     by_category = (

@@ -152,6 +152,7 @@ def latest_conditions() -> list[TrafficCondition]:
     return list(
         TrafficCondition.objects.filter(id__in=ids)
         .select_related("road", "road__district")
+        .defer("road__district__geom")
         .order_by("-congestion_level", "road__name")
     )
 

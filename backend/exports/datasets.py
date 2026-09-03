@@ -125,7 +125,11 @@ def districts_dataset(params) -> Dataset:
 
 def roads_dataset(params) -> Dataset:
     """Участки улично-дорожной сети с текущей обстановкой."""
-    queryset = RoadSegment.objects.select_related("district").order_by("name")
+    queryset = (
+        RoadSegment.objects.select_related("district")
+        .defer("district__geom")
+        .order_by("name")
+    )
     district = _int(params, "district")
     if district:
         queryset = queryset.filter(district_id=district)
