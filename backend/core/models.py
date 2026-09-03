@@ -3,8 +3,7 @@
 Модели один в один отображаются на таблицы, описанные в ``db/001_schema.sql``:
 совпадают имена таблиц, колонок, типы и ограничения целостности. Благодаря
 этому база данных может быть развёрнута двумя эквивалентными способами —
-миграциями Django или «сырым» SQL, — а поставляемые наборы данных
-(``002_seed_data_scale*.sql``) загружаются в любом из вариантов.
+миграциями Django или «сырым» SQL.
 
 Структура модуля повторяет логику предметной области:
 
@@ -25,9 +24,11 @@ from geo import LineStringField, MultiPolygonField, PointField
 
 from .choices import (
     HAZARD_CLASS_LABELS,
+    DataOrigin,
     EtlStatus,
     FlowDirection,
     IncidentType,
+    OsmElement,
     PeriodType,
     RoadClass,
     RouteType,
@@ -234,10 +235,60 @@ class InfrastructureObject(models.Model):
         blank=True,
         validators=[MinValueValidator(0)],
     )
+    capacity_origin = models.CharField(
+        _("Происхождение мощности"),
+        max_length=16,
+        choices=DataOrigin.choices,
+        blank=True,
+        default="",
+        help_text=_("Откуда получено значение мощности хранения"),
+    )
+    area_origin = models.CharField(
+        _("Происхождение площади"),
+        max_length=16,
+        choices=DataOrigin.choices,
+        blank=True,
+        default="",
+        help_text=_("Откуда получено значение площади"),
+    )
     operating_hours = models.CharField(
         _("Режим работы"), max_length=64, blank=True, default=""
     )
+    operator = models.CharField(
+        _("Оператор"), max_length=200, blank=True, default="",
+        help_text=_("Организация, эксплуатирующая объект"),
+    )
+    website = models.CharField(_("Сайт"), max_length=300, blank=True, default="")
+    phone = models.CharField(_("Телефон"), max_length=64, blank=True, default="")
+
     geom = PointField(_("Координаты"), null=True, blank=True)
+    # Контур объекта хранится отдельно от точки. Площадь, вычисленная по нему,
+    # является измеренной величиной, тогда как у объекта, размеченного одной
+    # точкой, площадь неизвестна. Различие существенно для расчёта
+    # обеспеченности округов складскими мощностями.
+    footprint = MultiPolygonField(_("Контур объекта"), null=True, blank=True)
+
+    # --- Происхождение записи ------------------------------------------------
+    osm_type = models.CharField(
+        _("Тип элемента OSM"),
+        max_length=10,
+        choices=OsmElement.choices,
+        blank=True,
+        default="",
+    )
+    osm_id = models.BigIntegerField(_("Идентификатор OSM"), null=True, blank=True)
+    classification_rule = models.CharField(
+        _("Правило отнесения"),
+        max_length=32,
+        blank=True,
+        default="",
+        help_text=_("Обозначение правила, по которому объект отнесён к типу"),
+    )
+    source_updated_at = models.DateTimeField(
+        _("Данные источника от"), null=True, blank=True,
+        help_text=_("Момент выгрузки, из которой получена запись"),
+    )
+
     source = models.ForeignKey(
         DataSource,
         on_delete=models.SET_NULL,
@@ -260,6 +311,17 @@ class InfrastructureObject(models.Model):
         indexes = [
             models.Index(fields=["district"], name="idx_infra_district"),
             models.Index(fields=["type"], name="idx_infra_type"),
+            models.Index(fields=["osm_type", "osm_id"], name="idx_infra_osm"),
+        ]
+        constraints = [
+            # Ключ исходного элемента уникален: повторная загрузка обновляет
+            # запись, а не создаёт вторую. Нумерация точек, линий и отношений
+            # в OpenStreetMap независима, поэтому в ключ входит и разновидность.
+            models.UniqueConstraint(
+                fields=["osm_type", "osm_id"],
+                condition=models.Q(osm_id__isnull=False),
+                name="uniq_infra_osm_element",
+            ),
         ]
 
     def __str__(self) -> str:

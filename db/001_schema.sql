@@ -100,8 +100,18 @@ CREATE TABLE IF NOT EXISTS infrastructure_objects (
     address         VARCHAR(300),
     capacity_tons   NUMERIC(12, 2),
     area_sq_m       NUMERIC(12, 2),
+    capacity_origin VARCHAR(16),
+    area_origin     VARCHAR(16),
     operating_hours VARCHAR(64),
+    operator        VARCHAR(200),
+    website         VARCHAR(300),
+    phone           VARCHAR(64),
     geom            geometry(Point, 4326),
+    footprint       geometry(MultiPolygon, 4326),
+    osm_type        VARCHAR(10),
+    osm_id          BIGINT,
+    classification_rule VARCHAR(32),
+    source_updated_at   TIMESTAMPTZ,
     source_id       INTEGER REFERENCES data_sources (id) ON DELETE SET NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -109,8 +119,20 @@ CREATE TABLE IF NOT EXISTS infrastructure_objects (
     CONSTRAINT infra_area_positive CHECK (area_sq_m IS NULL OR area_sq_m >= 0)
 );
 
+-- Ключ исходного элемента уникален: повторная загрузка обновляет запись,
+-- а не создаёт вторую. Нумерация точек, линий и отношений в OpenStreetMap
+-- независима, поэтому в ключ входит и разновидность элемента.
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_infra_osm_element
+    ON infrastructure_objects (osm_type, osm_id) WHERE osm_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_infra_osm
+    ON infrastructure_objects (osm_type, osm_id);
+
 COMMENT ON TABLE  infrastructure_objects IS 'Объекты логистической инфраструктуры (точечные)';
 COMMENT ON COLUMN infrastructure_objects.capacity_tons IS 'Проектная мощность единовременного хранения, тонн';
+COMMENT ON COLUMN infrastructure_objects.capacity_origin IS 'Происхождение мощности: measured | derived | modelled';
+COMMENT ON COLUMN infrastructure_objects.area_origin IS 'Происхождение площади: measured | derived | modelled';
+COMMENT ON COLUMN infrastructure_objects.footprint IS 'Контур объекта; площадь по нему является измеренной величиной';
+COMMENT ON COLUMN infrastructure_objects.classification_rule IS 'Обозначение правила, по которому объект отнесён к типу';
 
 -- Ключевые участки улично-дорожной сети, по которым ведётся мониторинг.
 -- road_class: highway (магистраль) | arterial (городская магистраль) | collector (связующая).
