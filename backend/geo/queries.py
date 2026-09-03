@@ -269,6 +269,13 @@ def simplify(geom: Geometry, every: int = 1) -> Geometry:
     if geom.geom_type == "LINESTRING":
         return _thin_line(geom, every)
 
+    if geom.geom_type == "MULTILINESTRING":
+        parts = [
+            _thin_line(Geometry("LINESTRING", part, geom.srid), every).coordinates
+            for part in geom.coordinates
+        ]
+        return Geometry("MULTILINESTRING", parts, geom.srid)
+
     if geom.geom_type == "POLYGON":
         rings = [_thin_ring(ring, every) for ring in geom.coordinates]
         return Geometry("POLYGON", rings, geom.srid)

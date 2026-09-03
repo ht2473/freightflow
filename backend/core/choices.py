@@ -36,8 +36,8 @@ class RoadClass(models.TextChoices):
     """Классификация участков улично-дорожной сети."""
 
     HIGHWAY = "highway", _("Магистраль скоростного движения")
-    ARTERIAL = "arterial", _("Магистраль общегородского значения")
-    COLLECTOR = "collector", _("Улица районного значения")
+    ARTERIAL = "arterial", _("Магистраль общегородского значения, непрерывное движение")
+    COLLECTOR = "collector", _("Магистраль общегородского значения, регулируемое движение")
 
 
 class RouteType(models.TextChoices):

@@ -34,6 +34,11 @@ from .base import choice_param, int_param, page_context
 #: на экранном масштабе неотличимы от исходных.
 DISTRICT_SIMPLIFY_STEP = 8
 
+#: Шаг прореживания геометрии магистралей. Магистраль собрана из сотен
+#: частей и содержит тысячи вершин; на экранном масштабе различима
+#: примерно каждая четвёртая.
+ROAD_SIMPLIFY_STEP = 4
+
 
 def map_settings() -> dict:
     """Собрать настройки карты для передачи в клиентский сценарий.
@@ -150,6 +155,9 @@ def layer_roads(request) -> JsonResponse:
 
     conditions = {c.road_id: c for c in selectors.latest_conditions()}
     rows = list(queryset)
+    for road in rows:
+        if road.geom is not None:
+            road.geom = simplify(road.geom, every=ROAD_SIMPLIFY_STEP)
 
     def properties(road: RoadSegment) -> dict:
         condition = conditions.get(road.id)

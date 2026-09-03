@@ -20,7 +20,12 @@ from django.db import models
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-from geo import LineStringField, MultiPolygonField, PointField
+from geo import (
+    LineStringField,
+    MultiLineStringField,
+    MultiPolygonField,
+    PointField,
+)
 
 from .choices import (
     HAZARD_CLASS_LABELS,
@@ -396,9 +401,24 @@ class InfrastructureObject(models.Model):
 
 
 class RoadSegment(models.Model):
-    """Участок улично-дорожной сети, включённый в мониторинг."""
+    """Магистраль улично-дорожной сети, включённая в мониторинг.
+
+    Одной записи соответствует именованная магистраль целиком, а не отрезок
+    между перекрёстками: в исходных данных дорога разбита на сотни частей по
+    сменам характеристик и по направлениям движения, и такое дробление
+    ничего не добавляет ни реестру, ни карте.
+
+    Протяжённость измеряется как суммарная длина проезжих частей. Величина
+    отличается от протяжённости трассы, поскольку разделённая проезжая часть
+    размечена двумя независимыми линиями; сводить их к одной осевой значило
+    бы вводить допущение, которое на части магистралей неверно.
+    """
 
     name = models.CharField(_("Наименование"), max_length=200)
+    ref = models.CharField(
+        _("Учётный номер"), max_length=32, blank=True, default="",
+        help_text=_("Номер федеральной или региональной трассы: М-4, А-103"),
+    )
     road_class = models.CharField(_("Класс дороги"), max_length=32, choices=RoadClass.choices)
     lanes = models.SmallIntegerField(
         _("Число полос"),
@@ -424,7 +444,27 @@ class RoadSegment(models.Model):
         blank=True,
         verbose_name=_("Округ"),
     )
-    geom = LineStringField(_("Геометрия участка"), null=True, blank=True)
+    length_origin = models.CharField(
+        _("Происхождение протяжённости"),
+        max_length=16,
+        choices=DataOrigin.choices,
+        blank=True,
+        default="",
+    )
+    allows_hgv = models.BooleanField(
+        _("Открыта для грузового движения"),
+        null=True,
+        blank=True,
+        help_text=_("Пустое значение означает, что ограничение не размечено"),
+    )
+    segment_count = models.IntegerField(
+        _("Частей в исходных данных"), default=0,
+        help_text=_("Число участков, из которых собрана магистраль"),
+    )
+    geom = MultiLineStringField(_("Геометрия магистрали"), null=True, blank=True)
+    source_updated_at = models.DateTimeField(
+        _("Данные источника от"), null=True, blank=True
+    )
     source = models.ForeignKey(
         DataSource,
         on_delete=models.SET_NULL,

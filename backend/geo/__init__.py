@@ -5,7 +5,13 @@
 импортируют только то, что перечислено ниже, и не зависят от конкретной СУБД.
 """
 
-from .fields import GeometryField, LineStringField, MultiPolygonField, PointField
+from .fields import (
+    GeometryField,
+    LineStringField,
+    MultiLineStringField,
+    MultiPolygonField,
+    PointField,
+)
 from .geometry import DEFAULT_SRID, Geometry, GeometryError, feature_collection, haversine_km
 from .queries import (
     annotate_distance,
@@ -22,6 +28,7 @@ __all__ = [
     "GeometryError",
     "GeometryField",
     "LineStringField",
+    "MultiLineStringField",
     "MultiPolygonField",
     "PointField",
     "annotate_distance",

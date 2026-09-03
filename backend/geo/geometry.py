@@ -33,9 +33,16 @@ DEFAULT_SRID = 4326
 EARTH_RADIUS_KM = 6371.0088
 
 # Допустимые типы геометрии. Ограничение осознанное: предметная область
-# оперирует точками (объекты, инциденты), линиями (дороги, маршруты) и
-# полигонами (границы округов).
-GEOM_TYPES = ("POINT", "LINESTRING", "POLYGON", "MULTIPOLYGON")
+# оперирует точками (объекты, инциденты), линиями и наборами линий (дороги
+# и маршруты, состоящие из разрозненных участков) и полигонами (границы
+# округов, контуры объектов, зоны ограничения движения).
+GEOM_TYPES = (
+    "POINT",
+    "LINESTRING",
+    "MULTILINESTRING",
+    "POLYGON",
+    "MULTIPOLYGON",
+)
 
 _WKT_RE = re.compile(
     r"^\s*(?:SRID=(?P<srid>\d+);)?\s*(?P<type>[A-Z]+)\s*(?P<body>\(.*\))\s*$",
@@ -180,9 +187,16 @@ class Geometry:
 
     @property
     def length_km(self) -> float:
-        """Длина ломаной по ортодромии, км. Для точки — ноль."""
-        pts = self.points
-        return sum(haversine_km(pts[i], pts[i + 1]) for i in range(len(pts) - 1))
+        """Длина по ортодромии, км. Для точки и полигона — ноль.
+
+        У набора линий длины частей складываются: соединять концы соседних
+        участков нельзя, они могут лежать в разных местах города.
+        """
+        if self.geom_type == "LINESTRING":
+            return _polyline_length_km(self.coordinates)
+        if self.geom_type == "MULTILINESTRING":
+            return sum(_polyline_length_km(part) for part in self.coordinates)
+        return 0.0
 
     def contains(self, lon: float, lat: float) -> bool:
         """Лежит ли точка внутри полигона.
@@ -245,7 +259,13 @@ class Geometry:
 
 def _parse_body(body: str, geom_type: str) -> Any:
     """Преобразовать скобочную часть WKT в координатную структуру GeoJSON."""
-    depth_required = {"POINT": 0, "LINESTRING": 1, "POLYGON": 2, "MULTIPOLYGON": 3}[geom_type]
+    depth_required = {
+        "POINT": 0,
+        "LINESTRING": 1,
+        "MULTILINESTRING": 2,
+        "POLYGON": 2,
+        "MULTIPOLYGON": 3,
+    }[geom_type]
     parsed = _parse_group(body.strip())
     # Точка в WKT записывается как POINT(x y) — одна пара без вложенности.
     if depth_required == 0:
@@ -332,6 +352,7 @@ def _geojson_type(geom_type: str) -> str:
     return {
         "POINT": "Point",
         "LINESTRING": "LineString",
+        "MULTILINESTRING": "MultiLineString",
         "POLYGON": "Polygon",
         "MULTIPOLYGON": "MultiPolygon",
     }[geom_type]
@@ -340,6 +361,11 @@ def _geojson_type(geom_type: str) -> str:
 # ---------------------------------------------------------------------------
 #  Метрики на сфере
 # ---------------------------------------------------------------------------
+
+
+def _polyline_length_km(points: Sequence[Sequence[float]]) -> float:
+    """Длина ломаной по ортодромии, км."""
+    return sum(haversine_km(points[i], points[i + 1]) for i in range(len(points) - 1))
 
 
 def _ring_contains(ring: Sequence[Sequence[float]], lon: float, lat: float) -> bool:

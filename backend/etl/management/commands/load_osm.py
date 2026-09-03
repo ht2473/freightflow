@@ -19,11 +19,22 @@ from django.utils import timezone
 
 from etl.client import OverpassClient, OverpassError
 from etl.osm import loaders
+from etl.osm.roads import load_road_network
 
 #: Наборы данных и обслуживающие их процедуры, в порядке загрузки.
 DATASETS: dict[str, tuple[str, str]] = {
     "districts": ("load_districts", "districts"),
     "objects": ("load_infrastructure", "infrastructure_objects"),
+    "roads": ("load_road_network", "road_segments"),
+}
+
+
+#: Процедуры загрузки. Собраны в одном месте, чтобы состав наборов данных
+#: читался целиком, а не выводился обращением к атрибутам модуля.
+PROCEDURES = {
+    "load_districts": loaders.load_districts,
+    "load_infrastructure": loaders.load_infrastructure,
+    "load_road_network": load_road_network,
 }
 
 
@@ -80,7 +91,7 @@ class Command(BaseCommand):
             procedure, target_table = DATASETS[name]
             started_at = timezone.now()
             try:
-                procedure_call = getattr(loaders, procedure)
+                procedure_call = PROCEDURES[procedure]
                 arguments = {"refresh": options["refresh"]}
                 # Приведение к составу источника поддерживают не все наборы:
                 # округа образуют закрытый справочник и удалению не подлежат.

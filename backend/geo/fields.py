@@ -151,6 +151,18 @@ class LineStringField(GeometryField):
     geom_type = "LineString"
 
 
+class MultiLineStringField(GeometryField):
+    """Набор линий: дорога, состоящая из разрозненных участков.
+
+    Улично-дорожная сеть в OpenStreetMap разбита на части по перекрёсткам и
+    сменам характеристик, а разделённая проезжая часть размечена двумя
+    независимыми линиями. Одна дорога поэтому не выражается одной ломаной.
+    """
+
+    description = "Набор ломаных (WGS-84)"
+    geom_type = "MultiLineString"
+
+
 class MultiPolygonField(GeometryField):
     """Площадная геометрия: границы административных округов."""
 
