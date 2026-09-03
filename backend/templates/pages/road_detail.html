@@ -59,8 +59,8 @@
         {% if road.geom %}
             <article class="card card--flush">
                 <div class="card__head"><h3>{% trans 'Трасса участка' %}</h3></div>
-                <div id="road-map" style="height:360px"
-                     data-line="{{ road.geom.geojson|safe }}"></div>
+                {{ road.geom.geojson|json_script:"road-line" }}
+                <div id="road-map" style="height:360px"></div>
             </article>
         {% endif %}
     </div>
@@ -110,7 +110,9 @@
 document.addEventListener("DOMContentLoaded", function () {
     var node = document.getElementById("road-map");
     if (!node || typeof L === "undefined") return;
-    var geometry = JSON.parse(node.dataset.line.replace(/'/g, '"'));
+    var source = document.getElementById("road-line");
+    if (!source) return;
+    var geometry = JSON.parse(source.textContent);
     var map = L.map(node, { scrollWheelZoom: false });
     L.tileLayer("{{ MAP_TILE_URL }}", { attribution: "{{ MAP_ATTRIBUTION }}" }).addTo(map);
     var line = L.geoJSON({ type: "Feature", geometry: geometry, properties: {} },

@@ -17,7 +17,19 @@
     var node = document.getElementById("map-canvas");
     if (!node || typeof L === "undefined") return;
 
-    var settings = JSON.parse(node.dataset.settings || "{}");
+    /* Настройки приходят отдельным элементом application/json, собранным на
+       стороне сервера. Разбор в data-атрибуте разметки был источником отказа:
+       координаты подставлялись через локализацию и приходили с десятичной
+       запятой. */
+    var settingsNode = document.getElementById("map-settings");
+    if (!settingsNode) return;
+
+    var settings;
+    try {
+        settings = JSON.parse(settingsNode.textContent);
+    } catch (error) {
+        return;
+    }
 
     /* Цвета берутся из переменных оформления: при переключении темы карта
        перекрашивается теми же значениями, что и остальной интерфейс. */

@@ -11,6 +11,7 @@ from __future__ import annotations
 from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_GET
 from geo import to_feature_collection
@@ -27,6 +28,35 @@ from ..models import (
     TrafficIncident,
 )
 from .base import choice_param, int_param, page_context
+
+
+def map_settings() -> dict:
+    """Собрать настройки карты для передачи в клиентский сценарий.
+
+    Словарь формируется здесь, а не в разметке. Причина не в удобстве:
+    подстановка чисел в шаблон проходит через локализацию, и при русском языке
+    Django выводит координату ``55.7522`` как ``55,7522``. В JSON это давало
+    невалидный документ, разбор возвращал массив из четырёх чисел вместо двух
+    координат, и карта не инициализировалась вовсе. Значения, собранные на
+    стороне Python и переданные через ``json_script``, сериализуются
+    без участия локализации.
+    """
+    return {
+        "center": [settings.MAP_DEFAULT_CENTER[0], settings.MAP_DEFAULT_CENTER[1]],
+        "zoom": settings.MAP_DEFAULT_ZOOM,
+        "tileUrl": settings.MAP_TILE_URL,
+        "tileUrlDark": settings.MAP_TILE_URL_DARK,
+        "attribution": settings.MAP_ATTRIBUTION,
+        "maxFeatures": settings.MAP_MAX_FEATURES,
+        "urls": {
+            "objects": reverse("core:layer_objects"),
+            "roads": reverse("core:layer_roads"),
+            "routes": reverse("core:layer_routes"),
+            "incidents": reverse("core:layer_incidents"),
+            "districts": reverse("core:layer_districts"),
+            "nearby": reverse("core:layer_nearby"),
+        },
+    }
 
 
 def map_page(request):
@@ -47,6 +77,7 @@ def map_page(request):
         incident_types=IncidentType.choices,
         summary=selectors.dashboard_summary(),
         max_features=settings.MAP_MAX_FEATURES,
+        map_settings=map_settings(),
     )
     return render(request, "pages/map.html", context)
 

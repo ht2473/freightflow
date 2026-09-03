@@ -114,18 +114,11 @@
         </div>
     </div>
 
-    <div class="map-canvas" id="map-canvas"
-         data-settings='{"center": [{{ MAP_DEFAULT_CENTER.0 }}, {{ MAP_DEFAULT_CENTER.1 }}],
-                         "zoom": {{ MAP_DEFAULT_ZOOM }},
-                         "tileUrl": "{{ MAP_TILE_URL }}",
-                         "tileUrlDark": "{{ MAP_TILE_URL_DARK }}",
-                         "attribution": "{{ MAP_ATTRIBUTION }}",
-                         "urls": {"objects": "{% url 'core:layer_objects' %}",
-                                  "roads": "{% url 'core:layer_roads' %}",
-                                  "routes": "{% url 'core:layer_routes' %}",
-                                  "incidents": "{% url 'core:layer_incidents' %}",
-                                  "districts": "{% url 'core:layer_districts' %}",
-                                  "nearby": "{% url 'core:layer_nearby' %}"}}'></div>
+    {# Настройки собираются на стороне Python и передаются через json_script:  #}
+    {# подстановка чисел прямо в разметку проходит через локализацию и при    #}
+    {# русском языке даёт десятичную запятую, ломающую разбор JSON.           #}
+    {{ map_settings|json_script:"map-settings" }}
+    <div class="map-canvas" id="map-canvas"></div>
 </div>
 
 <p class="small faint" style="margin-top:var(--sp-3)">
