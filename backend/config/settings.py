@@ -124,7 +124,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Внешние библиотеки.
     "rest_framework",
-    "rest_framework.authtoken",
     "drf_spectacular",
 ]
 
@@ -304,7 +303,7 @@ ANALYTICS_CACHE_TTL = env_int("ANALYTICS_CACHE_TTL", 600)
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.TokenAuthentication",
+        "api.authentication.ProfileTokenAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
@@ -330,8 +329,10 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "ГрузПоток — REST API",
     "DESCRIPTION": (
         "Программный интерфейс информационной системы по логистической "
-        "инфраструктуре города Москвы. Открытые справочники и аналитика "
-        "доступны без авторизации, операции изменения — по токену."
+        "инфраструктуре города Москвы. Справочники, реестры и аналитика "
+        "доступны без авторизации; формирование отчётных документов — "
+        "по персональному токену, который выпускается в личном кабинете "
+        "и передаётся заголовком Authorization: Token <значение>."
     ),
     "VERSION": PROJECT_VERSION,
     "SERVE_INCLUDE_SCHEMA": False,

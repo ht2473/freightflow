@@ -10,16 +10,21 @@
             <h3 style="margin-bottom:var(--sp-3)">{% trans 'Персональный токен' %}</h3>
 
             {% if not can_use %}
-                <p class="small muted" style="margin-bottom:var(--sp-4)">{% trans 'Программный доступ по токену предоставляется с роли «Аналитик». Справочники и реестры при этом доступны без авторизации — токен лишь повышает допустимую частоту обращений.' %}</p>
+                <p class="small muted" style="margin-bottom:var(--sp-4)">{% trans 'Программный доступ по токену предоставляется с роли «Аналитик». Справочники, реестры и аналитика при этом доступны без авторизации: токен повышает допустимую частоту обращений и открывает формирование отчётных документов.' %}</p>
                 <a class="button" href="{% url 'core:api_docs' %}">{% trans 'Описание интерфейса' %}</a>
-            {% elif token %}
-                <div class="code-block" id="api-token">{{ token }}</div>
-                <p class="small faint" style="margin-top:var(--sp-2)">
-                    Выпущен {{ issued_at|date:"d.m.Y H:i" }}. Храните токен как пароль:
-                    он даёт доступ от вашего имени.
-                </p>
+            {% elif fresh_token %}
+                <p class="small" style="margin-bottom:var(--sp-3)">{% trans 'Токен показывается один раз: система хранит его отпечаток и восстановить значение не может. Забытый токен заменяется выпуском нового.' %}</p>
+                <div class="code-block" id="api-token">{{ fresh_token }}</div>
                 <div class="row" style="margin-top:var(--sp-4)">
-                    <button class="button" type="button" data-copy="#api-token">{% trans 'Скопировать' %}</button>
+                    <button class="button button--primary" type="button" data-copy="#api-token">{% trans 'Скопировать' %}</button>
+                </div>
+            {% elif has_token %}
+                <dl class="facts">
+                    <div><dt>{% trans 'Начало значения' %}</dt><dd class="mono">{{ token_prefix }}…</dd></div>
+                    <div><dt>{% trans 'Выпущен' %}</dt><dd>{{ issued_at|date:"d.m.Y H:i" }}</dd></div>
+                    <div><dt>{% trans 'Последнее обращение' %}</dt><dd>{% if used_at %}{{ used_at|date:"d.m.Y H:i" }}{% else %}{% trans 'обращений не было' %}{% endif %}</dd></div>
+                </dl>
+                <div class="row" style="margin-top:var(--sp-4)">
                     <form method="post">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="issue">
@@ -32,7 +37,7 @@
                     </form>
                 </div>
             {% else %}
-                <p class="small muted" style="margin-bottom:var(--sp-4)">{% trans 'Токен не выпущен. Он потребуется для обращений к API с повышенной частотой и для доступа к методам, требующим авторизации.' %}</p>
+                <p class="small muted" style="margin-bottom:var(--sp-4)">{% trans 'Токен не выпущен. Он повышает допустимую частоту обращений и открывает методы, требующие авторизации, — прежде всего формирование отчётных документов.' %}</p>
                 <form method="post">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="issue">
@@ -42,22 +47,29 @@
         </div>
 
         <div class="card">
-            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Пример обращения' %}</h3>
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Примеры обращения' %}</h3>
+            <p class="small muted">{% trans 'Проверить токен и увидеть, что он открывает:' %}</p>
             <div class="code-block">curl -H "Authorization: Token ВАШ_ТОКЕН" \
-     "{{ base_url }}objects/?district=1&amp;page_size=10"</div>
-            <p class="small faint" style="margin-top:var(--sp-3)">{% trans 'Базовый адрес:' %}<span class="mono">{{ base_url }}</span>
-            </p>
+     "{{ base_url }}me/"</div>
+            <p class="small muted" style="margin-top:var(--sp-3)">{% trans 'Отбор записей реестра — параметрами страниц системы:' %}</p>
+            <div class="code-block">curl "{{ base_url }}objects/?district=1&amp;page_size=10"</div>
+            <p class="small muted" style="margin-top:var(--sp-3)">{% trans 'Отчёт по той же выборке одним запросом:' %}</p>
+            <div class="code-block">curl -H "Authorization: Token ВАШ_ТОКЕН" -OJ \
+     "{{ base_url }}exports/objects.xlsx?district=1"</div>
+            <p class="small faint" style="margin-top:var(--sp-3)">{% trans 'Базовый адрес:' %} <span class="mono">{{ base_url }}</span></p>
         </div>
     </div>
 
     <aside class="stack">
         <div class="card">
-            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Ограничения' %}</h3>
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Что даёт токен' %}</h3>
             <dl class="facts">
                 <div><dt>{% trans 'Без токена' %}</dt><dd>{% trans '60 запросов/мин' %}</dd></div>
                 <div><dt>{% trans 'По токену' %}</dt><dd>{% trans '600 запросов/мин' %}</dd></div>
                 <div><dt>{% trans 'Размер страницы' %}</dt><dd>{% trans 'до 500 записей' %}</dd></div>
+                <div><dt>{% trans 'Выгрузка отчётов' %}</dt><dd>{% trans 'шесть наборов, пять форматов' %}</dd></div>
             </dl>
+            <p class="small faint" style="margin-top:var(--sp-3)">{% trans 'Отчёты, сформированные по токену, попадают в центр выгрузок наравне с заказанными на страницах системы.' %}</p>
         </div>
 
         <div class="card">

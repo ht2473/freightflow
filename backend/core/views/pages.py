@@ -233,6 +233,21 @@ API_ENDPOINTS: tuple[dict, ...] = (
         "description": _("Оценка объёма перевозок на ближайшие месяцы."),
         "params": "district, horizon",
     },
+    {
+        "path": "me/",
+        "title": _("Владелец токена"),
+        "description": _("Учётная запись, роль и перечень доступных ей методов. "
+                         "Требует токена."),
+        "params": "—",
+    },
+    {
+        "path": "exports/{набор}.{формат}",
+        "title": _("Отчётный документ"),
+        "description": _("Формирование отчёта по набору данных: objects, districts, "
+                         "roads, incidents, routes, flows в форматах xlsx, docx, pdf, "
+                         "csv и geojson. Требует роли «Аналитик»."),
+        "params": _("параметры отбора соответствующего реестра"),
+    },
 )
 
 

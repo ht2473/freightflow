@@ -7,6 +7,9 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+from accounts.models import profile_for
 from analytics import services as analytics_services
 from core import selectors
 from core.models import (
@@ -21,13 +24,17 @@ from core.models import (
     RoadSegment,
     TrafficIncident,
 )
+from django.conf import settings
 from django.db.models import Count
+from django.http import FileResponse
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
-from rest_framework import viewsets
-from rest_framework.decorators import action, api_view
+from exports import service as export_service
+from rest_framework import permissions, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 
+from . import permissions as api_permissions
 from . import serializers
 
 
@@ -404,3 +411,82 @@ def typology(request):
             ],
         }
     )
+
+
+@extend_schema(
+    tags=["Доступ"],
+    summary="Владелец предъявленного токена",
+    responses={200: OpenApiTypes.OBJECT},
+)
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def whoami(request):
+    """Кому принадлежит токен и что он позволяет.
+
+    Метод нужен клиентской программе, чтобы отличить исправный токен от
+    отозванного, не полагаясь на код ответа других методов: справочники
+    отдаются и без авторизации, и по ним годность токена не проверить.
+    """
+    profile = getattr(request, "user_profile", None) or profile_for(request.user)
+    return Response(
+        {
+            "username": request.user.username,
+            "role": profile.role,
+            "role_label": str(profile.get_role_display()),
+            "permissions": {
+                "export": profile.can_export,
+                "operate": profile.can_operate,
+                "administer": profile.can_administer,
+            },
+            "token_issued": profile.api_token_created,
+            "datasets": sorted(export_service.DATASETS),
+        }
+    )
+
+
+@extend_schema(
+    tags=["Выгрузка"],
+    summary="Отчётный документ по набору данных",
+    parameters=[
+        OpenApiParameter("dataset", str, description="Код набора данных"),
+        OpenApiParameter("fmt", str, description="xlsx, docx, pdf, csv или geojson"),
+    ],
+    responses={200: OpenApiTypes.BINARY},
+)
+@api_view(["GET"])
+@permission_classes([api_permissions.IsAnalyst])
+def export(request, dataset: str, fmt: str):
+    """Сформировать отчёт и отдать файл потоком.
+
+    Формат назван расширением адреса, а не параметром запроса: строка запроса
+    целиком отдаётся построителю набора и содержит условия отбора — те же
+    параметры, что понимают страницы реестров. Задание попадает в центр
+    выгрузок кабинета: обращение по токену не должно оставлять меньше следов,
+    чем нажатие кнопки на странице.
+    """
+    fmt = fmt.lower()
+    try:
+        export_service.validate(dataset, fmt)
+    except export_service.ExportRequestError as error:
+        return Response({"detail": str(error)}, status=400)
+
+    job = export_service.perform(
+        request.user,
+        dataset,
+        fmt,
+        request.query_params,
+        path=request.path,
+        request_id=getattr(request, "request_id", ""),
+    )
+    if not job.is_ready:
+        return Response({"detail": job.error_message or "Отчёт не сформирован"}, status=500)
+
+    path = Path(settings.EXPORT_ROOT) / job.file_name
+    response = FileResponse(
+        path.open("rb"),
+        content_type=export_service.CONTENT_TYPES.get(fmt, "application/octet-stream"),
+        as_attachment=True,
+        filename=job.file_name,
+    )
+    response["X-Export-Rows"] = str(job.row_count)
+    return response

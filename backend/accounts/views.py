@@ -31,6 +31,10 @@ from .models import (
     profile_for,
 )
 
+#: Ключ сессии, через который только что выпущенный токен доходит до
+#: страницы после перенаправления. Значение снимается при первом же показе.
+FRESH_TOKEN_KEY = "fresh_api_token"
+
 # Состав вкладок кабинета: код, подпись, маршрут. Используется общим
 # шаблоном навигации, поэтому порядок разделов задаётся в одном месте.
 CABINET_TABS: tuple[tuple[str, str, str], ...] = (
@@ -407,8 +411,12 @@ def api_access(request):
                 _("Доступ к программному интерфейсу предоставляется с роли «Аналитик»."),
             )
         elif request.POST.get("action") == "issue":
-            user_profile.issue_api_token()
-            messages.success(request, _("Новый токен выпущен. Предыдущий отозван."))
+            # Значение показывается один раз: в базе остаётся отпечаток,
+            # и восстановить токен для повторного показа неоткуда.
+            request.session[FRESH_TOKEN_KEY] = user_profile.issue_api_token()
+            messages.success(
+                request, _("Токен выпущен. Скопируйте его — повторно он не показывается.")
+            )
         elif request.POST.get("action") == "revoke":
             user_profile.revoke_api_token()
             messages.info(request, _("Токен отозван."))
@@ -423,8 +431,11 @@ def api_access(request):
             "Персональный токен для программного обращения к системе. "
             "Передаётся в заголовке Authorization."
         ),
-        token=user_profile.api_token,
+        fresh_token=request.session.pop(FRESH_TOKEN_KEY, ""),
+        token_prefix=user_profile.api_token_prefix,
+        has_token=user_profile.has_api_token,
         issued_at=user_profile.api_token_created,
+        used_at=user_profile.api_token_used,
         can_use=user_profile.can_export,
         base_url=request.build_absolute_uri("/api/v1/"),
     )

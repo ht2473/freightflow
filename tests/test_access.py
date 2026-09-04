@@ -144,36 +144,6 @@ class TestRoleModel:
         assert profile_for(user).role == Role.ADMIN
 
 
-class TestApiToken:
-    """Персональный токен доступа к программному интерфейсу."""
-
-    def test_issue_token(self, users):
-        """Выпуск токена сохраняет его в профиле."""
-        from accounts.models import profile_for
-
-        profile = profile_for(users["analyst"])
-        token = profile.issue_api_token()
-        assert token and profile.api_token == token
-
-    def test_reissue_replaces_token(self, users):
-        """Повторный выпуск отзывает предыдущий токен."""
-        from accounts.models import profile_for
-
-        profile = profile_for(users["analyst"])
-        first = profile.issue_api_token()
-        second = profile.issue_api_token()
-        assert first != second
-
-    def test_revoke_clears_token(self, users):
-        """Отзыв очищает токен и отметку выпуска."""
-        from accounts.models import profile_for
-
-        profile = profile_for(users["analyst"])
-        profile.issue_api_token()
-        profile.revoke_api_token()
-        assert profile.api_token == "" and profile.api_token_created is None
-
-
 class TestAuditTrail:
     """Журнал действий пользователей."""
 

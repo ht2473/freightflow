@@ -12,7 +12,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import secrets
+from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -20,6 +22,24 @@ from django.db import models
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+
+#: Опознавательное начало токена REST API. Значение, найденное в чужом
+#: журнале или в истории команд, по нему сразу опознаётся как ключ доступа
+#: к этой системе и может быть отозвано владельцем.
+API_TOKEN_PREFIX = "ff_"
+
+#: Наименьший промежуток между отметками об использовании токена.
+API_TOKEN_USE_INTERVAL = timedelta(minutes=1)
+
+
+def hash_api_token(raw: str) -> str:
+    """Вычислить отпечаток токена для поиска в базе.
+
+    Токен — случайное значение достаточной длины, поэтому перебор словарём
+    к нему неприменим и в замедляющей функции с солью нужды нет; от неё,
+    напротив, пришлось бы отказаться, так как поиск ведётся по равенству.
+    """
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 class Role(models.TextChoices):
@@ -98,10 +118,18 @@ class UserProfile(models.Model):
     )
     notify_incidents = models.BooleanField(_("Уведомлять об инцидентах"), default=True)
 
-    api_token = models.CharField(
-        _("Токен REST API"), max_length=64, blank=True, default="", db_index=True
+    # Токен хранится отпечатком: содержимое базы не должно позволять
+    # обращаться к системе от имени её пользователей. Начало значения
+    # хранится отдельно — по нему владелец узнаёт свой токен в списке,
+    # не раскрывая его целиком.
+    api_token_hash = models.CharField(
+        _("Отпечаток токена"), max_length=64, blank=True, default="", db_index=True
+    )
+    api_token_prefix = models.CharField(
+        _("Начало токена"), max_length=16, blank=True, default=""
     )
     api_token_created = models.DateTimeField(_("Токен выпущен"), null=True, blank=True)
+    api_token_used = models.DateTimeField(_("Последнее обращение"), null=True, blank=True)
 
     created_at = models.DateTimeField(_("Создан"), auto_now_add=True)
     updated_at = models.DateTimeField(_("Обновлён"), auto_now=True)
@@ -150,18 +178,63 @@ class UserProfile(models.Model):
 
     # --------------------------------------------------------------- токен
 
+    @property
+    def has_api_token(self) -> bool:
+        """Действующий токен выпущен."""
+        return bool(self.api_token_hash)
+
     def issue_api_token(self) -> str:
-        """Выпустить новый токен доступа к REST API, отозвав предыдущий."""
-        self.api_token = secrets.token_urlsafe(32)
+        """Выпустить новый токен доступа к REST API, отозвав предыдущий.
+
+        Значение возвращается вызывающему один раз и больше нигде не
+        восстанавливается: в базе остаётся только отпечаток.
+        """
+        raw = f"{API_TOKEN_PREFIX}{secrets.token_urlsafe(32)}"
+        self.api_token_hash = hash_api_token(raw)
+        self.api_token_prefix = raw[:12]
         self.api_token_created = timezone.now()
-        self.save(update_fields=["api_token", "api_token_created", "updated_at"])
-        return self.api_token
+        self.api_token_used = None
+        self.save(
+            update_fields=[
+                "api_token_hash",
+                "api_token_prefix",
+                "api_token_created",
+                "api_token_used",
+                "updated_at",
+            ]
+        )
+        return raw
 
     def revoke_api_token(self) -> None:
         """Отозвать действующий токен."""
-        self.api_token = ""
+        self.api_token_hash = ""
+        self.api_token_prefix = ""
         self.api_token_created = None
-        self.save(update_fields=["api_token", "api_token_created", "updated_at"])
+        self.api_token_used = None
+        self.save(
+            update_fields=[
+                "api_token_hash",
+                "api_token_prefix",
+                "api_token_created",
+                "api_token_used",
+                "updated_at",
+            ]
+        )
+
+    def note_api_use(self) -> None:
+        """Отметить обращение по токену.
+
+        Отметка обновляется не чаще раза в минуту: назначение поля —
+        показать владельцу, что токеном пользуются, а не считать запросы,
+        и запись на каждое обращение к API этому назначению не отвечает.
+        """
+        now = timezone.now()
+        if self.api_token_used and now - self.api_token_used < API_TOKEN_USE_INTERVAL:
+            return
+        # Точечное обновление: профиль в этот момент собран из запроса,
+        # и сохранять его целиком означало бы затирать правки из кабинета.
+        UserProfile.objects.filter(pk=self.pk).update(api_token_used=now)
+        self.api_token_used = now
 
 
 class Favorite(models.Model):
@@ -496,6 +569,22 @@ class AuditEvent(models.Model):
     def __str__(self) -> str:
         who = self.user.username if self.user else "аноним"
         return f"{self.created_at:%d.%m.%Y %H:%M} · {who} · {self.get_action_display()}"
+
+
+def profile_by_api_token(raw: str) -> UserProfile | None:
+    """Найти профиль по предъявленному токену REST API.
+
+    Возвращается профиль вместе с учётной записью: вызывающему нужны и
+    пользователь, и его роль, а раздельные запросы за тем и другим
+    выполнялись бы на каждое обращение к интерфейсу.
+    """
+    if not raw or not raw.startswith(API_TOKEN_PREFIX):
+        return None
+    return (
+        UserProfile.objects.select_related("user")
+        .filter(api_token_hash=hash_api_token(raw))
+        .first()
+    )
 
 
 def profile_for(user: User) -> UserProfile | None:

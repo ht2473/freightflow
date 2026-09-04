@@ -29,6 +29,9 @@ urlpatterns = [
     path("analytics/load-index/", views.load_index, name="load-index"),
     path("analytics/forecast/", views.forecast, name="forecast"),
     path("analytics/typology/", views.typology, name="typology"),
+    # Доступ по токену: опознание владельца и формирование отчётов.
+    path("me/", views.whoami, name="whoami"),
+    path("exports/<str:dataset>.<str:fmt>", views.export, name="export"),
     # Машиночитаемая спецификация и интерактивная документация.
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
     path("docs/", SpectacularSwaggerView.as_view(url_name="v1:schema"), name="swagger"),
