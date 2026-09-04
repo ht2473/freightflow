@@ -19,14 +19,15 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Iterator
 
-from core.choices import RouteType
+from core.choices import RouteType, UpdateFrequency
 from core.models import CargoRoute
-from django.db import transaction
 from geo.geometry import Geometry
 
-from ..client import OverpassClient
-from .loaders import LoadReport, ensure_source
+from ..pipeline import Candidate, Context, Extract, RunReport
+from ..quality import Check, fits, required, within
+from .loaders import OverpassPipeline
 
 logger = logging.getLogger("freightflow.etl")
 
@@ -115,42 +116,63 @@ def _direction(tags: dict[str, str]) -> str:
     return RouteType.TRANSIT
 
 
-def load_corridors(client: OverpassClient, refresh: bool = False,
-                   prune: bool = False) -> LoadReport:
-    """Заполнить реестр федеральных грузовых коридоров."""
-    report = LoadReport(dataset="Грузовые коридоры")
-    response = client.fetch(CORRIDORS_QUERY, refresh=refresh)
-    report.fetched = response.count
-    report.from_cache = response.from_cache
-    report.fetched_at = response.fetched_at
+class CorridorsPipeline(OverpassPipeline):
+    """Реестр федеральных грузовых коридоров, входящих в город."""
 
-    source = ensure_source()
-    present: set[str] = set()
+    name = "osm.corridors"
+    title = "Грузовые коридоры"
+    target_table = "cargo_routes"
+    description = (
+        "Маршрутные отношения федеральных и региональных трасс. Геометрия "
+        "обрезается по габаритам города: коридор нужен реестру в пределах "
+        "Москвы и ближних подходов."
+    )
+    query = CORRIDORS_QUERY
+    model = CargoRoute
+    frequency = UpdateFrequency.MONTHLY
+    supports_prune = True
+    volatile_fields = ()
+    checks: tuple[Check, ...] = (
+        required("name", "Наименование коридора"),
+        fits("name", 200, "Наименование коридора"),
+        required("geom", "Геометрия коридора"),
+        within("distance_km", 3, 500, "Протяжённость в пределах выгрузки", "км"),
+    )
 
-    with transaction.atomic():
-        for element in response.elements:
+    def lookup(self, candidate: Candidate) -> dict:
+        return {"name": candidate.key}
+
+    def prepare(self, extract: Extract, context: Context,
+                report: RunReport) -> Iterator[Candidate]:
+        source = self.ensure_source()
+
+        for element in extract.records:
             tags = element.get("tags") or {}
             ref = (tags.get("ref") or "").strip()
             name = (tags.get("name") or "").strip().strip("«»\"")
 
             if not ref or not _REF_RE.match(ref):
-                report.skipped += 1
+                # В выгрузку попадают европейские маршруты и городские
+                # автобусные линии: учётного номера трассы у них нет.
+                report.skip("учётный номер трассы не распознан")
                 continue
 
             geometry = _corridor_geometry(element)
             if geometry is None:
-                report.unlocated += 1
+                report.skip("вне габаритов города")
                 continue
 
             length_km = geometry.length_km
             if length_km < MIN_CORRIDOR_LENGTH_KM:
-                report.skipped += 1
+                # Касание границы прямоугольника коридором в город не является.
+                report.skip("короче порога включения")
                 continue
 
-            title = f"{ref} «{name}»" if name else ref
-            _, created = CargoRoute.objects.update_or_create(
-                name=title[:200],
-                defaults={
+            title = (f"{ref} «{name}»" if name else ref)[:200]
+            yield Candidate(
+                key=title,
+                position=f"relation/{element.get('id')}",
+                values={
                     "route_type": _direction(tags),
                     "origin_region": (tags.get("from") or "")[:120],
                     "destination": (tags.get("to") or "")[:120],
@@ -158,20 +180,20 @@ def load_corridors(client: OverpassClient, refresh: bool = False,
                     "geom": geometry,
                     "source": source,
                 },
+                extra={"name": title, "ref": ref},
+                payload=tags,
             )
-            present.add(title[:200])
-            if created:
-                report.created += 1
-            else:
-                report.updated += 1
 
-        if prune:
-            doomed = [
-                pk
-                for pk, name in CargoRoute.objects.values_list("pk", "name").iterator()
-                if name not in present
-            ]
-            if doomed:
-                report.removed, _ = CargoRoute.objects.filter(pk__in=doomed).delete()
+    def prune(self, seen: set[str], context: Context) -> int:
+        doomed = [
+            pk
+            for pk, name in CargoRoute.objects.values_list("pk", "name").iterator()
+            if name not in seen
+        ]
+        if not doomed:
+            return 0
+        removed, _ = CargoRoute.objects.filter(pk__in=doomed).delete()
+        return removed
 
-    return report
+
+__all__ = ["CORRIDORS_QUERY", "CorridorsPipeline"]

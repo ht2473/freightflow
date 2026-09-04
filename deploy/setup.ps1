@@ -269,8 +269,7 @@ if (-not (Test-Path $dataset)) {
 }
 
 Write-Note "Набор данных: $dataset"
-Invoke-Checked { & $Python backend\manage.py load_osm --prune } 'загрузка данных OpenStreetMap'
-Invoke-Checked { & $Python backend\manage.py load_reference } 'загрузка справочных наборов'
+Invoke-Checked { & $Python backend\manage.py etl --all --prune } 'загрузка данных из внешних источников'
 Invoke-Checked { & $Python backend\manage.py simulate_traffic --replace } 'расчёт дорожной обстановки'
 Invoke-Checked { & $Python backend\manage.py district_centers } 'координаты округов'
 Invoke-Checked { & $Python backend\manage.py setup_roles } 'настройка ролей'

@@ -21,15 +21,16 @@ from __future__ import annotations
 import logging
 import re
 from collections import Counter, defaultdict
+from collections.abc import Iterator
 
 from core.choices import DataOrigin, RoadClass
-from core.models import DataSource, District, RoadSegment
-from django.db import transaction
+from core.models import District, RoadSegment
 from geo.geometry import Geometry
 
-from ..client import OverpassClient
+from ..pipeline import Candidate, Context, Extract, RunReport
+from ..quality import Check, fits, required, within
 from . import queries
-from .loaders import LoadReport, ensure_source
+from .loaders import OverpassPipeline
 
 logger = logging.getLogger("freightflow.etl")
 
@@ -155,47 +156,71 @@ def _display_name(tags_list: list[dict[str, str]]) -> str:
     return refs.most_common(1)[0][0] if refs else ""
 
 
-def load_road_network(client: OverpassClient, refresh: bool = False,
-                      prune: bool = False) -> LoadReport:
-    """Заполнить реестр магистралей улично-дорожной сети."""
-    report = LoadReport(dataset="Магистральная сеть")
-    response = client.fetch(queries.ROAD_NETWORK, refresh=refresh)
-    report.fetched = response.count
-    report.from_cache = response.from_cache
-    report.fetched_at = response.fetched_at
+class RoadNetworkPipeline(OverpassPipeline):
+    """Реестр магистралей улично-дорожной сети."""
 
-    source = ensure_source()
-    groups = _group_ways(response.elements, report)
-    districts = _district_index()
+    name = "osm.roads"
+    title = "Магистральная сеть"
+    target_table = "road_segments"
+    description = (
+        "Линии OpenStreetMap классов motorway, trunk и primary. Части "
+        "собираются в одну магистраль по наименованию, характеристики "
+        "агрегируются, протяжённость измеряется по геометрии."
+    )
+    query = queries.ROAD_NETWORK
+    model = RoadSegment
+    supports_prune = True
+    checks: tuple[Check, ...] = (
+        required("name", "Наименование магистрали"),
+        fits("name", 200, "Наименование магистрали"),
+        required("geom", "Геометрия магистрали"),
+        within("length_km", 0.5, 500, "Протяжённость", "км"),
+        within("lanes", 1, 16, "Число полос"),
+        within("speed_limit_kmh", 5, 130, "Разрешённая скорость", "км/ч"),
+    )
 
-    present: set[str] = set()
-    with transaction.atomic():
+    def lookup(self, candidate: Candidate) -> dict:
+        return {"name": candidate.key}
+
+    def prepare(self, extract: Extract, context: Context,
+                report: RunReport) -> Iterator[Candidate]:
+        source = self.ensure_source()
+        districts = _district_index()
+        groups = _group_ways(extract.records, report)
+
         for key, ways in groups.items():
-            record = _build_road(key, ways, districts, source, response.fetched_at)
-            if record is None:
-                report.skipped += 1
+            values = _build_road(key, ways, districts, source, extract.fetched_at)
+            if values is None:
+                # Слишком короткие связки и части без геометрии магистралью
+                # не являются: их наименование совпадает с основной дорогой.
+                report.skip("связка короче порога включения")
                 continue
 
-            display_name = record.pop("name")
-            _, created = RoadSegment.objects.update_or_create(
-                name=display_name, defaults=record,
+            display_name = values.pop("name")
+            yield Candidate(
+                key=display_name,
+                position=f"{len(ways)} частей, ключ «{key}»",
+                values=values,
+                extra={"name": display_name},
+                payload={"key": key, "parts": len(ways)},
             )
-            # В набор сохранившихся заносится отображаемое наименование:
-            # именно по нему приводится реестр к составу источника, тогда как
-            # ключ группировки приведён к нижнему регистру.
-            present.add(display_name)
-            if created:
-                report.created += 1
-            else:
-                report.updated += 1
 
-        if prune:
-            report.removed = _prune_roads(present)
+    def prune(self, seen: set[str], context: Context) -> int:
+        """Удалить магистрали, отсутствующие в текущей выгрузке."""
+        doomed = [
+            pk
+            for pk, name in RoadSegment.objects.values_list("pk", "name").iterator(
+                chunk_size=2000
+            )
+            if name not in seen
+        ]
+        if not doomed:
+            return 0
+        removed, _ = RoadSegment.objects.filter(pk__in=doomed).delete()
+        return removed
 
-    return report
 
-
-def _group_ways(elements: list[dict], report: LoadReport) -> dict[str, list[dict]]:
+def _group_ways(elements: list[dict], report: RunReport) -> dict[str, list[dict]]:
     """Сгруппировать части по наименованию магистрали."""
     groups: dict[str, list[dict]] = defaultdict(list)
     for element in elements:
@@ -204,7 +229,7 @@ def _group_ways(elements: list[dict], report: LoadReport) -> dict[str, list[dict
         if key is None:
             # Безымянные части — съезды и развязочные связки. Самостоятельной
             # магистралью они не являются и в реестр не попадают.
-            report.skipped += 1
+            report.skip("часть без наименования")
             continue
         groups[key].append(element)
     return groups
@@ -254,9 +279,8 @@ def _build_road(key: str, ways: list[dict], districts, source,
     speeds = [value for value in (_int_tag(t, "maxspeed") for t in tags_list) if value]
     refs = [(t.get("ref") or "").strip() for t in tags_list if t.get("ref")]
 
-    display_name = _display_name(tags_list) or key
     return {
-        "name": display_name[:200],
+        "name": (_display_name(tags_list) or key)[:200],
         "ref": refs[0][:32] if refs else "",
         "road_class": road_class,
         # Число полос — наибольшее из размеченных: оно определяет пропускную
@@ -303,19 +327,4 @@ def _dominant_district(geometry: Geometry, districts) -> District | None:
     return index[max(tally, key=lambda key: tally[key])]
 
 
-def _prune_roads(present: set[str]) -> int:
-    """Удалить магистрали, отсутствующие в текущей выгрузке."""
-    doomed = [
-        pk
-        for pk, name in RoadSegment.objects.values_list("pk", "name").iterator(
-            chunk_size=2000
-        )
-        if name not in present
-    ]
-    if not doomed:
-        return 0
-    removed, _ = RoadSegment.objects.filter(pk__in=doomed).delete()
-    return removed
-
-
-__all__ = ["load_road_network", "DataSource"]
+__all__ = ["RoadNetworkPipeline", "normalize_road_name"]

@@ -36,8 +36,7 @@ migrate:  ## Применить миграции
 	$(MANAGE) migrate
 
 data:  ## Загрузить данные из внешних источников
-	$(MANAGE) load_osm --prune
-	$(MANAGE) load_reference
+	$(MANAGE) etl --all --prune
 	$(MANAGE) simulate_traffic --replace
 
 demo: migrate data  ## Полная подготовка демонстрационного стенда

@@ -466,6 +466,11 @@ OSM_CACHE_DIR = Path(env("OSM_CACHE_DIR", str(ROOT_DIR / "data" / "osm")))
 # выгрузки не имеет и потому входит в поставку проекта файлами.
 REFERENCE_DIR = Path(env("REFERENCE_DIR", str(ROOT_DIR / "data" / "reference")))
 
+# Наибольшее число записей, откладываемых в карантин за один запуск загрузки.
+# Тысяча однотипных отклонений говорит ровно то же, что и первая сотня, тогда
+# как полный счётчик отклонений сохраняется в журнале в любом случае.
+ETL_QUARANTINE_LIMIT = env_int("ETL_QUARANTINE_LIMIT", 200)
+
 # Размер страницы реестров по умолчанию.
 PAGE_SIZE = env_int("PAGE_SIZE", 25)
 

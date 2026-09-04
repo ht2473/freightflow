@@ -1,29 +1,27 @@
 """Загрузка данных OpenStreetMap в реестры системы.
 
-Каждый загрузчик выполняет одну и ту же последовательность: получает выгрузку,
-отбирает подходящие элементы, приводит их к доменной модели и записывает,
-обновляя уже существующие записи по ключу исходного элемента. Повторный запуск
-поэтому не создаёт дубликатов и приводит реестр к текущему состоянию
-источника.
+Два набора: границы административных округов и реестр объектов логистической
+инфраструктуры. Оба проходят общий конвейер (:mod:`etl.pipeline`), поэтому
+здесь описано только то, чем они отличаются от прочих источников, — запрос
+к службе, правила отбора и приведение элемента разметки к записи реестра.
 
-Итог загрузки возвращается структурой :class:`LoadReport`, а не печатается:
-одна и та же процедура вызывается и из командной строки, и из панели
-администратора, и из регламентного задания.
+Выгрузка намеренно шире реестра: разметка сообщества неоднородна, и один и тот
+же склад бывает обозначен зданием, территорией или точкой. Решение об отнесении
+принимают правила :mod:`etl.osm.classify`, и обозначение сработавшего правила
+сохраняется вместе с объектом — по нему видно, почему объект в реестре.
 """
 
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from datetime import datetime
+from collections.abc import Iterator
 
 from core.choices import DataOrigin, OsmElement, SourceType, UpdateFrequency
 from core.models import DataSource, District, InfrastructureObject, InfrastructureType
-from django.db import transaction
-from django.utils import timezone
 from geo.geometry import Geometry
 
-from ..client import OverpassClient
+from ..pipeline import Candidate, Context, Extract, ModelPipeline, RunReport
+from ..quality import Check, condition, fits, not_negative, required
 from . import queries
 from .addresses import build_address, build_contacts, build_opening_hours, build_operator
 from .classify import classify
@@ -37,35 +35,6 @@ SOURCE_CODE = "osm"
 #: пяти квадратных километров в городской черте не встречается: такое значение
 #: означает, что в контур попала вся промзона целиком, а не отдельный объект.
 MAX_PLAUSIBLE_AREA_SQ_M = 5_000_000
-
-
-@dataclass
-class LoadReport:
-    """Итог загрузки одного набора данных."""
-
-    dataset: str
-    fetched: int = 0
-    created: int = 0
-    updated: int = 0
-    skipped: int = 0
-    unlocated: int = 0
-    removed: int = 0
-    from_cache: bool = False
-    fetched_at: datetime | None = None
-    notes: list[str] = field(default_factory=list)
-    rejected_by_rule: dict[str, int] = field(default_factory=dict)
-
-    @property
-    def written(self) -> int:
-        return self.created + self.updated
-
-    def summary(self) -> str:
-        return (
-            f"{self.dataset}: получено {self.fetched}, записано {self.written} "
-            f"(создано {self.created}, обновлено {self.updated}), "
-            f"отклонено {self.skipped}, без координат {self.unlocated}, "
-            f"удалено {self.removed}"
-        )
 
 
 def ensure_source() -> DataSource:
@@ -96,6 +65,31 @@ def _osm_key(element: dict) -> tuple[str, int] | None:
     return kind, int(identifier)
 
 
+class OverpassPipeline(ModelPipeline):
+    """Общая часть конвейеров, получающих данные из OpenStreetMap.
+
+    Выгрузка приходит одним ответом службы: разбирать её по частям нельзя,
+    поскольку сборка контура отношения требует всех его участков сразу.
+    """
+
+    source_code = SOURCE_CODE
+    frequency = UpdateFrequency.WEEKLY
+    #: Запрос на языке Overpass QL.
+    query: str = ""
+
+    def ensure_source(self) -> DataSource:
+        return ensure_source()
+
+    def extract(self, context: Context) -> Extract:
+        response = context.client().fetch(self.query, refresh=context.refresh)
+        return Extract(
+            records=response.elements,
+            count=response.count,
+            fetched_at=response.fetched_at,
+            from_cache=response.from_cache,
+        )
+
+
 # ---------------------------------------------------------------------------
 #  Административные округа
 # ---------------------------------------------------------------------------
@@ -119,51 +113,78 @@ DISTRICT_SHORT_NAMES: dict[str, str] = {
 }
 
 
-def load_districts(client: OverpassClient, refresh: bool = False) -> LoadReport:
-    """Заполнить границы административных округов.
+def _district_in_registry(candidate: Candidate) -> str | None:
+    """Округ из выгрузки должен присутствовать в справочнике.
 
-    Округа уже присутствуют в справочнике, но размечены одними центрами.
-    Загрузка добавляет к ним настоящие границы, без которых невозможны ни
-    картограмма, ни отнесение объекта к округу, ни расчёт плотности
-    размещения складских мощностей.
+    Справочник округов закрыт: их двенадцать, и появление тринадцатого
+    означало бы не пополнение реестра, а ошибку сопоставления.
     """
-    from .geometry import extract
+    if candidate.extra.get("district") is None:
+        return f"округ «{candidate.extra.get('name', '')}» отсутствует в справочнике"
+    return None
 
-    report = LoadReport(dataset="Административные округа")
-    response = client.fetch(queries.DISTRICTS, refresh=refresh)
-    report.fetched = response.count
-    report.from_cache = response.from_cache
-    report.fetched_at = response.fetched_at
 
-    with transaction.atomic():
-        for element in response.elements:
+class DistrictsPipeline(OverpassPipeline):
+    """Границы административных округов.
+
+    Округа присутствуют в справочнике изначально, но размечены одними
+    центрами. Загрузка добавляет к ним настоящие границы, без которых
+    невозможны ни картограмма, ни отнесение объекта к округу, ни расчёт
+    обеспеченности территории складскими мощностями.
+    """
+
+    name = "osm.districts"
+    title = "Административные округа"
+    target_table = "districts"
+    description = (
+        "Отношения OpenStreetMap уровня admin_level=5. Контур собирается "
+        "из участков границы, центр пересчитывается по контуру."
+    )
+    query = queries.DISTRICTS
+    model = District
+    volatile_fields = ()
+    checks: tuple[Check, ...] = (
+        condition("reference.district", "Округ присутствует в справочнике",
+                  _district_in_registry),
+        required("geom", "Граница округа"),
+    )
+
+    def lookup(self, candidate: Candidate) -> dict:
+        return {"short_name": candidate.key}
+
+    def prepare(self, extract: Extract, context: Context,
+                report: RunReport) -> Iterator[Candidate]:
+        from .geometry import extract as extract_geometry
+
+        registry = {district.short_name: district
+                    for district in District.objects.all()}
+
+        for element in extract.records:
             name = (element.get("tags", {}).get("name") or "").strip()
             short_name = DISTRICT_SHORT_NAMES.get(name)
             if not short_name:
-                report.skipped += 1
-                report.notes.append(f"округ «{name}» отсутствует в сопоставлении")
+                # В габаритный прямоугольник попадают округа сопредельных
+                # территорий; предметом реестра они не являются.
+                report.skip("вне сопоставления округов")
                 continue
 
-            district = District.objects.filter(short_name=short_name).first()
-            if district is None:
-                report.skipped += 1
-                report.notes.append(f"округ {short_name} отсутствует в справочнике")
-                continue
-
-            geometry = extract(element)
-            if geometry.footprint is None:
-                report.unlocated += 1
-                report.notes.append(f"контур округа {short_name} не собран")
-                continue
-
-            district.geom = geometry.footprint
-            # Центр пересчитывается по контуру: прежнее значение задавалось
-            # вручную и с настоящими границами могло не совпадать.
-            district.center = Geometry.point(*geometry.footprint.centroid)
-            district.save(update_fields=["geom", "center"])
-            report.updated += 1
-
-    return report
+            geometry = extract_geometry(element)
+            yield Candidate(
+                key=short_name,
+                position=f"{element.get('type')}/{element.get('id')}",
+                values={
+                    "geom": geometry.footprint,
+                    # Центр пересчитывается по контуру: значение, заданное
+                    # вручную, с настоящими границами может не совпадать.
+                    "center": (
+                        Geometry.point(*geometry.footprint.centroid)
+                        if geometry.footprint is not None
+                        else None
+                    ),
+                },
+                extra={"district": registry.get(short_name), "name": name},
+                payload={"name": name, "short_name": short_name},
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -188,149 +209,6 @@ def _locate_district(index: list[tuple[District, Geometry]],
         if boundary.contains(lon, lat):
             return district
     return None
-
-
-def load_infrastructure(client: OverpassClient, refresh: bool = False,
-                        prune: bool = False) -> LoadReport:
-    """Заполнить реестр объектов логистической инфраструктуры.
-
-    Выгрузка шире итогового реестра: отбор выполняют правила
-    :mod:`etl.osm.classify`, и каждое решение сохраняется вместе с объектом.
-    Объекты, для которых не удалось определить округ, в реестр не попадают:
-    отнесение к округу — обязательный признак, на нём строится вся
-    территориальная аналитика.
-    """
-    from .geometry import extract
-
-    report = LoadReport(dataset="Объекты инфраструктуры")
-    response = client.fetch(queries.INFRASTRUCTURE, refresh=refresh)
-    report.fetched = response.count
-    report.from_cache = response.from_cache
-    report.fetched_at = response.fetched_at
-
-    districts = _district_index()
-    if not districts:
-        raise RuntimeError(
-            "Не заполнены границы округов: отнести объекты к территориям "
-            "невозможно. Выполните загрузку округов."
-        )
-
-    types = {t.code: t for t in InfrastructureType.objects.all()}
-    source = ensure_source()
-    present: set[tuple[str, int]] = set()
-
-    with transaction.atomic():
-        for element in response.elements:
-            key = _osm_key(element)
-            tags = element.get("tags") or {}
-            if key is None or not tags:
-                report.skipped += 1
-                continue
-
-            verdict = classify(tags)
-            if not verdict.accepted:
-                report.skipped += 1
-                report.rejected_by_rule[verdict.rule] = (
-                    report.rejected_by_rule.get(verdict.rule, 0) + 1
-                )
-                continue
-
-            facility_type = types.get(verdict.type_code)
-            if facility_type is None:
-                report.skipped += 1
-                report.notes.append(f"тип «{verdict.type_code}» отсутствует в справочнике")
-                continue
-
-            geometry = extract(element)
-            if not geometry.is_located:
-                report.unlocated += 1
-                continue
-
-            district = _locate_district(districts, geometry.point)
-            if district is None:
-                # Выгрузка ведётся по границе субъекта, а границы округов
-                # получены отдельным запросом: расхождение на доли метра
-                # оставляет часть приграничных объектов вне всех округов.
-                report.unlocated += 1
-                continue
-
-            created = _write_facility(
-                element=element,
-                key=key,
-                tags=tags,
-                verdict=verdict,
-                geometry=geometry,
-                facility_type=facility_type,
-                district=district,
-                source=source,
-                fetched_at=response.fetched_at,
-            )
-            if created:
-                report.created += 1
-            else:
-                report.updated += 1
-            present.add(key)
-
-        if prune:
-            report.removed = _prune(present)
-
-    return report
-
-
-def _prune(present: set[tuple[str, int]]) -> int:
-    """Удалить записи реестра, отсутствующие в текущей выгрузке.
-
-    Реестр приводится к состоянию источника: удаляются и объекты, снятые
-    с разметки в OpenStreetMap, и записи, которых в источнике не было
-    никогда. Второе существеннее первого — именно так из реестра уходят
-    сведения, попавшие в него в обход загрузки.
-    """
-    # Ключ сравнивается целиком: совпадение по одной его составляющей ничего
-    # не означает, поскольку нумерация точек, линий и отношений независима.
-    # Отбор выполняется в приложении, а не запросом: выразить в SQL проверку
-    # вхождения пары в множество средствами ORM без расширений нельзя,
-    # а размер реестра исчисляется тысячами записей.
-    doomed = [
-        pk
-        for pk, osm_type, osm_id in InfrastructureObject.objects.values_list(
-            "pk", "osm_type", "osm_id"
-        ).iterator(chunk_size=2000)
-        if (osm_type, osm_id) not in present
-    ]
-    if not doomed:
-        return 0
-    removed, _ = InfrastructureObject.objects.filter(pk__in=doomed).delete()
-    return removed
-
-
-def _write_facility(*, element, key, tags, verdict, geometry, facility_type,
-                    district, source, fetched_at) -> bool:
-    """Записать объект, обновив существующий по ключу исходного элемента."""
-    osm_type, osm_id = key
-
-    area, area_origin = _area_fields(geometry.area_sq_m)
-
-    values = {
-        "type": facility_type,
-        "district": district,
-        "name": _display_name(tags, facility_type),
-        "address": build_address(tags),
-        "operating_hours": build_opening_hours(tags),
-        "operator": build_operator(tags),
-        "geom": geometry.point,
-        "footprint": geometry.footprint,
-        "area_sq_m": area,
-        "area_origin": area_origin,
-        "classification_rule": verdict.rule,
-        "source": source,
-        "source_updated_at": fetched_at,
-    }
-    values["website"], values["phone"] = build_contacts(tags)
-
-    _, created = InfrastructureObject.objects.update_or_create(
-        osm_type=osm_type, osm_id=osm_id, defaults=values,
-    )
-    return created
 
 
 def _area_fields(area_sq_m: float | None) -> tuple[float | None, str]:
@@ -359,6 +237,142 @@ def _display_name(tags: dict[str, str], facility_type: InfrastructureType) -> st
     if name:
         return name[:200]
     return f"{facility_type.name} (наименование не указано)"
+
+
+def _within_city(candidate: Candidate) -> str | None:
+    """Объект должен относиться к одному из округов.
+
+    Выгрузка ведётся по границе субъекта, а границы округов получены отдельным
+    запросом: расхождение на доли метра оставляет часть приграничных объектов
+    вне всех округов. Отнесение к округу обязательно — на нём держится вся
+    территориальная аналитика.
+    """
+    if candidate.values.get("district") is None:
+        return "объект не отнесён ни к одному округу"
+    return None
+
+
+class InfrastructurePipeline(OverpassPipeline):
+    """Реестр объектов логистической инфраструктуры."""
+
+    name = "osm.objects"
+    title = "Объекты инфраструктуры"
+    target_table = "infrastructure_objects"
+    description = (
+        "Склады, терминалы, грузовые дворы, стоянки и автотранспортные "
+        "предприятия. Отбор ведут правила etl.osm.classify: сначала "
+        "исключения, затем включения."
+    )
+    query = queries.INFRASTRUCTURE
+    model = InfrastructureObject
+    supports_prune = True
+    checks: tuple[Check, ...] = (
+        required("geom", "Координаты объекта"),
+        condition("reference.district", "Объект отнесён к округу", _within_city),
+        required("name", "Наименование"),
+        fits("name", 200, "Наименование"),
+        not_negative("area_sq_m", "Площадь"),
+    )
+
+    def lookup(self, candidate: Candidate) -> dict:
+        osm_type, osm_id = candidate.extra["osm_key"]
+        return {"osm_type": osm_type, "osm_id": osm_id}
+
+    def extract(self, context: Context) -> Extract:
+        # Правила отбора присваивают объекту тип; отсутствующий в справочнике
+        # тип означал бы молчаливую потерю объектов, поэтому справочник
+        # приводится к составу правил до начала загрузки.
+        created = ensure_types()
+        if created:
+            logger.info("Справочник типов дополнен: %d записей", created)
+        return super().extract(context)
+
+    def prepare(self, extract: Extract, context: Context,
+                report: RunReport) -> Iterator[Candidate]:
+        from .geometry import extract as extract_geometry
+
+        districts = _district_index()
+        if not districts:
+            raise RuntimeError(
+                "Не заполнены границы округов: отнести объекты к территориям "
+                "невозможно. Выполните загрузку округов."
+            )
+
+        types = {facility.code: facility for facility in InfrastructureType.objects.all()}
+        source = ensure_source()
+
+        for element in extract.records:
+            key = _osm_key(element)
+            tags = element.get("tags") or {}
+            if key is None or not tags:
+                report.skip("элемент без разметки")
+                continue
+
+            verdict = classify(tags)
+            if not verdict.accepted:
+                report.skip(verdict.rule)
+                continue
+
+            facility_type = types.get(verdict.type_code)
+            if facility_type is None:
+                report.skip(f"тип «{verdict.type_code}» отсутствует в справочнике")
+                continue
+
+            geometry = extract_geometry(element)
+            if not geometry.is_located:
+                report.skip("координаты не размечены")
+                continue
+
+            area, area_origin = _area_fields(geometry.area_sq_m)
+            website, phone = build_contacts(tags)
+            yield Candidate(
+                key=f"{key[0]}/{key[1]}",
+                position=f"{key[0]}/{key[1]}",
+                values={
+                    "type": facility_type,
+                    "district": _locate_district(districts, geometry.point),
+                    "name": _display_name(tags, facility_type),
+                    "address": build_address(tags),
+                    "operating_hours": build_opening_hours(tags),
+                    "operator": build_operator(tags),
+                    "website": website,
+                    "phone": phone,
+                    "geom": geometry.point,
+                    "footprint": geometry.footprint,
+                    "area_sq_m": area,
+                    "area_origin": area_origin,
+                    "classification_rule": verdict.rule,
+                    "source": source,
+                    "source_updated_at": extract.fetched_at,
+                },
+                extra={"osm_key": key},
+                payload=tags,
+            )
+
+    def prune(self, seen: set[str], context: Context) -> int:
+        """Удалить записи реестра, отсутствующие в текущей выгрузке.
+
+        Реестр приводится к состоянию источника: уходят и объекты, снятые
+        с разметки в OpenStreetMap, и записи, которых в источнике не было
+        никогда. Второе существеннее первого — именно так из реестра уходят
+        сведения, попавшие в него в обход загрузки.
+        """
+        # Ключ сравнивается целиком: совпадение по одной его составляющей
+        # ничего не означает, поскольку нумерация точек, линий и отношений
+        # в OpenStreetMap независима. Отбор выполняется в приложении:
+        # выразить проверку вхождения пары в множество средствами ORM без
+        # расширений нельзя, а размер реестра исчисляется тысячами записей.
+        doomed = [
+            pk
+            for pk, osm_type, osm_id in InfrastructureObject.objects.values_list(
+                "pk", "osm_type", "osm_id"
+            ).iterator(chunk_size=2000)
+            if f"{osm_type}/{osm_id}" not in seen
+        ]
+        if not doomed:
+            return 0
+        removed, _ = InfrastructureObject.objects.filter(pk__in=doomed).delete()
+        return removed
 
 
 # ---------------------------------------------------------------------------
@@ -396,28 +410,10 @@ def ensure_types() -> int:
     return created
 
 
-def log_run(report: LoadReport, source: DataSource, target_table: str,
-            started_at: datetime) -> None:
-    """Записать итог загрузки в журнал.
-
-    Отклонённые элементы учитываются как ошибочные записи: с точки зрения
-    загрузки это данные, поступившие из источника и не попавшие в реестр,
-    и их доля — показатель качества выгрузки.
-    """
-    from core.choices import EtlStatus
-    from core.models import EtlRun
-
-    status = EtlStatus.SUCCESS if report.written else EtlStatus.FAILED
-    if report.written and (report.unlocated or report.notes):
-        status = EtlStatus.PARTIAL
-
-    EtlRun.objects.create(
-        source=source,
-        target_table=target_table,
-        status=status,
-        started_at=started_at,
-        finished_at=timezone.now(),
-        records_loaded=report.written,
-        records_errors=report.skipped + report.unlocated,
-        error_message="; ".join(report.notes[:5]),
-    )
+__all__ = [
+    "DistrictsPipeline",
+    "InfrastructurePipeline",
+    "OverpassPipeline",
+    "ensure_source",
+    "ensure_types",
+]

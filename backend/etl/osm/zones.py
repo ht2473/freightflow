@@ -13,24 +13,26 @@
 
 Правильность сборки проверяется сопоставлением с известными величинами:
 периметр контура сверяется с протяжённостью магистрали. Расхождение сверх
-допустимого прерывает загрузку — молча записанная неверная граница исказила бы
-все последующие расчёты, от определения нужного пропуска до отбора объектов.
+допустимого отклоняет зону в карантин — молча записанная неверная граница
+исказила бы все последующие расчёты, от определения нужного пропуска
+до отбора объектов.
 """
 
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
 from dataclasses import dataclass
 from decimal import Decimal
 
-from core.choices import DataOrigin
+from core.choices import DataOrigin, UpdateFrequency
 from core.models import RestrictionZone, RoadSegment
-from django.db import transaction
 from geo.geometry import Geometry
 
-from ..client import OverpassClient
+from ..pipeline import Candidate, Context, Extract, RunReport
+from ..quality import Check, condition, required
 from .geometry import assemble_rings
-from .loaders import LoadReport
+from .loaders import OverpassPipeline
 
 logger = logging.getLogger("freightflow.etl")
 
@@ -143,8 +145,14 @@ ZONES: tuple[ZoneSpec, ...] = (
 LEGAL_BASIS = "Постановление Правительства Москвы № 379-ПП от 22.08.2011"
 
 
-class ZoneAssemblyError(RuntimeError):
-    """Границу зоны не удалось собрать или она не прошла проверку."""
+@dataclass(frozen=True)
+class Boundary:
+    """Граница зоны, собранная из частей кольцевой магистрали."""
+
+    geometry: Geometry | None
+    area_sq_km: float | None
+    perimeter_km: float | None
+    error: str = ""
 
 
 def _segments(elements: list[dict]) -> list[list[list[float]]]:
@@ -169,62 +177,119 @@ def _segments(elements: list[dict]) -> list[list[list[float]]]:
     return segments
 
 
-def build_boundary(elements: list[dict], reference_km: float) -> tuple[Geometry, float, float]:
+def build_boundary(elements: list[dict]) -> Boundary:
     """Собрать границу зоны из частей кольцевой магистрали.
-
-    Возвращает кортеж ``(геометрия, площадь_км², периметр_км)``.
 
     Из собранных контуров выбирается наибольший по площади: разделённая
     проезжая часть образует два вложенных кольца, и внешнее из них
     ограничивает зону.
+
+    Несобравшийся контур возвращается описанием причины, а не исключением:
+    неудача сборки одной зоны не должна прерывать загрузку остальных, а сама
+    причина попадает в карантин наравне с прочими отклонениями.
     """
     rings = assemble_rings(_segments(elements))
     if not rings:
-        raise ZoneAssemblyError(
-            "Замкнутый контур не собран: части кольцевой магистрали не образуют "
-            "непрерывной цепочки"
+        return Boundary(
+            None, None, None,
+            "замкнутый контур не собран: части кольцевой магистрали "
+            "не образуют непрерывной цепочки",
         )
 
     candidates = [(Geometry("POLYGON", [ring]), ring) for ring in rings]
-    boundary, ring = max(candidates, key=lambda pair: pair[0].area_sq_m)
-
-    perimeter_km = Geometry("LINESTRING", ring).length_km
-    deviation = abs(perimeter_km - reference_km) / reference_km
-    if deviation > PERIMETER_TOLERANCE:
-        raise ZoneAssemblyError(
-            f"Периметр собранного контура {perimeter_km:.1f} км расходится "
-            f"со справочной протяжённостью {reference_km} км на "
-            f"{deviation * 100:.0f} % — граница собрана неверно"
-        )
+    _outer, ring = max(candidates, key=lambda pair: pair[0].area_sq_m)
 
     geometry = Geometry("MULTIPOLYGON", [[ring]])
-    return geometry, geometry.area_sq_m / 1e6, perimeter_km
+    return Boundary(
+        geometry=geometry,
+        area_sq_km=geometry.area_sq_m / 1e6,
+        perimeter_km=Geometry("LINESTRING", ring).length_km,
+    )
 
 
-def load_zones(client: OverpassClient, refresh: bool = False) -> LoadReport:
-    """Построить зоны ограничения движения по геометрии кольцевых магистралей."""
-    report = LoadReport(dataset="Зоны ограничения движения")
-    roads = {road.name: road for road in RoadSegment.objects.all()}
+def _boundary_assembled(candidate: Candidate) -> str | None:
+    """Контур зоны должен замыкаться."""
+    return candidate.extra.get("assembly_error") or None
 
-    with transaction.atomic():
+
+def _perimeter_matches(candidate: Candidate) -> str | None:
+    """Периметр контура должен совпадать с протяжённостью кольцевой магистрали.
+
+    Сверка со справочной величиной — единственный доступный способ убедиться,
+    что контур собран из нужных участков. Молча записанная неверная граница
+    исказила бы всё, что на ней держится: определение требуемого пропуска,
+    отбор объектов по зоне, расчёт площади обслуживаемой территории.
+    """
+    perimeter = candidate.extra.get("perimeter_km")
+    reference = candidate.extra.get("reference_perimeter_km")
+    if not perimeter or not reference:
+        return None
+    deviation = abs(perimeter - reference) / reference
+    if deviation > PERIMETER_TOLERANCE:
+        return (
+            f"периметр собранного контура {perimeter:.1f} км расходится "
+            f"со справочной протяжённостью {reference} км на "
+            f"{deviation * 100:.0f} %"
+        )
+    return None
+
+
+class RestrictionZonesPipeline(OverpassPipeline):
+    """Зоны ограничения движения грузового транспорта.
+
+    Границы не задаются набором данных: постановление определяет их через
+    кольцевые магистрали, поэтому геометрия зоны выводится из геометрии
+    соответствующего кольца. Каждой зоне отвечает свой запрос — кольца
+    размечены по-разному, и общего отбора для них нет.
+    """
+
+    name = "osm.zones"
+    title = "Зоны ограничения движения"
+    target_table = "restriction_zones"
+    description = (
+        "МКАД, Третье транспортное и Садовое кольцо. Условия въезда взяты "
+        "из постановления № 379-ПП, геометрия — из разметки самих колец."
+    )
+    model = RestrictionZone
+    frequency = UpdateFrequency.MONTHLY
+    checks: tuple[Check, ...] = (
+        condition("assembly.ring", "Контур зоны замыкается", _boundary_assembled),
+        required("geom", "Граница зоны"),
+        condition("assembly.perimeter", "Периметр совпадает со справочным",
+                  _perimeter_matches),
+    )
+
+    def lookup(self, candidate: Candidate) -> dict:
+        return {"code": candidate.key}
+
+    def extract(self, context: Context) -> Extract:
+        """Получить разметку всех трёх колец.
+
+        Ответы приходят на разные запросы, поэтому выгрузка собирается
+        по частям: каждой зоне отвечает своя пара «описание — элементы».
+        """
+        client = context.client()
+        records: list[tuple[ZoneSpec, list[dict]]] = []
+        extract = Extract(records=records, from_cache=True)
+
         for spec in ZONES:
-            response = client.fetch(spec.query, refresh=refresh)
-            report.fetched += response.count
-            report.from_cache = response.from_cache
-            report.fetched_at = response.fetched_at
+            response = client.fetch(spec.query, refresh=context.refresh)
+            records.append((spec, response.elements))
+            extract.count += response.count
+            extract.fetched_at = response.fetched_at
+            extract.from_cache = extract.from_cache and response.from_cache
+        return extract
 
-            try:
-                geometry, area_sq_km, perimeter_km = build_boundary(
-                    response.elements, spec.reference_perimeter_km
-                )
-            except ZoneAssemblyError as exc:
-                report.skipped += 1
-                report.notes.append(f"{spec.short_name}: {exc}")
-                continue
+    def prepare(self, extract: Extract, context: Context,
+                report: RunReport) -> Iterator[Candidate]:
+        roads = {road.name: road for road in RoadSegment.objects.all()}
 
-            _, created = RestrictionZone.objects.update_or_create(
-                code=spec.code,
-                defaults={
+        for spec, elements in extract.records:
+            boundary = build_boundary(elements)
+            yield Candidate(
+                key=spec.code,
+                position=f"кольцо «{spec.road_name}», элементов {len(elements)}",
+                values={
                     "name": spec.name,
                     "short_name": spec.short_name,
                     "level": spec.level,
@@ -235,44 +300,56 @@ def load_zones(client: OverpassClient, refresh: bool = False) -> LoadReport:
                     "seasonal_limit_tons": spec.seasonal_limit_tons,
                     "fine_rubles": spec.fine_rubles,
                     "legal_basis": LEGAL_BASIS,
-                    "geom": geometry,
-                    "area_sq_km": round(area_sq_km, 2),
-                    "perimeter_km": round(perimeter_km, 2),
+                    "geom": boundary.geometry,
+                    "area_sq_km": (
+                        round(boundary.area_sq_km, 2) if boundary.area_sq_km else None
+                    ),
+                    "perimeter_km": (
+                        round(boundary.perimeter_km, 2) if boundary.perimeter_km else None
+                    ),
                     "geometry_origin": DataOrigin.MEASURED,
-                    "source_updated_at": response.fetched_at,
+                    "source_updated_at": extract.fetched_at,
+                },
+                extra={
+                    "assembly_error": boundary.error,
+                    "perimeter_km": boundary.perimeter_km,
+                    "reference_perimeter_km": spec.reference_perimeter_km,
+                },
+                payload={
+                    "code": spec.code,
+                    "road": spec.road_name,
+                    "perimeter_km": boundary.perimeter_km,
+                    "reference_perimeter_km": spec.reference_perimeter_km,
                 },
             )
-            if created:
-                report.created += 1
+
+    def verify(self, report: RunReport, context: Context) -> None:
+        """Проверить, что зоны действительно вложены одна в другую.
+
+        Вложенность — не оформительское допущение, а условие, на котором
+        держится расчёт пропуска: пропуск во внутреннюю зону действует
+        и во внешних. Нарушение означает, что какая-то из границ собрана
+        неверно, и увидеть его можно только на наборе целиком.
+        """
+        zones = list(RestrictionZone.objects.exclude(geom__isnull=True).order_by("level"))
+        for outer, inner in zip(zones, zones[1:], strict=False):
+            if outer.area_sq_km <= inner.area_sq_km:
+                report.note(
+                    f"{inner.short_name} ({inner.area_sq_km} км²) не меньше "
+                    f"{outer.short_name} ({outer.area_sq_km} км²): "
+                    f"вложенность нарушена"
+                )
+                continue
+            centre = inner.geom.centroid
+            if not outer.geom.contains(*centre):
+                report.note(
+                    f"центр зоны {inner.short_name} лежит вне зоны {outer.short_name}"
+                )
             else:
-                report.updated += 1
-
-            logger.info(
-                "Зона %s: площадь %.1f км², периметр %.1f км",
-                spec.short_name, area_sq_km, perimeter_km,
-            )
-
-    _check_nesting(report)
-    return report
+                report.detail(
+                    f"{inner.short_name} ({inner.area_sq_km} км²) вложена "
+                    f"в {outer.short_name} ({outer.area_sq_km} км²)"
+                )
 
 
-def _check_nesting(report: LoadReport) -> None:
-    """Проверить, что зоны действительно вложены одна в другую.
-
-    Вложенность — не оформительское допущение, а условие, на котором держится
-    расчёт пропуска: пропуск во внутреннюю зону действует и во внешних.
-    Нарушение означает, что какая-то из границ собрана неверно.
-    """
-    zones = list(RestrictionZone.objects.exclude(geom__isnull=True).order_by("level"))
-    for outer, inner in zip(zones, zones[1:], strict=False):
-        if outer.area_sq_km <= inner.area_sq_km:
-            report.notes.append(
-                f"{inner.short_name} ({inner.area_sq_km} км²) не меньше "
-                f"{outer.short_name} ({outer.area_sq_km} км²): вложенность нарушена"
-            )
-            continue
-        centre = inner.geom.centroid
-        if not outer.geom.contains(*centre):
-            report.notes.append(
-                f"центр зоны {inner.short_name} лежит вне зоны {outer.short_name}"
-            )
+__all__ = ["ZONES", "Boundary", "RestrictionZonesPipeline", "ZoneSpec", "build_boundary"]

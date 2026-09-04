@@ -86,7 +86,7 @@
 <div class="card" style="margin-top:var(--sp-5)">
     <h3 style="margin-bottom:var(--sp-3)">{% trans 'Запуск загрузки' %}</h3>
     <p class="small muted" style="margin-bottom:var(--sp-4)">{% trans 'Регламентная загрузка выполняется по расписанию на стороне сервера. Загрузка набора данных вручную выполняется командой:' %}</p>
-    <div class="code-block">python manage.py load_osm --prune</div>
+    <div class="code-block">python manage.py etl --all --prune</div>
     <form method="post" action="{% url 'console:cache_flush' %}" style="margin-top:var(--sp-4)">
         {% csrf_token %}
         <input type="hidden" name="next" value="{% url 'console:etl' %}">
