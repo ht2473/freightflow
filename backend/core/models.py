@@ -628,6 +628,13 @@ class FreightFlowStat(models.Model):
         _("Объём, т"), max_digits=14, decimal_places=2, null=True, blank=True
     )
     vehicle_count = models.IntegerField(_("Число рейсов"), null=True, blank=True)
+    origin = models.CharField(
+        _("Происхождение показателя"),
+        max_length=16,
+        choices=DataOrigin.choices,
+        blank=True,
+        default="",
+    )
     avg_speed_kmh = models.DecimalField(
         _("Средняя скорость, км/ч"), max_digits=6, decimal_places=2, null=True, blank=True
     )
@@ -663,7 +670,18 @@ class FreightFlowStat(models.Model):
 
 
 class TrafficCondition(models.Model):
-    """Замер дорожной обстановки на участке сети."""
+    """Оценка дорожной обстановки на участке сети.
+
+    Данных о загруженности дорог Москвы в открытом доступе не существует:
+    ЦОДД открытого потока не публикует, служба дорожной обстановки Яндекса
+    платная, ЭРА-ГЛОНАСС закрыта. Записи этой таблицы получены имитационной
+    моделью :mod:`analytics.simulation` по измеряемым характеристикам сети
+    и помечены соответствующим происхождением.
+
+    Разграничение существенно: расчётная оценка пригодна для сопоставления
+    участков между собой и для сценарного анализа, но не является
+    результатом наблюдения и не должна выдаваться за него.
+    """
 
     recorded_at = models.DateTimeField(_("Время замера"))
     road = models.ForeignKey(
@@ -685,6 +703,19 @@ class TrafficCondition(models.Model):
     )
     vehicle_density = models.IntegerField(_("Плотность потока, ТС/км"), null=True, blank=True)
     incident_flag = models.BooleanField(_("Есть инцидент"), default=False)
+    origin = models.CharField(
+        _("Происхождение оценки"),
+        max_length=16,
+        choices=DataOrigin.choices,
+        blank=True,
+        default="",
+        help_text=_("Данных о загруженности в открытом доступе нет; "
+                    "значение рассчитывается имитационной моделью"),
+    )
+    model_explanation = models.CharField(
+        _("Разложение оценки"), max_length=300, blank=True, default="",
+        help_text=_("Вклад составляющих модели в итоговый балл"),
+    )
     source = models.ForeignKey(
         DataSource,
         on_delete=models.SET_NULL,
@@ -872,7 +903,7 @@ class EtlRun(models.Model):
     def target_label(self) -> str:
         """Наименование раздела, наполненного загрузкой.
 
-        Записи вида ``seed:002_seed_data_scale1.sql`` относятся к загрузке
+        Записи вида ``seed:`` относятся к первоначальному наполнению
         поставляемого набора целиком; для них выводится обобщённое название,
         поскольку имя файла ничего не сообщает пользователю.
         """

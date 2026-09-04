@@ -23,9 +23,6 @@
 .PARAMETER SkipDemo
     Не создавать демонстрационных пользователей и материалы.
 
-.PARAMETER LargeDataset
-    Загрузить расширенный набор данных (около 78 000 записей).
-
 .PARAMETER NoInstall
     Не предлагать установку Python и uv — только проверить наличие.
 
@@ -42,7 +39,6 @@
 param(
     [switch]$Force,
     [switch]$SkipDemo,
-    [switch]$LargeDataset,
     [switch]$NoInstall
 )
 
@@ -267,14 +263,15 @@ if ($Force -and (Test-Path data\freightflow.sqlite3)) {
 
 Invoke-Checked { & $Python backend\manage.py migrate --noinput } 'применение миграций'
 
-$dataset = if ($LargeDataset) { 'db\002_seed_data_scale400.sql' } else { 'db\002_seed_data_scale1.sql' }
 
 if (-not (Test-Path $dataset)) {
     throw "Набор данных не найден: $dataset"
 }
 
 Write-Note "Набор данных: $dataset"
-Invoke-Checked { & $Python backend\manage.py load_seed $dataset --truncate --quiet-progress } 'загрузка данных'
+Invoke-Checked { & $Python backend\manage.py load_osm --prune } 'загрузка данных OpenStreetMap'
+Invoke-Checked { & $Python backend\manage.py load_reference } 'загрузка справочных наборов'
+Invoke-Checked { & $Python backend\manage.py simulate_traffic --replace } 'расчёт дорожной обстановки'
 Invoke-Checked { & $Python backend\manage.py district_centers } 'координаты округов'
 Invoke-Checked { & $Python backend\manage.py setup_roles } 'настройка ролей'
 

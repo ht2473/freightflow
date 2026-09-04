@@ -2,7 +2,7 @@
 # =============================================================================
 #  Развёртывание ИС «ГрузПоток» на Linux и macOS
 #
-#  Запуск:  ./deploy/setup.sh [--force] [--skip-demo] [--large]
+#  Запуск:  ./deploy/setup.sh [--force] [--skip-demo] [--refresh]
 # =============================================================================
 
 set -euo pipefail
@@ -12,13 +12,13 @@ cd "$PROJECT_ROOT"
 
 FORCE=0
 SKIP_DEMO=0
-DATASET="db/002_seed_data_scale1.sql"
+LOAD_ARGS=""
 
 for arg in "$@"; do
     case "$arg" in
         --force)     FORCE=1 ;;
         --skip-demo) SKIP_DEMO=1 ;;
-        --large)     DATASET="db/002_seed_data_scale400.sql" ;;
+        --refresh)   LOAD_ARGS="--refresh" ;;
         *) echo "Неизвестный ключ: $arg"; exit 1 ;;
     esac
 done
@@ -110,7 +110,9 @@ fi
 
 .venv/bin/python backend/manage.py migrate --noinput
 note "Набор данных: $DATASET"
-.venv/bin/python backend/manage.py load_seed "$DATASET" --truncate --quiet-progress
+.venv/bin/python backend/manage.py load_osm --prune $LOAD_ARGS
+.venv/bin/python backend/manage.py load_reference
+.venv/bin/python backend/manage.py simulate_traffic --replace
 .venv/bin/python backend/manage.py district_centers
 .venv/bin/python backend/manage.py setup_roles
 

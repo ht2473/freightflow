@@ -11,7 +11,7 @@ RUFF    := .venv/bin/ruff
 MANAGE  := $(PYTHON) backend/manage.py
 
 .DEFAULT_GOAL := help
-.PHONY: help venv install migrate seed demo run test cover lint fix check \
+.PHONY: help venv install migrate data demo run test cover lint fix check \
         static clean browsers dev-up dev-down dev-reset \
         docker-up docker-down docker-logs backup
 
@@ -35,15 +35,12 @@ install: venv  ## Установить зависимости, включая и
 migrate:  ## Применить миграции
 	$(MANAGE) migrate
 
-seed:  ## Загрузить базовый набор данных (251 запись)
-	$(MANAGE) load_seed db/002_seed_data_scale1.sql --truncate
-	$(MANAGE) district_centers
+data:  ## Загрузить данные из внешних источников
+	$(MANAGE) load_osm --prune
+	$(MANAGE) load_reference
+	$(MANAGE) simulate_traffic --replace
 
-seed-large:  ## Загрузить расширенный набор данных (около 78 000 записей)
-	$(MANAGE) load_seed db/002_seed_data_scale400.sql --truncate --batch 2000
-	$(MANAGE) district_centers
-
-demo: migrate seed  ## Полная подготовка демонстрационного стенда
+demo: migrate data  ## Полная подготовка демонстрационного стенда
 	$(MANAGE) setup_roles
 	$(MANAGE) init_demo
 

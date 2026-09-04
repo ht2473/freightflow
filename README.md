@@ -143,8 +143,9 @@ pip install -r requirements.txt -r requirements-dev.txt
 
 cp .env.example .env                # заполните FF_SECRET_KEY
 python backend/manage.py migrate
-python backend/manage.py load_seed db/002_seed_data_scale1.sql
-python backend/manage.py district_centers
+python backend/manage.py load_osm --prune
+python backend/manage.py load_reference
+python backend/manage.py simulate_traffic --replace
 python backend/manage.py setup_roles
 python backend/manage.py init_demo
 python backend/manage.py runserver
@@ -273,14 +274,30 @@ WGS-84. Полное описание — в [docs/API.md](docs/API.md).
 | `infrastructure_objects` | Объекты логистической инфраструктуры |
 | `road_segments` | Участки улично-дорожной сети |
 | `cargo_routes` | Грузовые маршруты |
-| `traffic_conditions` | Замеры дорожной обстановки |
+| `traffic_conditions` | Оценки дорожной обстановки |
 | `traffic_incidents` | Дорожные события |
 | `freight_flow_stats` | Статистика грузопотоков |
+| `restriction_zones` | Зоны ограничения движения грузового транспорта |
 | `etl_log` | Журнал процедур загрузки |
 
-Поставляются два набора данных: базовый (`002_seed_data_scale1.sql`, 251 запись)
-и расширенный (`002_seed_data_scale400.sql`, около 78 000 записей). Описание
-полей приведено в [docs/DATA_DICTIONARY.md](docs/DATA_DICTIONARY.md).
+### Происхождение данных
+
+Каждый показатель сопровождается признаком происхождения, который доходит
+до карточки, отчёта и выгрузки.
+
+| Признак | Что означает | Где применяется |
+|---|---|---|
+| **Измерено** | получено из источника как есть | объекты, границы округов, магистрали, зоны ограничения |
+| **Рассчитано** | выведено из измеренных величин | площади, протяжённости, агрегаты |
+| **Смоделировано** | получено моделью там, где наблюдений не существует | загруженность улично-дорожной сети |
+
+Загруженность дорог Москвы в открытом доступе не публикуется: ЦОДД открытого
+потока не даёт, служба дорожной обстановки Яндекса платная, ЭРА-ГЛОНАСС
+закрыта. Система не делает вида, что получает эти сведения, — она рассчитывает
+их моделью по измеряемым характеристикам сети и помечает результат
+соответствующим образом. Модель описана в `backend/analytics/simulation.py`.
+
+Описание полей приведено в [docs/DATA_DICTIONARY.md](docs/DATA_DICTIONARY.md).
 
 ---
 
