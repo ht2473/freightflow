@@ -471,6 +471,34 @@ REFERENCE_DIR = Path(env("REFERENCE_DIR", str(ROOT_DIR / "data" / "reference")))
 # как полный счётчик отклонений сохраняется в журнале в любом случае.
 ETL_QUARANTINE_LIMIT = env_int("ETL_QUARANTINE_LIMIT", 200)
 
+# ---------------------------------------------------------------------------
+#  Очередь регламентных задач
+# ---------------------------------------------------------------------------
+
+# Выгрузка внешней службы идёт минутами, поэтому регламентные загрузки
+# выносятся в отдельный процесс-исполнитель. Очередь необязательна: при пустом
+# адресе брокера загрузка из панели администратора выполняется на месте,
+# и об этом сообщается — подменять один способ другим молча нельзя.
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", "")
+CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# Загрузка данных исполняется по одной: одновременное обращение нескольких
+# задач к общедоступной службе Overpass приводит к отказу по превышению квоты.
+CELERY_WORKER_CONCURRENCY = env_int("CELERY_WORKER_CONCURRENCY", 1)
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_TASK_ACKS_LATE = True
+
+# Предел времени на одну загрузку: выгрузка магистральной сети по Москве
+# занимает до четверти часа, зависшая задача не должна держать исполнителя
+# бесконечно.
+CELERY_TASK_TIME_LIMIT = env_int("CELERY_TASK_TIME_LIMIT", 3600)
+CELERY_TASK_SOFT_TIME_LIMIT = CELERY_TASK_TIME_LIMIT - 60
+
 # Размер страницы реестров по умолчанию.
 PAGE_SIZE = env_int("PAGE_SIZE", 25)
 

@@ -13,8 +13,11 @@ djangorestframework==3.17.1
 drf-spectacular==0.30.0
 psycopg[binary]==3.3.4
 whitenoise==6.11.0
-# Клиент Redis — требуется бэкендом кеша при заданной FF_REDIS_URL.
+# Клиент Redis — требуется бэкендом кеша при заданной FF_REDIS_URL
+# и брокером очереди при заданной FF_CELERY_BROKER_URL.
 redis==5.2.1
+# Исполнитель и планировщик регламентных загрузок данных.
+celery==5.6.3
 gunicorn==23.0.0
 openpyxl==3.1.5
 python-docx==1.2.0

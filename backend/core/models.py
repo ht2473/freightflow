@@ -1014,6 +1014,7 @@ class EtlRun(models.Model):
         "traffic_conditions": _("Замеры обстановки"),
         "traffic_incidents": _("Дорожные инциденты"),
         "freight_flow_stats": _("Показатели грузопотоков"),
+        "restriction_zones": _("Зоны ограничения движения"),
         "etl_log": _("Журнал загрузок"),
     }
 

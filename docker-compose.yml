@@ -56,6 +56,9 @@ services:
       FF_DB_HOST: db
       FF_DB_PORT: "5432"
       FF_REDIS_URL: redis://cache:6379/1
+      # Загрузка данных передаётся исполнителю: выгрузка внешней службы идёт
+      # минутами, и запрос пользователя столько ждать не должен.
+      FF_CELERY_BROKER_URL: redis://cache:6379/2
       FF_LOG_LEVEL: ${FF_LOG_LEVEL:-INFO}
       FF_SSL_REDIRECT: ${FF_SSL_REDIRECT:-True}
     volumes:
@@ -98,6 +101,54 @@ services:
       - ./deploy/certs:/etc/nginx/certs:ro
     networks: [frontend]
 
+  # Исполнитель регламентных задач: загрузка данных из внешних источников.
+  # Вынесена из веб-процесса, поскольку выгрузка Overpass идёт минутами.
+  worker:
+    build: .
+    container_name: freightflow-worker
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment: &worker_env
+      FF_SECRET_KEY: ${FF_SECRET_KEY:?укажите FF_SECRET_KEY в файле .env}
+      FF_DEBUG: "False"
+      FF_DB_ENGINE: postgres
+      FF_DB_NAME: ${FF_DB_NAME:-freightflow}
+      FF_DB_USER: ${FF_DB_USER:-freightflow}
+      FF_DB_PASSWORD: ${FF_DB_PASSWORD}
+      FF_DB_HOST: db
+      FF_DB_PORT: "5432"
+      FF_REDIS_URL: redis://cache:6379/1
+      FF_CELERY_BROKER_URL: redis://cache:6379/2
+      FF_LOG_LEVEL: ${FF_LOG_LEVEL:-INFO}
+    volumes:
+      - osm_cache:/app/data/osm
+      - logs_data:/app/logs
+    # Одна задача за раз: одновременное обращение нескольких загрузок
+    # к общедоступной службе Overpass приводит к отказу по превышению квоты.
+    command: >
+      sh -c "cd backend &&
+             celery -A config worker
+                 --loglevel=info --concurrency=1 --without-gossip --without-mingle"
+    networks: [backend]
+
+  # Планировщик: ведёт расписание регламентных загрузок.
+  beat:
+    build: .
+    container_name: freightflow-beat
+    restart: unless-stopped
+    depends_on:
+      - worker
+    environment: *worker_env
+    volumes:
+      - logs_data:/app/logs
+    command: >
+      sh -c "cd backend &&
+             celery -A config beat
+                 --loglevel=info --schedule=/tmp/celerybeat-schedule"
+    networks: [backend]
+
   # Регламентное обслуживание: очистка устаревших файлов отчётов.
   maintenance:
     build: .
@@ -129,6 +180,10 @@ volumes:
   static_data:
   logs_data:
   cache_data:
+  # Ответы Overpass сохраняются между запусками: повторная загрузка не создаёт
+  # нагрузки на общедоступную службу, а по сохранённому ответу видно, какие
+  # именно данные легли в базу.
+  osm_cache:
 
 networks:
   # База данных и кеш недоступны извне: с ними работает только приложение.

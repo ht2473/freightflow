@@ -1,0 +1,19 @@
+# Регламентная загрузка данных из внешних источников.
+#
+# Установка без очереди задач: срок обновления определяется по журналу
+# последних успешных загрузок, а не расписанием таймера. Таймер лишь
+# спрашивает систему, что пора обновить, — периодичность объявлена
+# самими конвейерами.
+[Unit]
+Description=Регламентная загрузка данных ИС «ГрузПоток»
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=freightflow
+Group=freightflow
+WorkingDirectory=/opt/freightflow
+EnvironmentFile=/opt/freightflow/.env
+ExecStart=/opt/freightflow/.venv/bin/python backend/manage.py etl --due
+# Выгрузка магистральной сети по Москве занимает до четверти часа.
+TimeoutStartSec=3600
