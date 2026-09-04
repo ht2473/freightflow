@@ -83,6 +83,10 @@ PAGES = [
     # через локализацию: запятая в дробной части останавливает разбор
     # атрибута, и об этом сообщает только консоль браузера.
     ("/analytics/spatial/", "пространственный анализ"),
+    ("/analytics/siting/", "подбор площадки"),
+    ("/analytics/corridor/", "разбор коридора"),
+    ("/permits/", "условия допуска"),
+    ("/zones/", "зоны ограничения"),
     ("/methodology/", "методология"),
 ]
 
@@ -308,4 +312,57 @@ class TestRecordMaps:
         offline_page.goto(f"{live_server.url}/objects/{target.pk}/", wait_until="networkidle")
 
         assert offline_page.locator("#minimap").count() == 0
+        assert console_errors == [], console_errors
+
+
+class TestAccessSection:
+    """Раздел допуска: карта зоны и заключение по точке."""
+
+    def zone_path(self) -> str:
+        """Адрес карточки зоны с загруженной границей."""
+        from core.models import RestrictionZone
+
+        zone = RestrictionZone.objects.exclude(geom__isnull=True).first()
+        return f"/zones/{zone.pk}/" if zone else ""
+
+    @pytest.fixture
+    def zone(self, db):
+        """Зона ограничения с границей вокруг центра города."""
+        from decimal import Decimal
+
+        from core.models import RestrictionZone
+        from geo import Geometry
+
+        ring = [
+            [37.55, 55.70], [37.70, 55.70], [37.70, 55.80], [37.55, 55.80],
+            [37.55, 55.70],
+        ]
+        return RestrictionZone.objects.create(
+            code="ttk", name="Зона Третьего транспортного кольца", short_name="ТТК",
+            level=2, permit_required_from_tons=Decimal("3.50"), fine_rubles=7500,
+            geom=Geometry("MULTIPOLYGON", [[ring]]),
+            area_sq_km=Decimal("84.40"), perimeter_km=Decimal("34.90"),
+        )
+
+    def test_zone_boundary_is_drawn(
+        self, live_server, offline_page, console_errors, full_dataset, zone
+    ):
+        """Граница зоны показывается на той же подложке, что и карта раздела."""
+        offline_page.goto(f"{live_server.url}{self.zone_path()}", wait_until="networkidle")
+        offline_page.wait_for_selector("#minimap[data-map-ready]", timeout=20_000)
+
+        assert offline_page.locator("#minimap canvas.maplibregl-canvas").count() == 1
+        assert console_errors == [], console_errors
+
+    def test_permit_verdict_shows_point(
+        self, live_server, offline_page, console_errors, full_dataset, zone
+    ):
+        """Заключение о допуске выводится вместе с картой точки назначения."""
+        offline_page.goto(
+            f"{live_server.url}/permits/?mass=20&eco=5&lon=37.6186&lat=55.7602",
+            wait_until="networkidle",
+        )
+        offline_page.wait_for_selector("#minimap[data-map-ready]", timeout=20_000)
+
+        assert "ТТК" in offline_page.content()
         assert console_errors == [], console_errors

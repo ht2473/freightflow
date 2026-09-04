@@ -18,6 +18,7 @@ from decimal import Decimal, InvalidOperation
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from geo import Geometry
 
 from .. import permits
 from ..models import InfrastructureObject, RestrictionZone
@@ -157,9 +158,21 @@ def permit_check(request):
         seasonal_today=permits.is_seasonal_period(form["moment"]),
         ecological_classes=ECOLOGICAL_CLASSES,
         candidates=InfrastructureObject.objects.located().with_refs().order_by("name"),
-        minimap=minimap_settings(target.geom, zoom=13) if target else None,
+        minimap=_point_map(form),
     )
     return render(request, "pages/permit_check.html", context)
+
+
+def _point_map(form: dict) -> dict | None:
+    """Настройки карты точки расчёта.
+
+    Карта показывается при любом способе задания точки: и когда выбран объект
+    реестра, и когда координаты введены вручную, — потому что смотрят на неё
+    ради одного и того же, ради положения на местности.
+    """
+    if form["lon"] is None or form["lat"] is None:
+        return None
+    return minimap_settings(Geometry.point(form["lon"], form["lat"]), zoom=13)
 
 
 def _read_request(request) -> dict:
