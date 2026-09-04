@@ -16,4 +16,5 @@ urlpatterns = [
     path("compare/", views.compare, name="compare"),
     path("scenario/", views.scenario, name="scenario"),
     path("siting/", views.site_selection, name="siting"),
+    path("corridor/", views.corridor_analysis, name="corridor"),
 ]

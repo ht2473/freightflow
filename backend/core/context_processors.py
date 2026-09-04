@@ -140,6 +140,12 @@ MAIN_NAV: tuple[NavItem, ...] = (
         (
             NavItem("flows", _("Статистика грузопотоков"), "core:flow_overview", _("Объёмы по периодам")),
             NavItem("routes", _("Грузовые маршруты"), "core:route_list", _("Коридоры ввоза и вывоза")),
+            NavItem(
+                "corridor",
+                _("Разбор коридора"),
+                "analytics:corridor",
+                _("Что расположено вдоль федеральной трассы"),
+            ),
             NavItem("cargo", _("Категории грузов"), "core:cargo_list", _("Классификатор с классами ADR")),
         ),
     ),

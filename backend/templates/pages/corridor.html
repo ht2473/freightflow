@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+<form method="get" class="filters" style="margin-bottom:var(--sp-5)">
+    <div class="field" style="min-width:280px">
+        <label for="f-route">{% trans 'Коридор' %}</label>
+        <select id="f-route" name="route">
+            {% for item in routes %}
+                <option value="{{ item.pk }}"
+                        {% if route and route.pk == item.pk %}selected{% endif %}>{{ item.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="field">
+        <label for="f-band">{% trans 'Полоса разбора, км' %}</label>
+        <select id="f-band" name="band">
+            {% for value in band_options %}
+                <option value="{{ value|stringformat:'.0f' }}"
+                        {% if band_km == value %}selected{% endif %}>{{ value|stringformat:'.0f' }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button class="button" type="submit">{% trans 'Разобрать' %}</button>
+</form>
+
+{% if not result.available %}
+    {% include "partials/_empty.html" with empty_title="Разбор невозможен" empty_text=result.reason %}
+{% else %}
+    <section class="section">
+        <div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+            <div class="metric metric--accent">
+                <span class="metric__label">{% trans 'Протяжённость в городе' %}</span>
+                <span class="metric__value">{{ result.length_km|spaced:1 }} <small>км</small></span>
+            </div>
+            <div class="metric">
+                <span class="metric__label">{% trans 'Объектов в полосе' %}</span>
+                <span class="metric__value">{{ result.object_count }}</span>
+                <span class="metric__note">{% blocktrans with band=band_km|stringformat:".0f" %}в пределах {{ band }} км от оси{% endblocktrans %}</span>
+            </div>
+            <div class="metric">
+                <span class="metric__label">{% trans 'Площадь площадок' %}</span>
+                <span class="metric__value">
+                    {% if result.area_sq_m %}{{ result.area_sq_m|spaced }} <small>м²</small>{% else %}—{% endif %}
+                </span>
+            </div>
+            <div class="metric metric--{% if result.incidents %}warn{% else %}ok{% endif %}">
+                <span class="metric__label">{% trans 'Открытых событий' %}</span>
+                <span class="metric__value">{{ result.incidents|length }}</span>
+            </div>
+        </div>
+    </section>
+
+    <div class="grid grid--sidebar">
+        <div class="stack">
+            {% if result.reaches %}
+                <article class="card card--flush">
+                    <div class="card__head">
+                        <div>
+                            <p class="eyebrow">{% trans 'Прохождение' %}</p>
+                            <h3>{% trans 'Округа на пути коридора' %}</h3>
+                        </div>
+                    </div>
+                    <div class="table-wrap" style="border:none">
+                        <table class="data">
+                            <thead>
+                                <tr><th>{% trans 'Округ' %}</th><th class="num">{% trans 'Протяжённость, км' %}</th>
+                                    <th class="num">{% trans 'Объектов в полосе' %}</th><th>{% trans 'Доля пути' %}</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for reach in result.reaches %}
+                                    <tr data-href="{{ reach.district.get_absolute_url }}">
+                                        <td><span class="table-title">{{ reach.district.name }}</span></td>
+                                        <td class="num">{{ reach.length_km|spaced:1 }}</td>
+                                        <td class="num">{{ reach.object_count }}</td>
+                                        <td style="min-width:120px">
+                                            <div class="bar">
+                                                <div class="bar__fill"
+                                                     style="width:{{ reach.length_km|ratio:result.length_km }}%"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+            {% endif %}
+
+            {% if result.objects %}
+                <article class="card card--flush">
+                    <div class="card__head">
+                        <div>
+                            <p class="eyebrow">{% blocktrans with count=result.object_count %}Объектов в полосе: {{ count }}{% endblocktrans %}</p>
+                            <h3>{% trans 'Инфраструктура вдоль коридора' %}</h3>
+                        </div>
+                        <a class="small" href="{% url 'core:object_list' %}">{% trans 'Весь реестр →' %}</a>
+                    </div>
+                    <div class="table-wrap" style="border:none">
+                        <table class="data">
+                            <thead>
+                                <tr><th>{% trans 'Объект' %}</th><th>{% trans 'Тип' %}</th>
+                                    <th class="num">{% trans 'До оси, км' %}</th>
+                                    <th class="num">{% trans 'Площадь, м²' %}</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for item in result.objects|slice:":30" %}
+                                    <tr data-href="{{ item.get_absolute_url }}">
+                                        <td><span class="table-title">{{ item.name }}</span>
+                                            <span class="table-sub">{{ item.district.short_name }}</span></td>
+                                        <td class="small muted">{{ item.type.name }}</td>
+                                        <td class="num">{{ item.corridor_distance_km|spaced:2 }}</td>
+                                        <td class="num">{{ item.area_sq_m|spaced }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% if result.object_count > 30 %}
+                        <p class="small faint" style="padding:var(--sp-3)">
+                            {% blocktrans with count=result.object_count %}Показаны 30 ближайших к оси объектов из {{ count }}.{% endblocktrans %}
+                        </p>
+                    {% endif %}
+                </article>
+            {% endif %}
+
+            {% if result.incidents %}
+                <article class="card card--flush">
+                    <div class="card__head">
+                        <div>
+                            <p class="eyebrow">{% trans 'Сегодня' %}</p>
+                            <h3>{% trans 'Открытые события в полосе' %}</h3>
+                        </div>
+                        <a class="small" href="{% url 'core:incident_list' %}?state=open">{% trans 'Журнал событий →' %}</a>
+                    </div>
+                    <div class="table-wrap" style="border:none">
+                        <table class="data">
+                            <thead>
+                                <tr><th>{% trans 'Событие' %}</th><th class="num">{% trans 'Серьёзность' %}</th>
+                                    <th class="num">{% trans 'До оси, км' %}</th><th>{% trans 'Грузовое движение' %}</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for item in result.incidents|slice:":15" %}
+                                    <tr data-href="{{ item.get_absolute_url }}">
+                                        <td><span class="table-title">{{ item.get_incident_type_display }}</span>
+                                            <span class="table-sub">{{ item.description|truncatechars:64 }}</span></td>
+                                        <td class="num">
+                                            <span class="badge badge--{{ item.severity|severity_tone }}">{{ item.severity }}</span>
+                                        </td>
+                                        <td class="num">{{ item.corridor_distance_km|spaced:2 }}</td>
+                                        <td>{% if item.affects_cargo %}{% trans 'затронуто' %}{% else %}—{% endif %}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+            {% endif %}
+        </div>
+
+        <aside class="stack">
+            <div class="card">
+                <p class="eyebrow">{% trans 'Коридор' %}</p>
+                <h3 style="margin:var(--sp-2) 0 var(--sp-3)">{{ route.name }}</h3>
+                <dl class="facts">
+                    <div><dt>{% trans 'Тип' %}</dt><dd>{{ route.get_route_type_display }}</dd></div>
+                    <div><dt>{% trans 'Протяжённость в городе' %}</dt><dd>{{ result.length_km|spaced:1 }} км</dd></div>
+                    <div><dt>{% trans 'Интенсивность' %}</dt><dd>{{ route.truck_count_day|dash }} ТС/сут</dd></div>
+                </dl>
+                <a class="button button--block" style="margin-top:var(--sp-3)"
+                   href="{{ route.get_absolute_url }}">{% trans 'Карточка коридора' %}</a>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-bottom:var(--sp-3)">{% trans 'Зоны на пути' %}</h3>
+                {% if result.zones %}
+                    <p class="small muted" style="margin-bottom:var(--sp-3)">
+                        {% trans 'Коридор заходит в зоны ограничения. Требования определяет самая внутренняя из них.' %}
+                    </p>
+                    <div class="stack stack--tight small">
+                        {% for zone in result.zones %}
+                            <a href="{% url 'core:zone_detail' zone.pk %}" style="color:inherit">
+                                <span class="table-title">{{ zone.short_name }}</span>
+                                <span class="table-sub">{% trans 'пропуск с' %} {{ zone.permit_required_from_tons|spaced:1 }} т</span>
+                            </a>
+                        {% endfor %}
+                    </div>
+                    <a class="button button--block" style="margin-top:var(--sp-3)"
+                       href="{% url 'core:permit_check' %}">{% trans 'Проверить допуск' %}</a>
+                {% else %}
+                    <p class="small muted">{% trans 'Коридор проходит вне зон ограничения движения грузового транспорта.' %}</p>
+                {% endif %}
+            </div>
+
+            <div class="card">
+                <h3 style="margin-bottom:var(--sp-3)">{% trans 'О расчёте' %}</h3>
+                <p class="small muted">
+                    {% trans 'Полоса разбора отмеряется по прямой от оси коридора, а не по подъездному пути: длина съезда зависит от развязок, которых в реестре нет. Округ звена определяется по его середине.' %}
+                </p>
+            </div>
+        </aside>
+    </div>
+{% endif %}
+{% endblock %}

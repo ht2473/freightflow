@@ -7,7 +7,7 @@ from decimal import Decimal, InvalidOperation
 
 from core import selectors
 from core.choices import PeriodType
-from core.models import District, InfrastructureType
+from core.models import CargoRoute, District, InfrastructureType
 from core.views.base import int_param, page_context
 from django.core.serializers.json import DjangoJSONEncoder
 from django.http import JsonResponse
@@ -15,7 +15,7 @@ from django.shortcuts import render
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_GET
 
-from . import metrics, services, siting, spatial
+from . import corridors, metrics, services, siting, spatial
 
 
 def _float_param(request, name: str, default: float = 0.0) -> float:
@@ -368,3 +368,30 @@ def _weights(request) -> dict[str, float]:
         except ValueError:
             continue
     return weights
+
+
+def corridor_analysis(request):
+    """Разбор грузового коридора: что лежит вдоль трассы."""
+    routes = CargoRoute.objects.exclude(geom__isnull=True).order_by("name")
+    route_id = int_param(request, "route")
+    route = routes.filter(pk=route_id).first() if route_id else routes.first()
+    band_km = corridors.band_option(request.GET.get("band"))
+    result = corridors.analyze(route, band_km) if route else {"available": False}
+
+    context = page_context(
+        request,
+        title=_("Разбор коридора"),
+        lead=_(
+            "Что расположено вдоль федеральной трассы в границах города: "
+            "инфраструктура в полосе, округа прохождения, зоны ограничения "
+            "и открытые дорожные события."
+        ),
+        active="corridor",
+        crumbs=[(_("Грузопотоки"), "core:flow_overview"), (_("Разбор коридора"),)],
+        result=result,
+        route=route,
+        routes=routes,
+        band_km=band_km,
+        band_options=corridors.BAND_OPTIONS,
+    )
+    return render(request, "pages/corridor.html", context)
