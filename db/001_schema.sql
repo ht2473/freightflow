@@ -422,3 +422,34 @@ COMMENT ON TABLE  restriction_zones IS 'Зоны ограничения движ
 COMMENT ON COLUMN restriction_zones.level IS '1 — внешняя зона; пропуск во внутреннюю действует во внешних';
 COMMENT ON COLUMN restriction_zones.permit_required_from_tons IS 'РММ, начиная с которой требуется пропуск';
 COMMENT ON COLUMN restriction_zones.seasonal_limit_tons IS 'Ограничение с 1 мая по 1 октября в выходные дни';
+
+
+-- ============================================================================
+--  Природные территории — подложка карты
+-- ============================================================================
+--
+-- Водные поверхности и зелёные массивы по разметке OpenStreetMap. Подложка
+-- обслуживается системой, поэтому карта не зависит от стороннего тайлового
+-- сервиса. Контуры мельче порога различимости не хранятся: их число
+-- превосходит всё остальное содержимое карты, а на масштабах, где виден
+-- город, они неразличимы.
+
+CREATE TABLE IF NOT EXISTS natural_areas (
+    id                SERIAL PRIMARY KEY,
+    kind              VARCHAR(16) NOT NULL,
+    name              VARCHAR(200),
+    geom              geometry(MultiPolygon, 4326),
+    area_sq_m         NUMERIC(14, 2),
+    osm_type          VARCHAR(10),
+    osm_id            BIGINT,
+    source_id         INTEGER REFERENCES data_sources (id) ON DELETE SET NULL,
+    source_updated_at TIMESTAMPTZ,
+    CONSTRAINT natural_areas_osm_element_unique UNIQUE (osm_type, osm_id)
+);
+
+CREATE INDEX IF NOT EXISTS natural_areas_kind_idx ON natural_areas (kind);
+CREATE INDEX IF NOT EXISTS idx_natural_geom ON natural_areas USING GIST (geom);
+
+COMMENT ON TABLE  natural_areas IS 'Водные поверхности и зелёные массивы подложки карты';
+COMMENT ON COLUMN natural_areas.kind IS 'water — водная поверхность, green — зелёный массив';
+COMMENT ON COLUMN natural_areas.area_sq_m IS 'Площадь по контуру, измеренная величина';

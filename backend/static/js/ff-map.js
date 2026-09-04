@@ -57,6 +57,8 @@
             crit: themeColor("--tone-crit", "#a32b26"),
             muted: themeColor("--tone-muted", "#6b7885"),
             route: themeColor("--series-2", "#4aa3d9"),
+            water: themeColor("--map-water", "#1d3a4d"),
+            green: themeColor("--map-green", "#1e3328"),
             line: themeColor("--border", "#c8d0d8")
         };
     }
@@ -131,7 +133,21 @@
                     type: "fill",
                     source: SOURCE,
                     "source-layer": "districts",
-                    paint: { "fill-color": districtFill(colors), "fill-opacity": 0.55 }
+                    paint: { "fill-color": districtFill(colors), "fill-opacity": 0.42 }
+                },
+                {
+                    id: "green",
+                    type: "fill",
+                    source: SOURCE,
+                    "source-layer": "green",
+                    paint: { "fill-color": colors.green }
+                },
+                {
+                    id: "water",
+                    type: "fill",
+                    source: SOURCE,
+                    "source-layer": "water",
+                    paint: { "fill-color": colors.water }
                 },
                 {
                     id: "districts-outline",
@@ -199,8 +215,10 @@
                     paint: {
                         "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 2.5, 13, 5, 16, 8],
                         "circle-color": colors.accent,
-                        "circle-opacity": 0.8,
-                        "circle-stroke-width": 1,
+                        "circle-opacity": 0.9,
+                        "circle-stroke-width": [
+                            "interpolate", ["linear"], ["zoom"], 9, 0.4, 13, 1
+                        ],
                         "circle-stroke-color": colors.land
                     }
                 },
@@ -409,6 +427,7 @@
         incidents: ["incidents"],
         routes: ["routes"],
         districts: ["districts-fill", "districts-outline"],
+        backdrop: ["water", "green"],
         zones: ["zones-outline"]
     };
 

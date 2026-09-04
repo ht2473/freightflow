@@ -32,6 +32,7 @@ def _load() -> dict[str, Pipeline]:
     from .osm.corridors import CorridorsPipeline
     from .osm.incidents import RoadworksPipeline
     from .osm.loaders import DistrictsPipeline, InfrastructurePipeline
+    from .osm.natural import NaturalAreasPipeline
     from .osm.roads import RoadNetworkPipeline
     from .osm.zones import RestrictionZonesPipeline
     from .reference import FreightFramePipeline
@@ -40,6 +41,7 @@ def _load() -> dict[str, Pipeline]:
 
     ordered: tuple[type[Pipeline], ...] = (
         DistrictsPipeline,
+        NaturalAreasPipeline,
         InfrastructurePipeline,
         RoadNetworkPipeline,
         RestrictionZonesPipeline,

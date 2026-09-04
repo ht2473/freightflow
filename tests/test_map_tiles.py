@@ -88,6 +88,36 @@ class TestVectorTile:
         detailed = read_tile(client.get(tile_url(12)).content)
         assert "objects" in detailed
 
+    def test_backdrop_layers_are_served(self, client, districts):
+        """Вода и зелень приходят тем же тайлом, что и данные поверх них."""
+        from core.choices import NaturalKind
+        from core.models import NaturalArea
+
+        for kind, name, shift in ((NaturalKind.WATER, "Река", 0.0), (NaturalKind.GREEN, "Парк", 0.01)):
+            NaturalArea.objects.create(
+                kind=kind,
+                name=name,
+                area_sq_m=200_000,
+                geom=Geometry(
+                    "MULTIPOLYGON",
+                    [
+                        [
+                            [
+                                [37.60 + shift, 55.74],
+                                [37.62 + shift, 55.74],
+                                [37.62 + shift, 55.76],
+                                [37.60 + shift, 55.76],
+                                [37.60 + shift, 55.74],
+                            ]
+                        ]
+                    ],
+                ),
+            )
+
+        layers = read_tile(client.get(tile_url(12)).content)
+        assert layers["water"]["features"][0]["properties"]["name"] == "Река"
+        assert layers["green"]["features"][0]["properties"]["name"] == "Парк"
+
     def test_zoom_outside_the_range_is_not_served(self, client):
         assert client.get(tile_url(4)).status_code == 404
         assert client.get(tile_url(17)).status_code == 404

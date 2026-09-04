@@ -98,3 +98,27 @@ out geom;"""
 FREIGHT_CORRIDORS = f"""[out:json][timeout:600];
 relation["type"="route"]["route"="road"]["ref"~"^(М|А|E)"]({BBOX});
 out tags;"""
+
+
+#: Природные территории подложки карты: водные поверхности и зелёные массивы.
+#:
+#: Отбор сужен намеренно. Безымянные пруды и дворовые газоны исчисляются
+#: тысячами и на масштабах, где виден город, неразличимы; река же нужна
+#: целиком, поэтому линейные части русла (``waterway=riverbank``) входят
+#: наравне с площадными. Поиск ведётся по области, а не по прямоугольнику:
+#: подмосковные лесные массивы к подложке городской карты не относятся,
+#: а по площади превосходят всё остальное содержимое выгрузки.
+NATURAL_AREAS = f"""[out:json][timeout:900];
+{AREA}
+(
+  way["water"="river"](area.searchArea);
+  relation["water"="river"](area.searchArea);
+  way["waterway"="riverbank"](area.searchArea);
+  way["natural"="water"]["name"](area.searchArea);
+  relation["natural"="water"]["name"](area.searchArea);
+  way["leisure"="park"]["name"](area.searchArea);
+  relation["leisure"="park"]["name"](area.searchArea);
+  way["landuse"="forest"](area.searchArea);
+  relation["landuse"="forest"](area.searchArea);
+);
+out geom;"""

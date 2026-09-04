@@ -34,6 +34,7 @@ from .choices import (
     FlowDirection,
     FlowScope,
     IncidentType,
+    NaturalKind,
     OsmElement,
     PeriodType,
     RoadClass,
@@ -1027,6 +1028,7 @@ class EtlRun(models.Model):
         "traffic_incidents": _("Дорожные инциденты"),
         "freight_flow_stats": _("Показатели грузопотоков"),
         "restriction_zones": _("Зоны ограничения движения"),
+        "natural_areas": _("Природные территории"),
         "etl_log": _("Журнал загрузок"),
     }
 
@@ -1208,3 +1210,59 @@ class RestrictionZone(models.Model):
     def contains(self, lon: float, lat: float) -> bool:
         """Лежит ли точка внутри зоны."""
         return self.geom is not None and self.geom.contains(lon, lat)
+
+
+class NaturalArea(models.Model):
+    """Водная поверхность или зелёный массив на территории города.
+
+    Слой подложки карты: без реки и лесопарков расположение объектов
+    читается только по подписям округов. Данные те же, что и у остального
+    реестра, — разметка OpenStreetMap, — поэтому подложка обслуживается
+    системой и не требует стороннего тайлового сервиса.
+
+    Мелкие контуры в реестр не попадают: пруд в сотню квадратных метров
+    неразличим на любом масштабе, на котором виден город, а число таких
+    записей превышает всё остальное содержимое карты.
+    """
+
+    kind = models.CharField(_("Вид территории"), max_length=16, choices=NaturalKind.choices)
+    name = models.CharField(_("Наименование"), max_length=200, blank=True, default="")
+    geom = MultiPolygonField(_("Контур"), null=True, blank=True)
+    area_sq_m = models.DecimalField(
+        _("Площадь, м²"), max_digits=14, decimal_places=2, null=True, blank=True
+    )
+
+    osm_type = models.CharField(
+        _("Тип элемента OSM"),
+        max_length=10,
+        choices=OsmElement.choices,
+        blank=True,
+        default="",
+    )
+    osm_id = models.BigIntegerField(_("Идентификатор OSM"), null=True, blank=True)
+    source = models.ForeignKey(
+        DataSource,
+        on_delete=models.SET_NULL,
+        db_column="source_id",
+        related_name="natural_areas",
+        null=True,
+        blank=True,
+        verbose_name=_("Источник данных"),
+    )
+    source_updated_at = models.DateTimeField(_("Данные источника от"), null=True, blank=True)
+
+    class Meta:
+        db_table = "natural_areas"
+        ordering = ("-area_sq_m", "id")
+        verbose_name = _("Природная территория")
+        verbose_name_plural = _("Природные территории")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("osm_type", "osm_id"),
+                name="natural_areas_osm_element_unique",
+            )
+        ]
+        indexes = [models.Index(fields=("kind",), name="natural_areas_kind_idx")]
+
+    def __str__(self) -> str:
+        return self.name or self.get_kind_display()

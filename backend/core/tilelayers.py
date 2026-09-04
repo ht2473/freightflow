@@ -21,11 +21,12 @@ from geo import TileFeature
 from geo.queries import in_bbox
 
 from . import selectors
-from .choices import congestion_state
+from .choices import NaturalKind, congestion_state
 from .models import (
     CargoRoute,
     District,
     InfrastructureObject,
+    NaturalArea,
     RestrictionZone,
     RoadSegment,
     TrafficIncident,
@@ -59,6 +60,19 @@ class TileLayer:
 # ---------------------------------------------------------------------------
 #  Наполнение слоёв
 # ---------------------------------------------------------------------------
+
+
+def _natural(bounds: Sequence[float], kind: str) -> list[TileFeature]:
+    """Природные территории подложки: вода либо зелёные массивы."""
+    queryset = NaturalArea.objects.filter(kind=kind).exclude(geom__isnull=True)
+    return [
+        TileFeature(
+            area.geom,
+            {"name": area.name, "area": _number(area.area_sq_m)},
+            feature_id=area.id,
+        )
+        for area in in_bbox(queryset, bounds)
+    ]
 
 
 def _districts(bounds: Sequence[float]) -> list[TileFeature]:
@@ -247,6 +261,20 @@ def _incidents(bounds: Sequence[float]) -> list[TileFeature]:
 # ---------------------------------------------------------------------------
 
 LAYERS: tuple[TileLayer, ...] = (
+    TileLayer(
+        name="water",
+        title="Водные поверхности",
+        min_zoom=0,
+        fields={"name": "Наименование", "area": "Площадь, м²"},
+        build=lambda bounds: _natural(bounds, NaturalKind.WATER),
+    ),
+    TileLayer(
+        name="green",
+        title="Зелёные массивы",
+        min_zoom=8,
+        fields={"name": "Наименование", "area": "Площадь, м²"},
+        build=lambda bounds: _natural(bounds, NaturalKind.GREEN),
+    ),
     TileLayer(
         name="districts",
         title="Округа",
