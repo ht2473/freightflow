@@ -306,3 +306,40 @@ CREATE INDEX IF NOT EXISTS idx_incidents_open ON traffic_incidents (reported_at 
 CREATE INDEX IF NOT EXISTS idx_etl_started ON etl_log (started_at DESC);
 
 COMMIT;
+
+-- ============================================================================
+--  Зоны ограничения движения грузового транспорта
+-- ============================================================================
+
+-- Основание — постановление Правительства Москвы № 379-ПП от 22.08.2011.
+-- Зоны вложены одна в другую: Садовое кольцо внутри Третьего транспортного,
+-- оно — внутри МКАД. Границы не задаются отдельно: постановление определяет
+-- их через кольцевые магистрали, и геометрия зоны выводится из геометрии
+-- соответствующего кольца.
+CREATE TABLE IF NOT EXISTS restriction_zones (
+    id                        SERIAL PRIMARY KEY,
+    code                      VARCHAR(16)  NOT NULL UNIQUE,
+    name                      VARCHAR(120) NOT NULL,
+    short_name                VARCHAR(32)  NOT NULL,
+    description               TEXT,
+    level                     SMALLINT     NOT NULL,
+    boundary_road_id          INTEGER REFERENCES road_segments (id) ON DELETE SET NULL,
+    permit_required_from_tons NUMERIC(6, 2) NOT NULL,
+    min_ecological_class      SMALLINT,
+    seasonal_limit_tons       NUMERIC(6, 2),
+    fine_rubles               INTEGER,
+    legal_basis               VARCHAR(200),
+    geom                      geometry(MultiPolygon, 4326),
+    area_sq_km                NUMERIC(10, 2),
+    perimeter_km              NUMERIC(8, 2),
+    geometry_origin           VARCHAR(16),
+    source_updated_at         TIMESTAMPTZ,
+    CONSTRAINT zone_level_positive CHECK (level >= 1)
+);
+
+CREATE INDEX IF NOT EXISTS idx_zone_geom ON restriction_zones USING GIST (geom);
+
+COMMENT ON TABLE  restriction_zones IS 'Зоны ограничения движения грузового транспорта (ПП № 379-ПП)';
+COMMENT ON COLUMN restriction_zones.level IS '1 — внешняя зона; пропуск во внутреннюю действует во внешних';
+COMMENT ON COLUMN restriction_zones.permit_required_from_tons IS 'РММ, начиная с которой требуется пропуск';
+COMMENT ON COLUMN restriction_zones.seasonal_limit_tons IS 'Ограничение с 1 мая по 1 октября в выходные дни';

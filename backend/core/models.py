@@ -872,3 +872,105 @@ class EtlRun(models.Model):
         """Доля отклонённых записей от общего числа обработанных, %."""
         total = self.records_loaded + self.records_errors
         return (self.records_errors / total * 100) if total else 0.0
+
+
+# =============================================================================
+#  5. ОГРАНИЧЕНИЯ ДВИЖЕНИЯ ГРУЗОВОГО ТРАНСПОРТА
+# =============================================================================
+
+
+class RestrictionZone(models.Model):
+    """Зона ограничения движения грузового транспорта.
+
+    Основание — постановление Правительства Москвы № 379-ПП от 22.08.2011.
+    Зоны вложены одна в другую: Садовое кольцо внутри Третьего транспортного,
+    оно — внутри МКАД. Пропуск, выданный во внутреннюю зону, действует и во
+    внешних, поэтому уровень вложенности является рабочей характеристикой,
+    а не описанием.
+
+    Границы зон не задаются отдельно: постановление определяет их через
+    кольцевые магистрали, и геометрия зоны выводится из геометрии
+    соответствующего кольца. Совпадение проверяется при загрузке —
+    периметр собранного контура сверяется с протяжённостью магистрали.
+    """
+
+    code = models.CharField(_("Код"), max_length=16, unique=True)
+    name = models.CharField(_("Наименование"), max_length=120)
+    short_name = models.CharField(_("Краткое наименование"), max_length=32)
+    description = models.TextField(_("Описание"), blank=True, default="")
+
+    # Вложенность: 1 — самая внешняя зона (МКАД), больше — более внутренние.
+    level = models.SmallIntegerField(
+        _("Уровень вложенности"),
+        help_text=_("1 — внешняя зона; пропуск во внутреннюю действует во внешних"),
+    )
+
+    boundary_road = models.ForeignKey(
+        "RoadSegment",
+        on_delete=models.SET_NULL,
+        db_column="boundary_road_id",
+        related_name="bounded_zones",
+        null=True,
+        blank=True,
+        verbose_name=_("Магистраль-граница"),
+    )
+
+    # --- Условия въезда по постановлению ------------------------------------
+    permit_required_from_tons = models.DecimalField(
+        _("Пропуск требуется при РММ от, т"),
+        max_digits=6,
+        decimal_places=2,
+        help_text=_("Разрешённая максимальная масса, начиная с которой нужен пропуск"),
+    )
+    min_ecological_class = models.SmallIntegerField(
+        _("Наименьший экологический класс"),
+        null=True,
+        blank=True,
+        help_text=_("Класс «Евро», ниже которого въезд запрещён"),
+    )
+    seasonal_limit_tons = models.DecimalField(
+        _("Сезонное ограничение при РММ от, т"),
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_("Действует с 1 мая по 1 октября в выходные и праздничные дни"),
+    )
+    fine_rubles = models.IntegerField(
+        _("Штраф за нарушение, ₽"), null=True, blank=True
+    )
+    legal_basis = models.CharField(
+        _("Нормативное основание"), max_length=200, blank=True, default=""
+    )
+
+    # --- Геометрия ------------------------------------------------------------
+    geom = MultiPolygonField(_("Граница зоны"), null=True, blank=True)
+    area_sq_km = models.DecimalField(
+        _("Площадь, км²"), max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    perimeter_km = models.DecimalField(
+        _("Периметр, км"), max_digits=8, decimal_places=2, null=True, blank=True
+    )
+    geometry_origin = models.CharField(
+        _("Происхождение границы"),
+        max_length=16,
+        choices=DataOrigin.choices,
+        blank=True,
+        default="",
+    )
+    source_updated_at = models.DateTimeField(
+        _("Данные источника от"), null=True, blank=True
+    )
+
+    class Meta:
+        db_table = "restriction_zones"
+        ordering = ("level",)
+        verbose_name = _("Зона ограничения движения")
+        verbose_name_plural = _("Зоны ограничения движения")
+
+    def __str__(self) -> str:
+        return self.name
+
+    def contains(self, lon: float, lat: float) -> bool:
+        """Лежит ли точка внутри зоны."""
+        return self.geom is not None and self.geom.contains(lon, lat)
