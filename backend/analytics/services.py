@@ -385,6 +385,235 @@ def index_summary() -> dict:
 
 
 # ---------------------------------------------------------------------------
+#  1a. Обоснование весов и анализ чувствительности
+# ---------------------------------------------------------------------------
+
+
+def equal_weights() -> dict[str, float]:
+    """Равные веса: положение, при котором ни одна составляющая не выделена."""
+    share = 1 / len(COMPONENTS)
+    return {item.key: share for item in COMPONENTS}
+
+
+def entropy_weights(rows: list[dict] | None = None) -> dict[str, float]:
+    """Веса по мере различительной способности составляющей.
+
+    Метод энтропии Шеннона: составляющая, значения которой у всех округов
+    близки, ничего о них не сообщает и получает малый вес; составляющая,
+    разводящая округа далеко, получает больший. Веса выводятся из самих
+    данных и не зависят от мнения — этим они и полезны рядом с экспертными:
+    совпадение порядка величин подтверждает экспертную оценку, расхождение
+    указывает, где она держится на одном соглашении.
+
+    Величины берутся нормированными, поэтому единицы измерения на результат
+    не влияют. Нулевая доля в сумму энтропии не входит: предел p·ln p при
+    p → 0 равен нулю.
+    """
+    rows = rows if rows is not None else load_index()
+    if len(rows) < 2:
+        return dict(INDEX_WEIGHTS)
+
+    diversity: dict[str, float] = {}
+    scale = 1 / math.log(len(rows))
+    for item in COMPONENTS:
+        values = [_share(row, item.key) for row in rows]
+        total = sum(values)
+        if not total:
+            diversity[item.key] = 0.0
+            continue
+        shares = [value / total for value in values]
+        entropy = -scale * sum(p * math.log(p) for p in shares if p > 0)
+        diversity[item.key] = max(1 - entropy, 0.0)
+
+    spread = sum(diversity.values())
+    if not spread:
+        return dict(INDEX_WEIGHTS)
+    return {key: value / spread for key, value in diversity.items()}
+
+
+def spearman(first: list[int], second: list[int]) -> float:
+    """Коэффициент ранговой корреляции Спирмена для двух ранжирований.
+
+    Отвечает на вопрос, ради которого и ведётся анализ чувствительности:
+    насколько порядок округов сохраняется при другом наборе весов. Связок
+    в ранжировании нет — места нумеруются подряд, — поэтому применима
+    формула через сумму квадратов разностей.
+    """
+    count = len(first)
+    if count < 2:
+        return 1.0
+    squares = sum((a - b) ** 2 for a, b in zip(first, second, strict=False))
+    return 1 - 6 * squares / (count * (count**2 - 1))
+
+
+def pearson(first: list[float], second: list[float]) -> float:
+    """Коэффициент линейной корреляции двух рядов."""
+    count = len(first)
+    if count < 2:
+        return 0.0
+    mean_a = sum(first) / count
+    mean_b = sum(second) / count
+    covariance = sum(
+        (a - mean_a) * (b - mean_b) for a, b in zip(first, second, strict=False)
+    )
+    spread_a = math.sqrt(sum((a - mean_a) ** 2 for a in first))
+    spread_b = math.sqrt(sum((b - mean_b) ** 2 for b in second))
+    if not spread_a or not spread_b:
+        return 0.0
+    return covariance / (spread_a * spread_b)
+
+
+#: Величина отклонения веса в одностороннем испытании.
+#:
+#: Четверть — не круглое число ради круглого: меньший сдвиг ничего не выявляет
+#: на выборке в двенадцать округов, больший превращает испытание в другой
+#: набор весов, а не в проверку устойчивости имеющегося.
+WEIGHT_PERTURBATION = 0.25
+
+
+def _ranking(rows: list[dict]) -> dict[int, int]:
+    """Место каждого округа в ранжировании."""
+    return {row["district"].id: row["rank"] for row in rows}
+
+
+def _compare_ranking(base: dict[int, int], other: list[dict]) -> dict:
+    """Сопоставить ранжирование с базовым."""
+    ranking = _ranking(other)
+    order = sorted(base)
+    shifts = {key: abs(base[key] - ranking[key]) for key in order}
+    return {
+        "rows": other,
+        "leader": other[0]["district"].short_name,
+        "correlation": round(
+            spearman([base[key] for key in order], [ranking[key] for key in order]), 3
+        ),
+        "max_shift": max(shifts.values()) if shifts else 0,
+        "unchanged": sum(1 for value in shifts.values() if value == 0),
+        "moved": sorted(
+            (
+                {"district": row["district"], "shift": base[row["district"].id] - row["rank"]}
+                for row in other
+                if base[row["district"].id] != row["rank"]
+            ),
+            key=lambda item: abs(item["shift"]),
+            reverse=True,
+        ),
+    }
+
+
+def _normalized_weights(weights: dict[str, float]) -> dict[str, float]:
+    """Привести набор весов к единичной сумме."""
+    total = sum(weights.values())
+    return {key: value / total for key, value in weights.items()} if total else weights
+
+
+def sensitivity() -> dict:
+    """Проверить устойчивость ранжирования к выбору весов.
+
+    Веса композитного показателя назначаются, а не измеряются, и потому
+    требуют не защиты, а проверки: показать надо не то, что они верны,
+    а то, насколько от них зависит вывод. Проверка ведётся тремя способами.
+
+    1. **Другие наборы весов** — равные и выведенные из данных методом
+       энтропии. Если порядок округов при них сохраняется, вывод опирается
+       на данные, а не на выбор весов.
+    2. **Одностороннее отклонение** — вес каждой составляющей поочерёдно
+       изменяется на четверть, остальные пропорционально пересчитываются.
+       Так видно, какая составляющая определяет расстановку.
+    3. **Взаимная корреляция составляющих** — сильно связанные величины
+       учитывают одно и то же дважды, и суммарный вес такой пары выше
+       объявленного.
+    """
+
+    def build() -> dict:
+        base_rows = load_index()
+        if len(base_rows) < 2:
+            return {"available": False}
+
+        base = _ranking(base_rows)
+        schemes = [
+            {
+                "code": "expert",
+                "title": _("Экспертный"),
+                "note": _("действующий набор: спрос важнее условий"),
+                "weights": dict(INDEX_WEIGHTS),
+            },
+            {
+                "code": "equal",
+                "title": _("Равные веса"),
+                "note": _("ни одна составляющая не выделена"),
+                "weights": equal_weights(),
+            },
+            {
+                "code": "entropy",
+                "title": _("По различительной способности"),
+                "note": _("веса выведены из данных методом энтропии"),
+                "weights": entropy_weights(base_rows),
+            },
+        ]
+        for scheme in schemes:
+            scheme.update(_compare_ranking(base, load_index(scheme["weights"])))
+
+        perturbations = []
+        for item in COMPONENTS:
+            for direction, label in ((1, _("выше")), (-1, _("ниже"))):
+                weights = dict(INDEX_WEIGHTS)
+                weights[item.key] = max(
+                    weights[item.key] * (1 + direction * WEIGHT_PERTURBATION), 0.0
+                )
+                outcome = _compare_ranking(base, load_index(_normalized_weights(weights)))
+                perturbations.append(
+                    {
+                        "component": item,
+                        "direction": label,
+                        "weight": round(_normalized_weights(weights)[item.key], 3),
+                        "correlation": outcome["correlation"],
+                        "max_shift": outcome["max_shift"],
+                        "leader": outcome["leader"],
+                    }
+                )
+
+        columns = {
+            item.key: [_share(row, item.key) for row in base_rows] for item in COMPONENTS
+        }
+        correlations = [
+            {
+                "first": first,
+                "second": second,
+                "value": round(pearson(columns[first.key], columns[second.key]), 2),
+            }
+            for position, first in enumerate(COMPONENTS)
+            for second in COMPONENTS[position + 1:]
+        ]
+
+        return {
+            "available": True,
+            "base": base_rows,
+            "schemes": schemes,
+            "perturbations": perturbations,
+            "correlations": sorted(
+                correlations, key=lambda item: abs(item["value"]), reverse=True
+            ),
+            "worst_correlation": min(
+                (scheme["correlation"] for scheme in schemes), default=1.0
+            ),
+            "largest_shift": max(
+                [scheme["max_shift"] for scheme in schemes]
+                + [item["max_shift"] for item in perturbations],
+                default=0,
+            ),
+            "leaders": sorted(
+                {scheme["leader"] for scheme in schemes}
+                | {item["leader"] for item in perturbations}
+            ),
+            # В процентах: величина выводится в тексте испытания.
+            "perturbation": round(WEIGHT_PERTURBATION * 100),
+        }
+
+    return _cached("analytics:sensitivity", build)
+
+
+# ---------------------------------------------------------------------------
 #  2. Типология округов (метод k-средних)
 # ---------------------------------------------------------------------------
 
@@ -855,5 +1084,6 @@ def _cached(key: str, builder):
 def invalidate() -> None:
     """Сбросить кеш аналитических расчётов после обновления данных."""
     cache.delete("analytics:load_index")
+    cache.delete("analytics:sensitivity")
     for k in range(2, 7):
         cache.delete(f"analytics:typology:{k}")

@@ -45,6 +45,24 @@ def index(request):
     return render(request, "pages/analytics_index.html", context)
 
 
+def sensitivity(request):
+    """Устойчивость ранжирования к выбору весов индекса."""
+    result = services.sensitivity()
+    context = page_context(
+        request,
+        title=_("Чувствительность индекса"),
+        lead=_(
+            "Проверка того, насколько расстановка округов зависит от весов, "
+            "назначенных составляющим, а не от самих данных."
+        ),
+        active="sensitivity",
+        crumbs=[(_("Аналитика"), "analytics:index"), (_("Чувствительность"),)],
+        result=result,
+        components=services.COMPONENTS,
+    )
+    return render(request, "pages/analytics_sensitivity.html", context)
+
+
 def typology(request):
     """Типология округов по методу k-средних."""
     k = min(max(int_param(request, "k", 4) or 4, 2), 6)

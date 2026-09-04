@@ -129,6 +129,12 @@ MAIN_NAV: tuple[NavItem, ...] = (
                 "analytics:index",
                 _("Композитная оценка округов"),
             ),
+            NavItem(
+                "sensitivity",
+                _("Чувствительность индекса"),
+                "analytics:sensitivity",
+                _("Зависимость выводов от весов"),
+            ),
             NavItem("typology", _("Типология округов"), "analytics:typology", _("Кластерный анализ")),
             NavItem("forecast", _("Прогноз грузопотока"), "analytics:forecast", _("Оценка на 6 месяцев")),
             NavItem("compare", _("Сравнение округов"), "analytics:compare", _("Сопоставление профилей")),

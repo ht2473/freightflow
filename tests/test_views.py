@@ -18,8 +18,8 @@ PUBLIC_PAGES = [
     "core:incident_list", "core:flow_overview", "core:route_list",
     "core:source_list", "core:etl_log", "core:methodology", "core:api_docs",
     "core:help", "core:about", "core:sitemap",
-    "analytics:index", "analytics:typology", "analytics:forecast",
-    "analytics:compare", "analytics:scenario",
+    "analytics:index", "analytics:sensitivity", "analytics:typology",
+    "analytics:forecast", "analytics:compare", "analytics:scenario",
     "content:article_list", "content:feedback",
 ]
 

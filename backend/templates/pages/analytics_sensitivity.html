@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% if result.available %}
+<section class="section">
+    <div class="grid grid--2">
+        <div class="prose">
+            <h2>{% trans 'Что проверяется' %}</h2>
+            <p>{% trans 'Веса составляющих композитного показателя назначаются, а не измеряются. Поэтому доказывать надо не их правильность — доказать её нечем, — а независимость вывода от их выбора: если при другом разумном наборе весов порядок округов сохраняется, вывод опирается на данные.' %}</p>
+            <p>{% trans 'Проверка ведётся тремя способами: сопоставлением с другими наборами весов, поочерёдным отклонением каждого веса и проверкой того, не измеряют ли составляющие одно и то же.' %}</p>
+        </div>
+        <div class="stack">
+            <div class="card">
+                <p class="eyebrow">{% trans 'Наименьшее совпадение порядка' %}</p>
+                <p style="font-size:var(--fs-2xl);font-family:var(--font-mono);margin:var(--sp-2) 0">
+                    ρ = {{ result.worst_correlation|spaced:3 }}
+                </p>
+                <p class="small muted">
+                    {% trans 'Наибольшее смещение округа по всем испытаниям —' %}
+                    {{ result.largest_shift }} {{ result.largest_shift|plural:"место,места,мест" }}
+                </p>
+            </div>
+            <div class="card">
+                <p class="eyebrow">{% trans 'Первое место занимали' %}</p>
+                <p class="mono" style="margin-top:var(--sp-2)">{{ result.leaders|join:", " }}</p>
+                <p class="small muted" style="margin-top:var(--sp-2)">
+                    {% if result.leaders|length == 1 %}
+                        {% trans 'лидер не зависит от выбранных весов' %}
+                    {% else %}
+                        {% trans 'лидер зависит от выбранных весов: вывод о нём требует оговорки' %}
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="section__head">
+        <div>
+            <p class="eyebrow">{% trans 'Испытание первое' %}</p>
+            <h2>{% trans 'Другие наборы весов' %}</h2>
+        </div>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>{% trans 'Набор весов' %}</th>
+                    {% for item in components %}<th class="num">{{ item.title }}</th>{% endfor %}
+                    <th class="num">ρ</th>
+                    <th class="num">{% trans 'Смещение' %}</th>
+                    <th>{% trans 'Первое место' %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for scheme in result.schemes %}
+                    <tr {% if scheme.code == 'expert' %}class="is-subject"{% endif %}>
+                        <td>
+                            <span class="table-title">{{ scheme.title }}</span>
+                            <span class="table-sub">{{ scheme.note }}</span>
+                        </td>
+                        {% for item in components %}
+                            <td class="num">{{ scheme.weights|lookup:item.key|spaced:3 }}</td>
+                        {% endfor %}
+                        <td class="num">{{ scheme.correlation|spaced:3 }}</td>
+                        <td class="num">
+                            {% if scheme.max_shift %}{{ scheme.max_shift }}
+                                {{ scheme.max_shift|plural:"место,места,мест" }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td class="mono">{{ scheme.leader }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="small muted" style="margin-top:var(--sp-3)">
+        {% trans 'ρ — коэффициент ранговой корреляции Спирмена между расстановкой при данном наборе весов и действующей. Единица означает совпадение порядка полностью, ноль — отсутствие связи. Столбец «смещение» показывает, на сколько мест сдвинулся округ, изменивший положение сильнее прочих.' %}
+    </p>
+</section>
+
+{% for scheme in result.schemes %}
+    {% if scheme.moved %}
+        <section class="section">
+            <div class="card">
+                <h3 style="margin-bottom:var(--sp-3)">
+                    {% blocktrans with title=scheme.title|lower %}Кто меняет место при наборе «{{ title }}»{% endblocktrans %}
+                </h3>
+                <div class="stack stack--tight">
+                    {% for change in scheme.moved %}
+                        <div class="row row--between small">
+                            <span>{{ change.district.name }}</span>
+                            <span class="mono">
+                                {% if change.shift > 0 %}+{% endif %}{{ change.shift }}
+                                {% if change.shift > 0 %}{% trans 'вверх' %}{% else %}{% trans 'вниз' %}{% endif %}
+                            </span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+    {% endif %}
+{% endfor %}
+
+<section class="section">
+    <div class="section__head">
+        <div>
+            <p class="eyebrow">{% trans 'Испытание второе' %}</p>
+            <h2>{% trans 'Одностороннее отклонение веса' %}</h2>
+        </div>
+    </div>
+    <p class="small muted" style="margin-bottom:var(--sp-4)">
+        {% blocktrans with share=result.perturbation %}Вес каждой составляющей поочерёдно изменяется на {{ share }} %, остальные пересчитываются пропорционально, чтобы сумма осталась равной единице.{% endblocktrans %}
+    </p>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>{% trans 'Составляющая' %}</th>
+                    <th>{% trans 'Отклонение' %}</th>
+                    <th class="num">{% trans 'Вес' %}</th>
+                    <th class="num">ρ</th>
+                    <th class="num">{% trans 'Смещение' %}</th>
+                    <th>{% trans 'Первое место' %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in result.perturbations %}
+                    <tr>
+                        <td>{{ row.component.title }}</td>
+                        <td class="small faint">{{ row.direction }}</td>
+                        <td class="num">{{ row.weight|spaced:3 }}</td>
+                        <td class="num">{{ row.correlation|spaced:3 }}</td>
+                        <td class="num">
+                            {% if row.max_shift %}{{ row.max_shift }}{% else %}—{% endif %}
+                        </td>
+                        <td class="mono">{{ row.leader }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="section">
+    <div class="section__head">
+        <div>
+            <p class="eyebrow">{% trans 'Испытание третье' %}</p>
+            <h2>{% trans 'Не измеряют ли составляющие одно и то же' %}</h2>
+        </div>
+    </div>
+    <div class="grid grid--2">
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr><th>{% trans 'Пара составляющих' %}</th><th class="num">r</th>
+                        <th>{% trans 'Связь' %}</th></tr>
+                </thead>
+                <tbody>
+                    {% for pair in result.correlations %}
+                        <tr>
+                            <td class="small">{{ pair.first.title }} · {{ pair.second.title }}</td>
+                            <td class="num">{{ pair.value|spaced:2 }}</td>
+                            <td>
+                                {% if pair.value >= 0.7 or pair.value <= -0.7 %}
+                                    <span class="badge badge--alert">{% trans 'сильная' %}</span>
+                                {% elif pair.value >= 0.4 or pair.value <= -0.4 %}
+                                    <span class="badge badge--warn">{% trans 'умеренная' %}</span>
+                                {% else %}
+                                    <span class="badge badge--ok">{% trans 'слабая' %}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="prose">
+            <p class="small muted">{% trans 'Две сильно связанные составляющие учитывают одно и то же обстоятельство дважды, и их суммарный вес в индексе оказывается выше объявленного. Такую пару следует либо объединить, либо оставить одну из величин.' %}</p>
+            <p class="small muted">{% trans 'r — коэффициент линейной корреляции нормированных величин по всем округам. Знак указывает направление связи: отрицательное значение означает, что рост одной величины сопровождается снижением другой.' %}</p>
+        </div>
+    </div>
+</section>
+{% else %}
+    {% include "partials/_empty.html" with empty_title="Анализ недоступен" empty_text="Для проверки устойчивости нужен рассчитанный индекс не менее чем по двум округам." %}
+{% endif %}
+{% endblock %}

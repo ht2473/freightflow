@@ -8,6 +8,7 @@ app_name = "analytics"
 
 urlpatterns = [
     path("", views.index, name="index"),
+    path("sensitivity/", views.sensitivity, name="sensitivity"),
     path("typology/", views.typology, name="typology"),
     path("forecast/", views.forecast, name="forecast"),
     path("compare/", views.compare, name="compare"),

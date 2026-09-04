@@ -209,6 +209,78 @@ class TestComponents:
         assert best["components"]["network"] == pytest.approx(0.0)
 
 
+class TestRankCorrelation:
+    """Коэффициенты корреляции."""
+
+    def test_identical_rankings(self):
+        """Совпадающие ранжирования дают единицу."""
+        assert services.spearman([1, 2, 3, 4], [1, 2, 3, 4]) == 1.0
+
+    def test_reversed_rankings(self):
+        """Противоположные ранжирования дают минус единицу."""
+        assert services.spearman([1, 2, 3, 4], [4, 3, 2, 1]) == pytest.approx(-1.0)
+
+    def test_single_element(self):
+        """Ранжирование из одного элемента сравнивать не с чем."""
+        assert services.spearman([1], [1]) == 1.0
+
+    def test_pearson_on_linear_relation(self):
+        """Линейно связанные ряды дают единицу."""
+        assert services.pearson([1, 2, 3], [2, 4, 6]) == pytest.approx(1.0)
+
+    def test_pearson_on_constant_column(self):
+        """Постоянный ряд ни с чем не связан."""
+        assert services.pearson([1, 2, 3], [5, 5, 5]) == 0.0
+
+
+@pytest.mark.django_db
+class TestSensitivity:
+    """Устойчивость ранжирования к выбору весов."""
+
+    def test_expert_scheme_matches_itself(self, full_dataset):
+        """Действующий набор весов совпадает с самим собой в точности."""
+        expert = next(
+            scheme for scheme in services.sensitivity()["schemes"]
+            if scheme["code"] == "expert"
+        )
+        assert expert["correlation"] == 1.0
+        assert expert["max_shift"] == 0
+
+    def test_every_scheme_sums_to_one(self, full_dataset):
+        """Каждый набор весов приведён к единичной сумме."""
+        for scheme in services.sensitivity()["schemes"]:
+            assert sum(scheme["weights"].values()) == pytest.approx(1.0)
+
+    def test_entropy_weights_favour_the_telling_component(self, full_dataset):
+        """Различающая округа составляющая получает больший вес.
+
+        Составляющая, равная у всех, о них ничего не сообщает: её вес
+        по методу энтропии обязан оказаться наименьшим.
+        """
+        rows = services.load_index()
+        for row in rows:
+            row["shares"]["residential"] = 0.5
+
+        weights = services.entropy_weights(rows)
+        assert weights["residential"] == min(weights.values())
+
+    def test_perturbation_covers_both_directions(self, full_dataset):
+        """Вес каждой составляющей испытывается в обе стороны."""
+        result = services.sensitivity()
+        keys = [row["component"].key for row in result["perturbations"]]
+        assert len(keys) == len(services.COMPONENTS) * 2
+        assert set(keys) == set(services.INDEX_WEIGHTS)
+
+    def test_correlations_cover_every_pair(self, full_dataset):
+        """Взаимная связь проверяется у каждой пары составляющих."""
+        count = len(services.COMPONENTS)
+        assert len(services.sensitivity()["correlations"]) == count * (count - 1) // 2
+
+    def test_unavailable_without_data(self, db):
+        """Без индекса анализ помечается недоступным."""
+        assert services.sensitivity()["available"] is False
+
+
 @pytest.mark.django_db
 class TestTypology:
     """Типология округов."""
