@@ -283,12 +283,25 @@ def load_index(request):
             "short_name": row["district"].short_name,
             "score": row["score"],
             "components": row["components"],
+            "values": row["raw"],
         }
         for row in analytics_services.load_index()
     ]
     return Response(
         {
-            "weights": analytics_services.INDEX_WEIGHTS,
+            "components": [
+                {
+                    "key": item.key,
+                    "title": str(item.title),
+                    "unit": str(item.unit),
+                    "formula": item.formula,
+                    "weight": item.weight,
+                    "inverse": item.inverse,
+                    "origin": item.origin,
+                    "source": str(item.source),
+                }
+                for item in analytics_services.COMPONENTS
+            ],
             "count": len(rows),
             "results": rows,
         }

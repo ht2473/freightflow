@@ -48,7 +48,9 @@
                 <tr>
                     <th class="num">№</th><th>{% trans 'Округ' %}</th><th class="num">{% trans 'Индекс' %}</th>
                     <th>{% trans 'Профиль составляющих' %}</th>
-                    {% for key, title in components.items %}<th class="num">{{ title }}</th>{% endfor %}
+                    {% for item in components %}
+                        <th class="num" title="{{ item.unit }}">{{ item.title }}</th>
+                    {% endfor %}
                 </tr>
             </thead>
             <tbody>
@@ -68,10 +70,9 @@
                                      style="width:{{ row.score }}%"></div>
                             </div>
                         </td>
-                        <td class="num">{{ row.components.capacity|spaced:0 }}</td>
-                        <td class="num">{{ row.components.flow|spaced:0 }}</td>
-                        <td class="num">{{ row.components.congestion|spaced:0 }}</td>
-                        <td class="num">{{ row.components.incidents|spaced:0 }}</td>
+                        {% for item in components %}
+                            <td class="num">{{ row.components|lookup:item.key|spaced:0 }}</td>
+                        {% endfor %}
                     </tr>
                 {% empty %}
                     <tr><td colspan="8" class="muted">{% trans 'Недостаточно данных для расчёта.' %}</td></tr>
@@ -85,15 +86,12 @@
     <div class="grid grid--2">
         <div class="card">
             <h3 style="margin-bottom:var(--sp-3)">{% trans 'Как устроен расчёт' %}</h3>
-            <p class="small muted" style="margin-bottom:var(--sp-4)">{% trans 'Четыре показателя округа нормируются методом «минимум — максимум», умножаются на веса и суммируются. Результат приводится к стобалльной шкале.' %}</p>
-            <dl class="facts">
-                {% for key, weight in weights.items %}
-                    <div>
-                        <dt>{% for k, title in components.items %}{% if k == key %}{{ title }}{% endif %}{% endfor %}</dt>
-                        <dd>{{ weight|spaced:2 }}</dd>
-                    </div>
+            <p class="small muted" style="margin-bottom:var(--sp-4)">{% trans 'Удельные величины округа нормируются методом «минимум — максимум», умножаются на веса и суммируются. Результат приводится к стобалльной шкале.' %}</p>
+            <div class="stack stack--tight">
+                {% for item in components %}
+                    {% include "partials/_metric_note.html" with value=item.weight|spaced:2 %}
                 {% endfor %}
-            </dl>
+            </div>
             <a class="button button--block" style="margin-top:var(--sp-4)"
                href="{% url 'core:methodology' %}">{% trans 'Подробнее о методике' %}</a>
         </div>
@@ -102,7 +100,8 @@
             <h3 style="margin-bottom:var(--sp-3)">{% trans 'Как читать индекс' %}</h3>
             <div class="prose">
                 <p class="small muted">{% trans 'Индекс отражает положение округа' %}<em>{% trans 'относительно других округов' %}</em>{% trans ', а не абсолютный уровень нагрузки. Округ с индексом 100 имеет наибольшие значения показателей в текущей выборке, а не «предельно возможные».' %}</p>
-                <p class="small muted">{% trans 'Высокий индекс не означает проблемы сам по себе: он может отражать концентрацию складских мощностей — то есть развитость инфраструктуры. Смысл конкретного значения раскрывают составляющие: сочетание высокой загруженности при низких мощностях указывает на транзитную перегрузку, обратное сочетание — на логистический узел с достаточной пропускной способностью.' %}</p>
+                <p class="small muted">{% trans 'Высокий индекс не означает проблемы сам по себе: он может отражать концентрацию складских мощностей — то есть развитость инфраструктуры. Смысл конкретного значения раскрывают составляющие: концентрация складов при слабой магистральной сети указывает на узел, вынужденный обслуживаться улицами районного значения, а тот же индекс при развитой сети — на узел с достаточной пропускной способностью.' %}</p>
+                <p class="small muted">{% trans 'В индекс входят только измеренные величины. Расчётная оценка загруженности сети в него не включена: взвешенная наравне с измеренными, она определяла бы четверть итога и выдавала бы допущение модели за свойство округа.' %}</p>
             </div>
         </div>
     </div>

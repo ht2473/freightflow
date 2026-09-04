@@ -163,6 +163,53 @@ class TestLoadIndex:
 
 
 @pytest.mark.django_db
+class TestComponents:
+    """Состав индекса: только измеренные и только удельные величины."""
+
+    def test_every_component_relies_on_measured_data(self):
+        """Ни одна составляющая не опирается на модельную величину."""
+        from core.choices import DataOrigin
+
+        assert all(item.origin == DataOrigin.MEASURED for item in services.COMPONENTS)
+
+    def test_congestion_is_not_a_component(self):
+        """Расчётная загруженность в индекс не входит."""
+        assert "congestion" not in services.INDEX_WEIGHTS
+
+    def test_every_component_is_described(self):
+        """У каждой составляющей есть единица, формула и источник."""
+        for item in services.COMPONENTS:
+            assert item.unit and item.formula and item.source and item.meaning
+
+    def test_metrics_are_specific(self, full_dataset, districts):
+        """Величины отнесены к размеру округа, а не взяты валовыми."""
+        metrics = {row["district"].short_name: row["values"] for row in services.district_metrics()}
+        for district in districts:
+            values = metrics[district.short_name]
+            expected = district.population / float(district.area_sq_km)
+            assert values["residential"] == pytest.approx(expected)
+
+    def test_unmeasured_component_is_not_a_zero(self, full_dataset, districts):
+        """Округ без площади не получает нулевую плотность застройки."""
+        from core.models import District
+
+        District.objects.filter(pk=districts[0].pk).update(area_sq_km=None)
+        services.invalidate()
+        row = next(
+            row for row in services.load_index()
+            if row["district"].pk == districts[0].pk
+        )
+        assert row["measured"]["residential"] is False
+        assert row["components"]["residential"] is None
+
+    def test_inverse_component_lowers_the_score(self, full_dataset):
+        """Обратная составляющая входит в индекс со сменой направления."""
+        rows = services.load_index()
+        best = max(rows, key=lambda row: row["raw"]["network"] or 0)
+        assert best["components"]["network"] == pytest.approx(0.0)
+
+
+@pytest.mark.django_db
 class TestTypology:
     """Типология округов."""
 
@@ -230,23 +277,43 @@ class TestScenario:
 
     def test_baseline_unchanged(self, full_dataset):
         """Нулевые изменения не сдвигают индекс."""
-        result = services.scenario(0, 0, 0)
+        result = services.scenario(None)
         assert all(abs(row["delta"]) < 0.05 for row in result["rows"])
 
-    def test_flow_growth_increases_load(self, full_dataset):
-        """Рост грузопотока не снижает суммарную нагрузку."""
-        result = services.scenario(flow_change_pct=50)
-        assert result["available"] is True
-        assert result["avg_delta"] >= -0.5
+    def test_change_applies_to_the_chosen_district(self, full_dataset, districts):
+        """Условия меняются только в выбранном округе."""
+        target = districts[0]
+        result = services.scenario(target.id, storage=50)
+        assert result["district"] == target
+        assert sum(1 for row in result["rows"] if row["target"]) == 1
 
-    def test_scores_within_scale(self, full_dataset):
+    def test_growth_in_one_district_raises_its_index(self, full_dataset):
+        """Прирост складских площадей повышает индекс именно этого округа."""
+        rows = services.load_index()
+        concentration = [row["raw"]["storage"] for row in rows if row["raw"]["storage"]]
+        outsider = min(rows, key=lambda row: row["raw"]["storage"] or 0.0)
+        # Прирост берётся заведомо превосходящим разброс: у отстающего округа
+        # доля равна нулю, и меньший прирост оставил бы его на том же месте
+        # шкалы, ничего не изменив.
+        growth = max(concentration) / min(concentration) * 200
+
+        result = services.scenario(outsider["district"].id, storage=growth)
+        assert result["subject"]["score"] > outsider["score"]
+        assert result["subject"]["rank"] < outsider["rank"]
+
+    def test_scores_within_scale(self, full_dataset, districts):
         """Сценарные значения остаются в пределах шкалы."""
-        for row in services.scenario(flow_change_pct=30, road_capacity_change_pct=10)["rows"]:
+        for row in services.scenario(districts[0].id, storage=30, network=10)["rows"]:
             assert 0 <= row["score"] <= 100
+
+    def test_levers_are_index_components(self):
+        """Каждый рычаг сценария — составляющая индекса."""
+        assert set(services.SCENARIO_LEVERS) <= set(services.INDEX_WEIGHTS)
+        assert set(services.SCENARIO_HINTS) == set(services.SCENARIO_LEVERS)
 
     def test_unavailable_without_data(self, db):
         """Без исходных данных расчёт помечается недоступным."""
-        assert services.scenario(10, 0, 0)["available"] is False
+        assert services.scenario(None, storage=10)["available"] is False
 
 
 @pytest.mark.django_db

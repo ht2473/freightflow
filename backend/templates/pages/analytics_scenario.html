@@ -5,23 +5,25 @@
 <form class="filters" method="get">
     <div class="filters__grid">
         <div class="field">
-            <label for="f-flow">{% trans 'Изменение объёма перевозок, %' %}</label>
-            <input type="number" id="f-flow" name="flow" value="{{ filters.flow }}"
-                   min="-90" max="200" step="5">
-            <p class="field__hint">{% trans 'Рост спроса на доставку или его снижение' %}</p>
+            <label for="f-district">{% trans 'Округ' %}</label>
+            <select id="f-district" name="district">
+                {% for district in districts %}
+                    <option value="{{ district.pk }}"
+                            {% if district.pk == selected %}selected{% endif %}>
+                        {{ district.name }}
+                    </option>
+                {% endfor %}
+            </select>
+            <p class="field__hint">{% trans 'Условия меняются в нём одном' %}</p>
         </div>
-        <div class="field">
-            <label for="f-capacity">{% trans 'Изменение складских мощностей, %' %}</label>
-            <input type="number" id="f-capacity" name="capacity" value="{{ filters.capacity }}"
-                   min="-90" max="200" step="5">
-            <p class="field__hint">{% trans 'Ввод новых объектов или вывод существующих' %}</p>
-        </div>
-        <div class="field">
-            <label for="f-road">{% trans 'Изменение пропускной способности сети, %' %}</label>
-            <input type="number" id="f-road" name="road" value="{{ filters.road }}"
-                   min="-90" max="200" step="5">
-            <p class="field__hint">{% trans 'Реконструкция магистралей или их ограничение' %}</p>
-        </div>
+        {% for lever in levers %}
+            <div class="field">
+                <label for="f-{{ lever.key }}">{{ lever.title }}, %</label>
+                <input type="number" id="f-{{ lever.key }}" name="{{ lever.key }}"
+                       value="{{ lever.value|spaced:0 }}" min="-90" max="200" step="5">
+                <p class="field__hint">{{ lever.hint }}</p>
+            </div>
+        {% endfor %}
         <div class="row">
             <button class="button button--primary" type="submit">{% trans 'Рассчитать' %}</button>
             <a class="button button--ghost" href="{% url 'analytics:scenario' %}">{% trans 'Базовый вариант' %}</a>
@@ -31,28 +33,31 @@
 
 {% if result.available %}
     <div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-        <div class="metric metric--{% if result.avg_delta > 0 %}alert{% elif result.avg_delta < 0 %}ok{% else %}accent{% endif %}">
-            <span class="metric__label">{% trans 'Среднее изменение индекса' %}</span>
+        <div class="metric metric--{% if result.subject.delta > 0 %}alert{% elif result.subject.delta < 0 %}ok{% else %}accent{% endif %}">
+            <span class="metric__label">{% trans 'Индекс выбранного округа' %}</span>
             <span class="metric__value">
-                {% if result.avg_delta > 0 %}+{% endif %}{{ result.avg_delta|spaced:2 }}
+                {% if result.subject.delta > 0 %}+{% endif %}{{ result.subject.delta|spaced:1 }}
             </span>
-            <span class="metric__note">{% trans 'баллов по всем округам' %}</span>
+            <span class="metric__note">
+                {{ result.subject.base_score|spaced:1 }} → {{ result.subject.score|spaced:1 }}
+            </span>
         </div>
         <div class="metric metric--alert">
             <span class="metric__label">{% trans 'Округов с ростом нагрузки' %}</span>
             <span class="metric__value">{{ result.worsened }}</span>
+            <span class="metric__note">{% trans 'нормирование относительное' %}</span>
         </div>
         <div class="metric metric--ok">
             <span class="metric__label">{% trans 'Округов со снижением' %}</span>
             <span class="metric__value">{{ result.improved }}</span>
+            <span class="metric__note">{% trans 'сдвиг шкалы затрагивает всех' %}</span>
         </div>
-        <div class="metric">
-            <span class="metric__label">{% trans 'Параметры сценария' %}</span>
-            <span class="metric__value" style="font-size:var(--fs-sm);line-height:1.6">
-                поток {% if result.params.flow > 0 %}+{% endif %}{{ result.params.flow|spaced:0 }} %<br>
-                мощности {% if result.params.capacity > 0 %}+{% endif %}{{ result.params.capacity|spaced:0 }} %<br>
-                сеть {% if result.params.road > 0 %}+{% endif %}{{ result.params.road|spaced:0 }} %
+        <div class="metric metric--accent">
+            <span class="metric__label">{{ result.district.short_name }}</span>
+            <span class="metric__value">
+                {{ result.subject.base_rank }} → {{ result.subject.rank }}
             </span>
+            <span class="metric__note">{% trans 'место в ранжировании' %}</span>
         </div>
     </div>
 
@@ -68,20 +73,30 @@
                 <thead>
                     <tr><th class="num">№</th><th>{% trans 'Округ' %}</th>
                         <th class="num">{% trans 'Базовый индекс' %}</th><th class="num">{% trans 'Сценарный индекс' %}</th>
-                        <th class="num">{% trans 'Изменение' %}</th><th>{% trans 'Направление' %}</th></tr>
+                        <th class="num">{% trans 'Изменение' %}</th>
+                        <th class="num">{% trans 'Место' %}</th><th>{% trans 'Направление' %}</th></tr>
                 </thead>
                 <tbody>
                     {% for row in result.rows %}
-                        <tr data-href="{{ row.district.get_absolute_url }}">
+                        <tr data-href="{{ row.district.get_absolute_url }}"
+                            {% if row.target %}class="is-subject"{% endif %}>
                             <td class="num faint">{{ row.rank }}</td>
                             <td>
                                 <span class="table-title">{{ row.district.short_name }}</span>
-                                <span class="table-sub">{{ row.district.name }}</span>
+                                <span class="table-sub">
+                                    {% if row.target %}{% trans 'условия сценария' %}
+                                    {% else %}{{ row.district.name }}{% endif %}
+                                </span>
                             </td>
                             <td class="num faint">{{ row.base_score|spaced:1 }}</td>
                             <td class="num"><strong>{{ row.score|spaced:1 }}</strong></td>
                             <td class="num">
                                 {% if row.delta > 0 %}+{% endif %}{{ row.delta|spaced:1 }}
+                            </td>
+                            <td class="num faint">
+                                {% if row.rank_delta %}
+                                    {{ row.base_rank }} → {{ row.rank }}
+                                {% else %}—{% endif %}
                             </td>
                             <td>
                                 {% if row.delta > 0.5 %}
@@ -101,11 +116,12 @@
 
     <section class="section">
         <div class="card">
-            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Модель отклика' %}</h3>
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Что именно пересчитывается' %}</h3>
             <div class="prose">
-                <p class="small muted">{% trans 'Загруженность сети реагирует на изменение условий эластично: рост грузопотока увеличивает её с коэффициентом 0,6, увеличение пропускной способности снижает с коэффициентом 0,4. Складские мощности и объём перевозок входят в расчёт напрямую.' %}</p>
-                <p class="small muted">{% trans 'После пересчёта показателей выполняется повторное нормирование, поэтому индексы остаются сопоставимыми между округами. Обратите внимание: при равномерном изменении условий во всех округах относительные позиции сохраняются, а меняются лишь абсолютные значения составляющих.' %}</p>
-                <p class="small muted">{% trans 'Коэффициенты эластичности заданы экспертно и подлежат уточнению по мере накопления наблюдений. Результат расчёта следует трактовать как оценку направления и порядка изменений, а не как точный прогноз.' %}</p>
+                <p class="small muted">{% trans 'Заданное изменение переносится на исходные величины составляющих, после чего расчёт индекса повторяется целиком — с тем же нормированием и теми же весами. Переносится сдвиг условий, а не отклик на него: коэффициентов отклика, подтверждённых наблюдениями, для города нет.' %}</p>
+                <p class="small muted">{% trans 'Условия меняются в одном округе, и это не ограничение расчёта. Нормирование относительное: изменение, заданное всем округам сразу, сдвинуло бы величины разом и оставило расстановку прежней. Расчёт отвечает на другой вопрос — что изменится, если объект разместить здесь.' %}</p>
+                <p class="small muted">{% trans 'Индекс остальных округов при этом тоже меняется: границы шкалы нормирования зависят от всей выборки, и появление нового наибольшего значения пересчитывает доли всех.' %}</p>
+                <p class="small muted">{% trans 'Плотность жилой застройки среди условий сценария отсутствует: она меняется вместе с городом за годы, а не решением о размещении объекта.' %}</p>
             </div>
         </div>
     </section>

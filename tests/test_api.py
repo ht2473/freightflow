@@ -165,10 +165,16 @@ class TestAnalyticsEndpoints:
     """Аналитические конечные точки."""
 
     def test_load_index(self, client, full_dataset, districts):
-        """Индекс нагрузки возвращается со сведениями о весах."""
+        """Индекс нагрузки возвращается с описанием составляющих."""
         payload = client.get(f"{BASE}analytics/load-index/").json()
         assert payload["count"] == len(districts)
-        assert sum(payload["weights"].values()) == pytest.approx(1.0)
+        assert sum(item["weight"] for item in payload["components"]) == pytest.approx(1.0)
+
+    def test_load_index_describes_components(self, client, full_dataset):
+        """Составляющая описана настолько, чтобы её можно было проверить."""
+        component = client.get(f"{BASE}analytics/load-index/").json()["components"][0]
+        assert component["unit"] and component["formula"] and component["source"]
+        assert component["origin"] == "measured"
 
     def test_load_index_sorted(self, client, full_dataset):
         """Записи упорядочены по убыванию индекса."""

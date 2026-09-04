@@ -218,6 +218,41 @@ def chart_tones(rows, value_key: str, scale: str = "congestion") -> str:
 
 
 @register.filter
+def plural(value, forms: str) -> str:
+    """Форма существительного при числе: «1 округ», «2 округа», «5 округов».
+
+    Встроенный ``pluralize`` различает две формы и рассчитан на языки,
+    где их две. Формы передаются через запятую в порядке «один — два — пять».
+    """
+    one, few, many = (part.strip() for part in forms.split(","))
+    number = _to_float(value)
+    if number is None:
+        return many
+    count = abs(int(number))
+    if count % 100 in range(11, 15):
+        return many
+    remainder = count % 10
+    if remainder == 1:
+        return one
+    if remainder in (2, 3, 4):
+        return few
+    return many
+
+
+@register.filter
+def lookup(mapping, key):
+    """Значение по ключу, известному только во время вывода.
+
+    Состав аналитических показателей задан реестром, а не разметкой: таблица
+    перебирает реестр, и обращаться к колонке приходится по её обозначению.
+    """
+    try:
+        return mapping.get(key)
+    except AttributeError:
+        return None
+
+
+@register.filter
 def divide(value, divisor):
     """Частное двух величин; при нулевом делителе возвращает ``None``."""
     numerator = _to_float(value)

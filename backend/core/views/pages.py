@@ -131,6 +131,10 @@ def bar_chart(labels: list[str], values: list[float], tones: list[str] | None = 
 
 def methodology(request):
     """Методика формирования и расчёта показателей системы."""
+    # Расчётное ядро ввозится внутри представления: обратная зависимость
+    # между разделами на уровне модуля замкнула бы их друг на друга.
+    from analytics import services as analytics_services
+
     context = page_context(
         request,
         title=_("Методология"),
@@ -141,6 +145,7 @@ def methodology(request):
         active="methodology",
         crumbs=[(_("Данные"), "core:source_list"), (_("Методология"),)],
         coverage=selectors.data_coverage(),
+        index_formula=analytics_services.index_formula(),
     )
     return render(request, "pages/methodology.html", context)
 

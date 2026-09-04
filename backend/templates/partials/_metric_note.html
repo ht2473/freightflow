@@ -1,0 +1,34 @@
+{% load i18n %}{% comment %}
+Раскрываемое пояснение к показателю.
+
+Ожидает `item` — описание показателя из реестра: наименование, единица,
+формула, источник, происхождение величины. Необязательный `value` выводится
+в заголовке пояснения, чтобы величину было видно, не раскрывая его.
+{% endcomment %}
+<details class="disclosure">
+    <summary>
+        <span>{{ item.title }}</span>
+        {% if value %}<span class="mono">{{ value }}</span>{% endif %}
+    </summary>
+    <div class="disclosure__body">
+        {% if item.meaning %}<p>{{ item.meaning }}</p>{% endif %}
+        <dl>
+            {% if item.unit %}
+                <div><dt>{% trans 'Единица измерения' %}</dt><dd>{{ item.unit }}</dd></div>
+            {% endif %}
+            {% if item.formula %}
+                <div><dt>{% trans 'Формула' %}</dt><dd>{{ item.formula }}</dd></div>
+            {% endif %}
+            {% if item.source %}
+                <div><dt>{% trans 'Источник' %}</dt><dd>{{ item.source }}</dd></div>
+            {% endif %}
+            {% if item.origin_label %}
+                <div><dt>{% trans 'Происхождение величины' %}</dt><dd>{{ item.origin_label }}</dd></div>
+            {% endif %}
+            {% if item.weight %}
+                <div><dt>{% trans 'Вес в индексе' %}</dt>
+                    <dd>{{ item.weight }}{% if item.inverse %}, {% trans 'входит обратно' %}{% endif %}</dd></div>
+            {% endif %}
+        </dl>
+    </div>
+</details>

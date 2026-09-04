@@ -34,14 +34,13 @@ def index(request):
         title=_("Индекс логистической нагрузки"),
         lead=_(
             "Композитная оценка нагрузки на логистическую инфраструктуру округа "
-            "по четырём взвешенным составляющим, приведённым к стобалльной шкале."
+            "по четырём измеренным составляющим, приведённым к стобалльной шкале."
         ),
         active="index",
         crumbs=[(_("Аналитика"), "analytics:index"), (_("Индекс нагрузки"),)],
         rows=rows,
         summary=services.index_summary(),
-        weights=services.INDEX_WEIGHTS,
-        components=services.INDEX_COMPONENTS,
+        components=services.COMPONENTS,
     )
     return render(request, "pages/analytics_index.html", context)
 
@@ -173,20 +172,28 @@ def compare(request):
 
 def scenario(request):
     """Сценарный расчёт «что если»."""
-    flow = _float_param(request, "flow", 0.0)
-    capacity = _float_param(request, "capacity", 0.0)
-    road = _float_param(request, "road", 0.0)
-    result = services.scenario(flow, capacity, road)
+    changes = {
+        key: _float_param(request, key, 0.0) for key in services.SCENARIO_LEVERS
+    }
+    district_id = int_param(request, "district")
+    result = services.scenario(district_id, **changes)
     context = page_context(
         request,
         title=_("Сценарный расчёт"),
         lead=_(
-            "Моделирование последствий изменения объёма перевозок, складских "
-            "мощностей и пропускной способности дорожной сети."
+            "Пересчёт индекса нагрузки при изменении условий в выбранном "
+            "округе: складских площадей, магистральной сети, числа работ."
         ),
         active="scenario",
         crumbs=[(_("Аналитика"), "analytics:index"), (_("Сценарный расчёт"),)],
         result=result,
-        filters={"flow": flow, "capacity": capacity, "road": road},
+        districts=District.objects.all(),
+        selected=result["district"].id if result.get("available") else None,
+        levers=[
+            {"key": key, "title": title, "value": changes[key],
+             "hint": services.SCENARIO_HINTS[key]}
+            for key, title in services.SCENARIO_LEVERS.items()
+        ],
+        filters=changes,
     )
     return render(request, "pages/analytics_scenario.html", context)

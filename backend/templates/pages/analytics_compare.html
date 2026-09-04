@@ -25,13 +25,13 @@
     <div class="grid grid--2" style="margin-bottom:var(--sp-5)">
         <div class="metric metric--alert">
             <span class="metric__label">{% trans 'Наибольший индекс' %}</span>
-            <span class="metric__value">{{ result.best.district.short_name }}</span>
-            <span class="metric__note">{{ result.best.score|spaced:1 }} баллов</span>
+            <span class="metric__value">{{ result.best.district.short_name }} · {{ result.best.score|spaced:1 }}</span>
+            <span class="metric__note">{% trans 'из 100 по шкале индекса' %}</span>
         </div>
         <div class="metric metric--ok">
             <span class="metric__label">{% trans 'Наименьший индекс' %}</span>
-            <span class="metric__value">{{ result.worst.district.short_name }}</span>
-            <span class="metric__note">{{ result.worst.score|spaced:1 }} баллов</span>
+            <span class="metric__value">{{ result.worst.district.short_name }} · {{ result.worst.score|spaced:1 }}</span>
+            <span class="metric__note">{% trans 'из 100 по шкале индекса' %}</span>
         </div>
     </div>
 
@@ -44,7 +44,7 @@
                         {% for row in result.rows %}
                             <th class="num">{{ row.district.short_name }}</th>
                         {% endfor %}
-                        <th>{% trans 'Лидер' %}</th>
+                        <th>{% trans 'Наибольший вклад' %}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -59,7 +59,10 @@
                         <tr>
                             <td>
                                 <span class="table-title">{{ component.title }}</span>
-                                <span class="table-sub">вес {{ component.weight|spaced:2 }}</span>
+                                <span class="table-sub">
+                                    вес {{ component.weight|spaced:2 }}{% if component.inverse %},
+                                    {% trans 'входит обратно' %}{% endif %}
+                                </span>
                             </td>
                             {% for value in component.values %}
                                 <td class="num">{{ value|spaced:0 }}</td>
@@ -73,7 +76,10 @@
                         <td></td>
                     </tr>
                     <tr>
-                        <td><span class="table-title">{% trans 'Загруженность сети' %}</span></td>
+                        <td>
+                            <span class="table-title">{% trans 'Загруженность сети' %}</span>
+                            <span class="table-sub">{% trans 'смоделировано, в индекс не входит' %}</span>
+                        </td>
                         {% for row in result.rows %}
                             <td class="num">
                                 <span class="badge badge--{{ row.congestion|tone }}">
@@ -104,14 +110,10 @@
                         <span class="badge badge--accent">{{ row.score|spaced:1 }}</span>
                     </div>
                     <dl class="facts" style="margin-top:var(--sp-4)">
-                        <div><dt>{% trans 'Складские мощности' %}</dt>
-                            <dd>{{ row.components.capacity|spaced:0 }}</dd></div>
-                        <div><dt>{% trans 'Грузопоток' %}</dt>
-                            <dd>{{ row.components.flow|spaced:0 }}</dd></div>
-                        <div><dt>{% trans 'Загруженность сети' %}</dt>
-                            <dd>{{ row.components.congestion|spaced:0 }}</dd></div>
-                        <div><dt>{% trans 'Аварийность' %}</dt>
-                            <dd>{{ row.components.incidents|spaced:0 }}</dd></div>
+                        {% for component in result.components %}
+                            <div><dt>{{ component.title }}</dt>
+                                <dd>{{ row.components|lookup:component.key|spaced:0 }}</dd></div>
+                        {% endfor %}
                     </dl>
                     <div class="bar" style="margin-top:var(--sp-3)">
                         <div class="bar__fill" style="width:{{ row.score }}%"></div>

@@ -23,27 +23,119 @@ from dataclasses import dataclass
 from datetime import date
 
 from core import selectors
-from core.choices import FlowScope, PeriodType
+from core.choices import DataOrigin, FlowScope, PeriodType
 from django.conf import settings
 from django.core.cache import cache
 from django.utils.translation import gettext_lazy as _
 
-# Веса составляющих композитного индекса. Сумма равна единице; значения
-# получены экспертным путём исходя из вклада фактора в нагрузку на сеть.
-INDEX_WEIGHTS: dict[str, float] = {
-    "capacity": 0.30,   # обеспеченность складскими мощностями
-    "flow": 0.30,       # интенсивность грузопотока
-    "congestion": 0.25, # загруженность дорожной сети
-    "incidents": 0.15,  # аварийность и ограничения движения
-}
+
+@dataclass(frozen=True)
+class Component:
+    """Составляющая композитного индекса.
+
+    Описание составляющей ведётся вместе с её весом: и то и другое нужно
+    и расчёту, и пояснению к показателю на странице, и разделу методики.
+    Разнесённые по разным местам, они разошлись бы при первой же правке.
+    """
+
+    key: str
+    title: str
+    unit: str
+    formula: str
+    meaning: str
+    weight: float
+    origin: str
+    source: str
+    #: Обратная составляющая: рост величины означает снижение нагрузки.
+    inverse: bool = False
+
+    @property
+    def origin_label(self) -> str:
+        """Подпись происхождения величины для маркера в интерфейсе."""
+        return DataOrigin(self.origin).label
+
+
+#: Состав композитного индекса логистической нагрузки округа.
+#:
+#: В индекс входят только измеренные величины. Расчётная оценка загруженности
+#: сети в него не включена: модельное значение, взвешенное наравне
+#: с измеренными, определяло бы четверть итога и выдавало бы допущение модели
+#: за свойство округа. Загруженность приводится рядом отдельным показателем
+#: со своим маркером происхождения.
+#:
+#: Все составляющие удельные. Абсолютные величины сравнивали бы не нагрузку,
+#: а размер: Троицкий округ в шестнадцать раз больше Центрального, и любой
+#: его валовой показатель оказался бы наибольшим.
+COMPONENTS: tuple[Component, ...] = (
+    Component(
+        key="storage",
+        title=_("Концентрация складских площадей"),
+        unit=_("м² на км² территории"),
+        formula="Σ площадь контуров объектов ÷ площадь округа",
+        meaning=_(
+            "Складские мощности порождают грузовое движение: каждый объект — "
+            "это подъезд, разгрузка и обратный рейс."
+        ),
+        weight=0.35,
+        origin=DataOrigin.MEASURED,
+        source=_("OpenStreetMap, контуры объектов реестра"),
+    ),
+    Component(
+        key="network",
+        title=_("Обеспеченность магистральной сетью"),
+        unit=_("км магистралей на км² территории"),
+        formula="Σ протяжённость магистралей ÷ площадь округа",
+        meaning=_(
+            "Густая магистральная сеть распределяет тот же поток по большему "
+            "числу направлений, поэтому составляющая входит в индекс обратно."
+        ),
+        weight=0.25,
+        origin=DataOrigin.MEASURED,
+        source=_("OpenStreetMap, реестр магистралей"),
+        inverse=True,
+    ),
+    Component(
+        key="restrictions",
+        title=_("Помехи движению"),
+        unit=_("работ на 100 км магистралей"),
+        formula="работы, затрагивающие грузовое движение × 100 ÷ протяжённость сети",
+        meaning=_(
+            "Участок, закрытый на реконструкцию, перекладывает поток "
+            "на соседние направления и сокращает пропускную способность."
+        ),
+        weight=0.20,
+        origin=DataOrigin.MEASURED,
+        source=_("OpenStreetMap, отметка highway=construction"),
+    ),
+    Component(
+        key="residential",
+        title=_("Плотность жилой застройки"),
+        unit=_("человек на км²"),
+        formula="численность населения ÷ площадь округа",
+        meaning=_(
+            "Один и тот же поток в плотно населённом округе проходит ближе "
+            "к жилью, и ограничения движения там строже."
+        ),
+        weight=0.20,
+        origin=DataOrigin.MEASURED,
+        source=_("справочник округов"),
+    ),
+)
+
+#: Составляющая по её обозначению: обращений по ключу больше, чем перебора.
+COMPONENT_BY_KEY: dict[str, Component] = {item.key: item for item in COMPONENTS}
+
+#: Экспертные веса составляющих. Сумма равна единице.
+#:
+#: Порядок величин задан соотношением «спрос важнее условий»: складские
+#: мощности порождают движение, тогда как сеть, помехи и застройка определяют
+#: лишь то, каким оно окажется. Числа внутри этого порядка выбраны экспертно,
+#: и устойчивость ранжирования к их выбору измеряется анализом
+#: чувствительности, а не постулируется.
+INDEX_WEIGHTS: dict[str, float] = {item.key: item.weight for item in COMPONENTS}
 
 #: Подписи составляющих для легенд и таблиц.
-INDEX_COMPONENTS: dict[str, str] = {
-    "capacity": _("Складские мощности"),
-    "flow": _("Грузопоток"),
-    "congestion": _("Загруженность сети"),
-    "incidents": _("Аварийность"),
-}
+INDEX_COMPONENTS: dict[str, str] = {item.key: item.title for item in COMPONENTS}
 
 #: Названия типологических групп в порядке возрастания нагрузки.
 CLUSTER_NAMES: tuple[str, ...] = (
@@ -57,25 +149,6 @@ CLUSTER_NAMES: tuple[str, ...] = (
 # ---------------------------------------------------------------------------
 #  Нормирование
 # ---------------------------------------------------------------------------
-
-
-def _index_weights(raw: dict[str, list]) -> dict[str, float]:
-    """Веса составляющих индекса с учётом того, что измерено.
-
-    Составляющая, не измеренная ни по одному округу, из расчёта исключается,
-    а её вес пропорционально распределяется между остальными: иначе пропуск
-    в источнике одинаково занижал бы оценку всех округов и выглядел бы
-    измеренным нулём.
-    """
-    present = {
-        key: weight
-        for key, weight in INDEX_WEIGHTS.items()
-        if any(value for value in raw.get(key, []))
-    }
-    if not present:
-        return dict(INDEX_WEIGHTS)
-    total = sum(present.values())
-    return {key: weight / total for key, weight in present.items()}
 
 
 def min_max_normalize(values: list[float]) -> list[float]:
@@ -105,68 +178,160 @@ def z_scores(values: list[float]) -> list[float]:
     return [(value - mean) / deviation for value in values]
 
 
+def _normalize_column(values: list[float | None], inverse: bool) -> list[float | None]:
+    """Нормировать составляющую с учётом её направления.
+
+    Пропуск остаётся пропуском: подставить вместо него ноль значило бы
+    объявить величину измеренной и наименьшей в выборке.
+    """
+    present = [value for value in values if value is not None]
+    if not present:
+        return [None] * len(values)
+    scaled = dict(zip(present, min_max_normalize(present), strict=False))
+    return [
+        None if value is None else (1 - scaled[value] if inverse else scaled[value])
+        for value in values
+    ]
+
+
 # ---------------------------------------------------------------------------
 #  1. Композитный индекс логистической нагрузки
 # ---------------------------------------------------------------------------
 
 
-def load_index() -> list[dict]:
+def district_metrics() -> list[dict]:
+    """Исходные величины составляющих индекса по каждому округу.
+
+    Величины удельные: делятся на площадь округа либо на протяжённость его
+    магистральной сети. Знаменатель, равный нулю или неизвестный, оставляет
+    величину неопределённой — частного в этом случае не существует.
+    """
+    profiles = selectors.district_profiles()
+    if not profiles:
+        return []
+
+    incidents = _cargo_incidents_by_district()
+
+    rows: list[dict] = []
+    for profile in profiles:
+        district = profile["district"]
+        area = float(district.area_sq_km) if district.area_sq_km else None
+        network = profile["road_length_km"] or None
+        events = incidents.get(district.id, 0)
+
+        rows.append(
+            {
+                "district": district,
+                "values": {
+                    "storage": (
+                        profile["area_sq_m"] / area
+                        if area and profile["area_sq_m"]
+                        else None
+                    ),
+                    "network": network / area if area and network else None,
+                    "restrictions": events * 100 / network if network else None,
+                    "residential": (
+                        district.population / area
+                        if area and district.population
+                        else None
+                    ),
+                },
+                "object_count": profile["object_count"],
+                "road_length_km": profile["road_length_km"],
+                "incidents": events,
+                "congestion": profile["congestion"],
+            }
+        )
+    return rows
+
+
+def _cargo_incidents_by_district() -> dict[int, int]:
+    """Число событий, затрагивающих грузовое движение, в разрезе округов.
+
+    Учитываются только такие события: закрытие переулка условий грузовой
+    перевозки не меняет, а в общем счёте выглядело бы наравне с закрытием
+    вылетной магистрали.
+    """
+    from core.models import TrafficIncident
+    from django.db.models import Count
+
+    rows = (
+        TrafficIncident.objects.filter(district__isnull=False, affects_cargo=True)
+        .values("district_id")
+        .annotate(count=Count("id"))
+    )
+    return {row["district_id"]: row["count"] for row in rows}
+
+
+def _score_row(shares: dict[str, float | None], weights: dict[str, float]) -> float:
+    """Свернуть нормированные составляющие округа в оценку.
+
+    Неопределённая составляющая из свёртки исключается, а её вес
+    распределяется между остальными: иначе пропуск в источнике вёл бы себя
+    как измеренный ноль и занижал бы оценку округа.
+    """
+    present = {
+        key: weight for key, weight in weights.items() if shares.get(key) is not None
+    }
+    total = sum(present.values())
+    if not total:
+        return 0.0
+    return sum(shares[key] * weight for key, weight in present.items()) / total
+
+
+def load_index(weights: dict[str, float] | None = None) -> list[dict]:
     """Рассчитать индекс логистической нагрузки по всем округам.
 
     Порядок расчёта:
 
-    1. по каждому округу собираются четыре исходных показателя;
-    2. каждый показатель нормируется методом «минимум — максимум», что делает
-       разноразмерные величины (тонны, баллы, штуки) сопоставимыми;
+    1. по каждому округу собираются удельные величины составляющих;
+    2. каждая нормируется методом «минимум — максимум», что делает
+       разноразмерные величины (м²/км², км/км², чел./км²) сопоставимыми;
+       обратная составляющая при этом обращается;
     3. нормированные значения взвешиваются и суммируются;
     4. итог переводится в стобалльную шкалу и ранжируется.
 
+    Набор весов можно задать явно — этим пользуется анализ чувствительности.
     Возвращает список словарей, упорядоченный по убыванию индекса.
     """
+    scheme = weights or INDEX_WEIGHTS
 
     def build() -> list[dict]:
-        profiles = selectors.district_profiles()
-        if not profiles:
+        metrics = district_metrics()
+        if not metrics:
             return []
 
-        incidents = _incidents_by_district()
-
-        raw = {
-            "capacity": [p["capacity_tons"] for p in profiles],
-            "flow": [p["volume_tons"] for p in profiles],
-            "congestion": [p["congestion"] for p in profiles],
-            "incidents": [float(incidents.get(p["district"].id, 0)) for p in profiles],
-        }
-        # Составляющая, не измеренная ни по одному округу, из индекса
-        # исключается, а её вес распределяется между остальными. Иначе
-        # отсутствие сведений уменьшало бы оценку всех округов сразу,
-        # притворяясь измеренным нулём.
-        weights = _index_weights(raw)
         normalized = {
-            key: min_max_normalize([value or 0.0 for value in raw[key]])
-            for key in INDEX_WEIGHTS
+            item.key: _normalize_column(
+                [row["values"][item.key] for row in metrics], item.inverse
+            )
+            for item in COMPONENTS
         }
 
         rows: list[dict] = []
-        for position, profile in enumerate(profiles):
-            components = {
-                key: round(normalized[key][position] * 100, 1) for key in INDEX_WEIGHTS
-            }
-            score = sum(normalized[key][position] * weight for key, weight in weights.items())
+        for position, metric in enumerate(metrics):
+            shares = {item.key: normalized[item.key][position] for item in COMPONENTS}
             rows.append(
                 {
-                    "district": profile["district"],
-                    "score": round(score * 100, 1),
-                    "components": components,
-                    "weights": weights,
-                    "raw": {key: raw[key][position] or 0.0 for key in raw},
+                    "district": metric["district"],
+                    "score": round(_score_row(shares, scheme) * 100, 1),
+                    "shares": shares,
+                    "components": {
+                        key: None if value is None else round(value * 100, 1)
+                        for key, value in shares.items()
+                    },
+                    "weights": scheme,
+                    "raw": dict(metric["values"]),
                     # Отличие неизмеренной величины от измеренного нуля
                     # сохраняется отдельно: в расчёте они ведут себя
                     # одинаково, а в карточке округа — нет.
-                    "measured": {key: raw[key][position] is not None for key in raw},
-                    "object_count": profile["object_count"],
-                    "congestion": profile["congestion"],
-                    "incidents": incidents.get(profile["district"].id, 0),
+                    "measured": {
+                        key: value is not None for key, value in metric["values"].items()
+                    },
+                    "object_count": metric["object_count"],
+                    "road_length_km": metric["road_length_km"],
+                    "incidents": metric["incidents"],
+                    "congestion": metric["congestion"],
                 }
             )
 
@@ -175,25 +340,24 @@ def load_index() -> list[dict]:
             row["rank"] = rank
         return rows
 
-    return _cached("analytics:load_index", build)
+    # Кешируется только штатный набор весов: наборы анализа чувствительности
+    # перебираются десятками и вытеснили бы из кеша всё остальное.
+    return _cached("analytics:load_index", build) if weights is None else build()
 
 
-def _incidents_by_district() -> dict[int, int]:
-    """Число зарегистрированных событий в разрезе округов.
+def index_formula() -> str:
+    """Формула индекса словами — для раздела методики.
 
-    Событие относится к округу по своей координате. Привязка к участку для
-    этого не годится: реестр магистралей содержит сеть городского значения,
-    и работы на районной улице выпали бы из территориального разреза.
+    Собирается из реестра составляющих: выписанная в разметке отдельно,
+    она разошлась бы с расчётом при первом же пересмотре весов.
     """
-    from core.models import TrafficIncident
-    from django.db.models import Count
-
-    rows = (
-        TrafficIncident.objects.filter(district__isnull=False)
-        .values("district_id")
-        .annotate(count=Count("id"))
-    )
-    return {row["district_id"]: row["count"] for row in rows}
+    parts = [
+        "{:.2f} · {}{}".format(
+            item.weight, str(item.title).lower(), " (обратно)" if item.inverse else ""
+        )
+        for item in COMPONENTS
+    ]
+    return "Индекс = " + " + ".join(parts).replace(".", ",")
 
 
 def index_summary() -> dict:
@@ -298,13 +462,24 @@ def _sq_distance(a: list[float], b: list[float]) -> float:
     return sum((x - y) ** 2 for x, y in zip(a, b, strict=False))
 
 
+def _share(row: dict, key: str) -> float:
+    """Нормированная составляющая округа для признакового пространства.
+
+    Неопределённая составляющая заменяется серединой шкалы: это ровно то
+    положение, которое не сдвигает округ ни к одной из групп.
+    """
+    value = row["shares"].get(key)
+    return 0.5 if value is None else value
+
+
 def typology(k: int = 4) -> dict:
     """Построить типологию округов по нормированным показателям.
 
-    Признаковое пространство образуют четыре стандартизованных показателя —
-    те же, что участвуют в композитном индексе. Стандартизация обязательна:
-    без неё расстояние определялось бы почти исключительно объёмом грузопотока,
-    измеряемым в десятках тысяч тонн.
+    Признаковое пространство образуют стандартизованные составляющие
+    композитного индекса — те же величины, по которым он считается.
+    Стандартизация обязательна: без неё расстояние определялось бы почти
+    исключительно концентрацией складских площадей, измеряемой тысячами
+    квадратных метров на квадратный километр.
     """
 
     def build() -> dict:
@@ -312,9 +487,9 @@ def typology(k: int = 4) -> dict:
         if len(rows) < 2:
             return {"clusters": [], "rows": rows, "k": 0}
 
-        features = ["capacity", "flow", "congestion", "incidents"]
+        features = [item.key for item in COMPONENTS]
         columns = {
-            key: z_scores([float(row["raw"][key]) for row in rows]) for key in features
+            key: z_scores([_share(row, key) for row in rows]) for key in features
         }
         points = [[columns[key][i] for key in features] for i in range(len(rows))]
 
@@ -546,65 +721,96 @@ def _quality_label(r_squared: float, mape: float | None) -> str:
 # ---------------------------------------------------------------------------
 
 
-def scenario(
-    flow_change_pct: float = 0.0,
-    capacity_change_pct: float = 0.0,
-    road_capacity_change_pct: float = 0.0,
-) -> dict:
-    """Пересчитать индекс нагрузки при заданных изменениях условий.
+#: Составляющие, которыми управляет сценарный расчёт, и подписи их рычагов.
+#:
+#: Плотность жилой застройки в состав не входит: она изменяется вместе
+#: с городом за годы, а не решением о размещении объекта, и предлагать
+#: её как условие сценария значило бы обещать несуществующий рычаг.
+SCENARIO_LEVERS: dict[str, str] = {
+    "storage": _("Складские площади"),
+    "network": _("Протяжённость магистральной сети"),
+    "restrictions": _("Число работ, затрагивающих грузовое движение"),
+}
 
-    Аргументы задают относительное изменение (в процентах) объёма грузопотока,
-    складских мощностей и пропускной способности дорожной сети. Модель
-    отклика — эластичная: рост грузопотока увеличивает загруженность сети
-    пропорционально с коэффициентом 0,6, ввод дополнительных мощностей
-    частично компенсирует нагрузку.
+#: Пояснение к рычагу: какое решение стоит за изменением величины.
+SCENARIO_HINTS: dict[str, str] = {
+    "storage": _("Ввод новых складских объектов или вывод существующих"),
+    "network": _("Строительство магистралей или закрытие направлений"),
+    "restrictions": _("Развёртывание или завершение программы ремонтов"),
+}
+
+
+def scenario(district_id: int | None = None, **changes: float) -> dict:
+    """Пересчитать индекс нагрузки при изменении условий в одном округе.
+
+    Аргументы задают относительное изменение (в процентах) исходных величин
+    составляющих: складских площадей, протяжённости магистральной сети, числа
+    работ на ней. Изменённые величины проходят тот же расчёт, что и исходные:
+    переносится сдвиг условий, а не отклик на него, — коэффициентов отклика,
+    подтверждённых наблюдениями по городу, не существует.
+
+    Условие задаётся по одному округу, и это не ограничение реализации.
+    Нормирование относительное: изменение, равное во всех округах сразу,
+    сдвигает все величины разом и оставляет расстановку прежней. Вопрос,
+    на который расчёт отвечает, звучит иначе — что изменится, если объект
+    разместить здесь.
     """
     base = load_index()
     if not base:
         return {"available": False}
 
-    flow_factor = 1 + flow_change_pct / 100
-    capacity_factor = 1 + capacity_change_pct / 100
-    road_factor = 1 + road_capacity_change_pct / 100
+    target = next(
+        (row["district"] for row in base if row["district"].id == district_id),
+        base[0]["district"],
+    )
+    factors = {
+        key: 1 + float(changes.get(key, 0.0)) / 100 for key in SCENARIO_LEVERS
+    }
 
-    # Коэффициенты эластичности отклика загруженности на изменение условий.
-    flow_elasticity = 0.6
-    road_elasticity = 0.4
-
-    rows = []
+    shifted = []
     for item in base:
-        raw = dict(item["raw"])
-        raw["flow"] *= flow_factor
-        raw["capacity"] *= capacity_factor
-        congestion = raw["congestion"] * (
-            1 + flow_elasticity * (flow_factor - 1) - road_elasticity * (road_factor - 1)
+        touched = item["district"].id == target.id
+        values = (
+            {
+                key: None if value is None else value * factors.get(key, 1.0)
+                for key, value in item["raw"].items()
+            }
+            if touched
+            else dict(item["raw"])
         )
-        raw["congestion"] = max(congestion, 0.0)
-        rows.append({"district": item["district"], "raw": raw, "base_score": item["score"]})
+        shifted.append(
+            {"district": item["district"], "values": values, "target": touched,
+             "base_score": item["score"], "base_rank": item["rank"]}
+        )
 
     normalized = {
-        key: min_max_normalize([row["raw"][key] for row in rows]) for key in INDEX_WEIGHTS
+        item.key: _normalize_column(
+            [row["values"][item.key] for row in shifted], item.inverse
+        )
+        for item in COMPONENTS
     }
-    for position, row in enumerate(rows):
-        score = sum(normalized[key][position] * weight for key, weight in INDEX_WEIGHTS.items())
-        row["score"] = round(score * 100, 1)
+    for position, row in enumerate(shifted):
+        shares = {item.key: normalized[item.key][position] for item in COMPONENTS}
+        row["score"] = round(_score_row(shares, INDEX_WEIGHTS) * 100, 1)
         row["delta"] = round(row["score"] - row["base_score"], 1)
 
-    rows.sort(key=lambda row: row["score"], reverse=True)
-    for rank, row in enumerate(rows, start=1):
+    shifted.sort(key=lambda row: row["score"], reverse=True)
+    for rank, row in enumerate(shifted, start=1):
         row["rank"] = rank
+        row["rank_delta"] = row["base_rank"] - rank
 
+    subject = next(row for row in shifted if row["target"])
     return {
         "available": True,
-        "rows": rows,
-        "params": {
-            "flow": flow_change_pct,
-            "capacity": capacity_change_pct,
-            "road": road_capacity_change_pct,
-        },
-        "avg_delta": round(sum(row["delta"] for row in rows) / len(rows), 2),
-        "worsened": sum(1 for row in rows if row["delta"] > 0.5),
-        "improved": sum(1 for row in rows if row["delta"] < -0.5),
+        "rows": shifted,
+        "district": target,
+        "subject": subject,
+        "params": {key: float(changes.get(key, 0.0)) for key in SCENARIO_LEVERS},
+        "levers": SCENARIO_LEVERS,
+        "avg_delta": round(sum(row["delta"] for row in shifted) / len(shifted), 2),
+        "worsened": sum(1 for row in shifted if row["delta"] > 0.5),
+        "improved": sum(1 for row in shifted if row["delta"] < -0.5),
+        "reordered": sum(1 for row in shifted if row["rank_delta"]),
     }
 
 
@@ -615,19 +821,22 @@ def compare_districts(ids: list[int]) -> dict:
     if not selected:
         return {"available": False, "rows": []}
 
-    components = list(INDEX_WEIGHTS)
     return {
         "available": True,
         "rows": selected,
         "components": [
             {
-                "key": key,
-                "title": INDEX_COMPONENTS[key],
-                "weight": INDEX_WEIGHTS[key],
-                "values": [row["components"][key] for row in selected],
-                "leader": max(selected, key=lambda r: r["components"][key])["district"].short_name,
+                "key": item.key,
+                "title": item.title,
+                "unit": item.unit,
+                "weight": item.weight,
+                "inverse": item.inverse,
+                "values": [row["components"][item.key] for row in selected],
+                "leader": max(
+                    selected, key=lambda r: _share(r, item.key)
+                )["district"].short_name,
             }
-            for key in components
+            for item in COMPONENTS
         ],
         "best": max(selected, key=lambda row: row["score"]),
         "worst": min(selected, key=lambda row: row["score"]),

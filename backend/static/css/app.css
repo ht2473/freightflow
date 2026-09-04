@@ -777,6 +777,67 @@ a.metric:hover { border-color: var(--accent-line); }
     text-align: right;
 }
 
+/* Раскрываемое пояснение к показателю.
+
+   Показатель без пояснения читается как утверждение системы о городе.
+   Пояснение раскрывает, из чего величина получена, и потому размещается
+   рядом с ней, а не в отдельном разделе методики: до отдельного раздела
+   читатель доходит, уже составив мнение о числе. */
+.disclosure {
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
+}
+
+.disclosure > summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--sp-3);
+    padding: var(--sp-2) var(--sp-3);
+    font-size: var(--fs-sm);
+    cursor: pointer;
+    list-style: none;
+}
+
+.disclosure > summary::-webkit-details-marker { display: none; }
+
+.disclosure > summary:hover { color: var(--accent-strong); }
+
+/* Знак раскрытия рисуется разметкой: встроенный треугольник браузера
+   различается в Chrome, Firefox и Яндекс.Браузере вплоть до положения. */
+.disclosure > summary::after {
+    content: "+";
+    font-family: var(--font-mono);
+    color: var(--text-faint);
+    margin-left: auto;
+    padding-left: var(--sp-2);
+}
+
+.disclosure[open] > summary::after { content: "−"; }
+
+.disclosure[open] > summary { border-bottom: 1px solid var(--border); }
+
+.disclosure__body {
+    padding: var(--sp-3);
+    font-size: var(--fs-sm);
+    color: var(--text-dim);
+}
+
+.disclosure__body > p { margin-bottom: var(--sp-3); }
+
+.disclosure__body dl { display: grid; gap: var(--sp-2); }
+
+.disclosure__body dt {
+    font-size: var(--fs-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-faint);
+}
+
+.disclosure__body dd { color: var(--text); }
+
 /* Горизонтальная полоса доли — используется в рейтингах округов и типов. */
 .bar {
     height: 6px;
@@ -1131,6 +1192,13 @@ table.data td {
 table.data tbody tr { transition: background var(--transition); }
 table.data tbody tr:hover { background: var(--surface-raised); }
 table.data tbody tr:last-child td { border-bottom: none; }
+
+/* Строка, к которой относится заданное пользователем условие: в длинной
+   таблице её иначе приходится искать глазами по названию. */
+table.data tbody tr.is-subject {
+    background: var(--accent-dim);
+    box-shadow: inset 2px 0 0 var(--accent);
+}
 
 table.data td.num,
 table.data th.num { text-align: right; font-variant-numeric: tabular-nums; }
