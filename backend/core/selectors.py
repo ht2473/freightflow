@@ -17,11 +17,10 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Avg, Count, Max, Min, Sum
-from django.db.models.functions import TruncMonth
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from .choices import congestion_state
+from .choices import FlowDirection, FlowScope, congestion_state
 from .models import (
     CargoCategory,
     CargoRoute,
@@ -34,6 +33,20 @@ from .models import (
     RoadSegment,
     TrafficCondition,
     TrafficIncident,
+)
+
+#: Территория, показатели которой представляет система.
+#:
+#: Значение совпадает с подписью строки в статистической публикации: по ней
+#: ряд города отделяется от рядов сравнения — области, федерального округа
+#: и страны. Складывать их нельзя, город входит в каждый из остальных.
+CITY_TERRITORY = "г. Москва"
+
+#: Территории, в состав которых входит город. Доля города в их объёме
+#: осмысленна и показывается; для смежных территорий — например, для области —
+#: такое отношение не означает ничего, и вместо него ставится прочерк.
+TERRITORIES_CONTAINING_CITY = frozenset(
+    {"Центральный федеральный округ", "Российская Федерация"}
 )
 
 
@@ -66,12 +79,11 @@ def dashboard_summary() -> dict:
             area=Sum("area_sq_m"),
         )
         roads = RoadSegment.objects.aggregate(total=Count("id"), length=Sum("length_km"))
-        flows = FreightFlowStat.objects.aggregate(
-            volume=Sum("volume_tons"),
-            vehicles=Sum("vehicle_count"),
-            period_from=Min("period_date"),
-            period_to=Max("period_date"),
-        )
+        # Показатель перевозок берётся последним наблюдением по городу,
+        # а не суммой всех строк таблицы: в ней лежат ряды нескольких
+        # территорий за десятки лет, и их сумма не измеряет ничего.
+        series = city_flow_series()
+        latest = series[-1] if series else None
         incidents_open = TrafficIncident.objects.open().count()
         incidents_cargo = TrafficIncident.objects.open().affecting_cargo().count()
 
@@ -80,16 +92,19 @@ def dashboard_summary() -> dict:
 
         return {
             "object_count": objects["total"] or 0,
-            "capacity_tons": objects["capacity"] or Decimal(0),
-            "area_sq_m": objects["area"] or Decimal(0),
+            "capacity_tons": objects["capacity"] or None,
+            "area_sq_m": objects["area"] or None,
             "road_count": roads["total"] or 0,
             "road_length_km": roads["length"] or Decimal(0),
             "route_count": CargoRoute.objects.count(),
             "district_count": District.objects.count(),
-            "volume_tons": flows["volume"] or Decimal(0),
-            "vehicle_count": flows["vehicles"] or 0,
-            "period_from": flows["period_from"],
-            "period_to": flows["period_to"],
+            "volume_tons": latest["volume"] if latest else 0.0,
+            "turnover_ton_km": latest["turnover"] if latest else 0.0,
+            "volume_period": latest["period"] if latest else None,
+            "volume_period_type": latest["period_type"] if latest else "",
+            "vehicle_count": latest["vehicles"] if latest else 0,
+            "period_from": series[0]["period"] if series else None,
+            "period_to": series[-1]["period"] if series else None,
             "incidents_open": incidents_open,
             "incidents_cargo": incidents_cargo,
             "congestion_avg": congestion,
@@ -210,10 +225,13 @@ def district_profiles() -> list[dict]:
                 {
                     "district": district,
                     "object_count": obj.get("object_count", 0),
-                    "capacity_tons": float(obj.get("capacity") or 0),
-                    "area_sq_m": float(obj.get("area") or 0),
-                    "volume_tons": float(flow.get("volume") or 0),
-                    "vehicle_count": flow.get("vehicles") or 0,
+                    # Неизмеренная величина остаётся неопределённой, а не
+                    # нулевой: ноль означал бы, что мощности нет, тогда как
+                    # она попросту не публикуется источником.
+                    "capacity_tons": float(obj["capacity"]) if obj.get("capacity") else None,
+                    "area_sq_m": float(obj["area"]) if obj.get("area") else None,
+                    "volume_tons": float(flow["volume"]) if flow.get("volume") else None,
+                    "vehicle_count": flow.get("vehicles") or None,
                     "road_count": road.get("road_count", 0),
                     "road_length_km": float(road.get("length") or 0),
                     "congestion": round(float(level), 2) if level is not None else None,
@@ -222,7 +240,16 @@ def district_profiles() -> list[dict]:
                     "congestion_tone": tone,
                 }
             )
-        profiles.sort(key=lambda item: item["volume_tons"], reverse=True)
+        # Упорядочение по измеренным величинам: грузопоток известен не всегда,
+        # и при его отсутствии округа выстраиваются по складским площадям.
+        profiles.sort(
+            key=lambda item: (
+                item["volume_tons"] or 0,
+                item["area_sq_m"] or 0,
+                item["object_count"],
+            ),
+            reverse=True,
+        )
         return profiles
 
     return _cached("district:profiles", build)
@@ -241,36 +268,164 @@ def district_profile(district_id: int) -> dict | None:
 # ---------------------------------------------------------------------------
 
 
+def flow_territories() -> list[dict]:
+    """Территории, по которым в системе есть ряды перевозок.
+
+    Территория города идёт первой: она предмет системы, остальные служат
+    основанием для сравнения.
+    """
+    rows = (
+        FreightFlowStat.objects.exclude(territory="")
+        .values("territory")
+        .annotate(count=Count("id"), first=Min("period_date"), last=Max("period_date"))
+        .order_by("territory")
+    )
+    territories = [
+        {
+            "name": row["territory"],
+            "count": row["count"],
+            "first": row["first"],
+            "last": row["last"],
+            "is_city": row["territory"] == CITY_TERRITORY,
+        }
+        for row in rows
+    ]
+    return sorted(territories, key=lambda item: (not item["is_city"], item["name"]))
+
+
 def flow_timeseries(
+    territory: str | None = None,
+    scope: str | None = None,
+    direction: str | None = None,
     district_id: int | None = None,
     category_id: int | None = None,
-    direction: str | None = None,
 ) -> list[dict]:
-    """Помесячная динамика грузопотока с учётом наложенных условий отбора."""
-    qs = FreightFlowStat.objects.all()
+    """Ряд перевозок по одной территории.
+
+    Наблюдения разных территорий не складываются: город входит в федеральный
+    округ, округ — в страну, и сумма таких рядов не измеряет ничего. Поэтому
+    ряд строится по одной территории, а не по всем сразу; та же причина
+    запрещает складывать ряд по всем перевозчикам с рядом перевозок
+    на коммерческой основе.
+
+    Наряду с объёмом возвращается грузооборот и выведенное из них среднее
+    расстояние перевозки: рост объёма при падении грузооборота означает
+    укорочение плеча доставки, и различить эти случаи по одному ряду нельзя.
+    """
+    # Отсутствие территории означает внутригородской ряд: он собран по округам
+    # и маршрутам, и территория у него не заполняется. Без явного условия
+    # в такой ряд попали бы и ведомственные наблюдения по городу целиком.
+    qs = FreightFlowStat.objects.filter(territory=territory or "")
+    if scope:
+        qs = qs.filter(scope=scope)
+    if direction:
+        qs = qs.filter(direction=direction)
     if district_id:
         qs = qs.filter(district_id=district_id)
     if category_id:
         qs = qs.filter(cargo_category_id=category_id)
-    if direction:
-        qs = qs.filter(direction=direction)
 
     rows = (
-        qs.annotate(month=TruncMonth("period_date"))
-        .values("month")
-        .annotate(volume=Sum("volume_tons"), vehicles=Sum("vehicle_count"), speed=Avg("avg_speed_kmh"))
-        .order_by("month")
+        qs.values("period_date", "period_type")
+        .annotate(
+            volume=Sum("volume_tons"),
+            turnover=Sum("turnover_ton_km"),
+            vehicles=Sum("vehicle_count"),
+            speed=Avg("avg_speed_kmh"),
+        )
+        .order_by("period_date")
     )
-    return [
-        {
-            "month": row["month"],
-            "volume": float(row["volume"] or 0),
-            "vehicles": row["vehicles"] or 0,
-            "speed": round(float(row["speed"]), 1) if row["speed"] is not None else None,
-        }
-        for row in rows
-        if row["month"]
-    ]
+
+    series = []
+    for row in rows:
+        volume = float(row["volume"] or 0)
+        turnover = float(row["turnover"] or 0)
+        series.append(
+            {
+                "period": row["period_date"],
+                # Ключ сохранён ради общего построителя графиков: он ожидает
+                # поле с датой под этим именем.
+                "month": row["period_date"],
+                "period_type": row["period_type"],
+                "volume": volume,
+                "turnover": turnover,
+                "haul": round(turnover / volume, 1) if volume and turnover else None,
+                "vehicles": row["vehicles"] or 0,
+                "speed": round(float(row["speed"]), 1) if row["speed"] is not None else None,
+            }
+        )
+
+    # Изменение к предыдущему наблюдению — величина, которую иначе пришлось бы
+    # считать в шаблоне.
+    for previous, current in zip(series, series[1:], strict=False):
+        if previous["volume"]:
+            current["change_pct"] = (current["volume"] / previous["volume"] - 1) * 100
+    return series
+
+
+def city_flow_series(scope: str = FlowScope.ALL) -> list[dict]:
+    """Ряд перевозок по городу.
+
+    Берётся ведомственный ряд по территории города; при его отсутствии —
+    внутригородской, собранный по округам. Одно или другое, но не оба сразу:
+    это одна и та же величина, полученная разными способами, и складывать
+    их значило бы учесть перевозки дважды.
+    """
+    return flow_timeseries(CITY_TERRITORY, scope) or flow_timeseries(scope=scope)
+
+
+def flow_by_scope(territory: str | None = None) -> list[dict]:
+    """Последнее наблюдение по каждому кругу перевозчиков.
+
+    Ряды различаются в разы: первый учитывает перевозки предприятий
+    для собственных нужд, второй — только выполненные за плату. Показанные
+    рядом, они дают представление о доле коммерческого рынка.
+    """
+    rows = []
+    for scope, label in FlowScope.choices:
+        latest = flow_latest(territory or CITY_TERRITORY, scope)
+        if latest and latest["volume"]:
+            rows.append({"code": scope, "label": label, "volume": latest["volume"],
+                         "period": latest["period"]})
+    return rows
+
+
+def flow_latest(territory: str | None = None, scope: str = FlowScope.ALL) -> dict | None:
+    """Последнее наблюдение ряда по территории."""
+    series = flow_timeseries(territory or CITY_TERRITORY, scope)
+    return series[-1] if series else None
+
+
+def flow_comparison(scope: str = FlowScope.ALL) -> list[dict]:
+    """Последние наблюдения по всем территориям — для сопоставления.
+
+    Территории вложены одна в другую, поэтому рядом с объёмом показывается
+    доля города в нём: это единственное осмысленное соотношение между такими
+    рядами.
+    """
+    city = flow_latest(CITY_TERRITORY, scope)
+    rows = []
+    for territory in flow_territories():
+        latest = flow_latest(territory["name"], scope)
+        if latest is None:
+            continue
+        contains_city = territory["name"] in TERRITORIES_CONTAINING_CITY
+        share = None
+        if city and latest["volume"] and contains_city:
+            share = city["volume"] / latest["volume"] * 100
+        rows.append(
+            {
+                "territory": territory["name"],
+                "is_city": territory["is_city"],
+                "contains_city": contains_city,
+                "period": latest["period"],
+                "volume": latest["volume"],
+                "turnover": latest["turnover"],
+                "haul": latest["haul"],
+                "city_share": share,
+            }
+        )
+    return rows
 
 
 def flow_by_category(limit: int = 10) -> list[dict]:
@@ -293,14 +448,21 @@ def flow_by_category(limit: int = 10) -> list[dict]:
     ]
 
 
-def flow_by_direction() -> list[dict]:
-    """Соотношение ввоза, вывоза и транзита."""
+def flow_by_direction(territory: str | None = None,
+                      scope: str | None = None) -> list[dict]:
+    """Соотношение направлений перевозки в пределах одной территории."""
+    qs = FreightFlowStat.objects.all()
+    if territory:
+        qs = qs.filter(territory=territory)
+    if scope:
+        qs = qs.filter(scope=scope)
+
     rows = (
-        FreightFlowStat.objects.values("direction")
+        qs.values("direction")
         .annotate(volume=Sum("volume_tons"), vehicles=Sum("vehicle_count"))
         .order_by("-volume")
     )
-    labels = {"in": _("Ввоз"), "out": _("Вывоз"), "transit": _("Транзит")}
+    labels = dict(FlowDirection.choices)
     return [
         {
             "code": row["direction"],

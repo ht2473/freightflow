@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+from core import selectors
+from core.choices import PeriodType
 from core.models import District
 from core.views.base import int_param, page_context
 from django.core.serializers.json import DjangoJSONEncoder
@@ -65,28 +67,50 @@ def typology(request):
 
 
 def forecast(request):
-    """Прогноз объёма грузопотока."""
-    district_id = int_param(request, "district")
-    horizon = min(max(int_param(request, "horizon", 6) or 6, 3), 12)
-    result = services.forecast_flow(district_id, horizon)
+    """Прогноз объёма перевозок по территории."""
+    territories = selectors.flow_territories()
+    names = [item["name"] for item in territories]
+    territory = request.GET.get("territory", "").strip()
+    if territory not in names:
+        # Без ведомственных рядов остаётся внутригородской: он не привязан
+        # к территории, и указывать её нечем.
+        territory = selectors.CITY_TERRITORY if names else ""
+
+    horizon = min(max(int_param(request, "horizon", 5) or 5, 1), 12)
+    result = services.forecast_flow(territory, horizon)
+    annual = result.get("granularity") == PeriodType.YEAR
+    # Шаг ряда определяет и набор горизонтов, и их подписи: предлагать
+    # «12 месяцев» для годового ряда бессмысленно.
+    horizons = (
+        [(1, _("1 год")), (2, _("2 года")), (3, _("3 года")), (5, _("5 лет")),
+         (7, _("7 лет"))]
+        if annual
+        else [(3, _("3 месяца")), (6, _("6 месяцев")), (9, _("9 месяцев")),
+              (12, _("12 месяцев"))]
+    )
+
     context = page_context(
         request,
-        title=_("Прогноз грузопотока"),
+        title=_("Прогноз перевозок"),
         lead=_(
-            "Оценка помесячного объёма перевозок на ближайший период по модели "
-            "линейного тренда с аддитивной сезонной составляющей."
+            "Продолжение ряда перевозок по модели линейного тренда. Качество "
+            "измеряется на отложенной выборке — на наблюдениях, которых "
+            "модель при обучении не видела."
         ),
         active="forecast",
         crumbs=[(_("Аналитика"), "analytics:index"), (_("Прогноз"),)],
         result=result,
-        forecast_chart=_forecast_chart(result),
-        districts=District.objects.all(),
-        filters={"district": district_id, "horizon": horizon},
+        annual=annual,
+        forecast_chart=_forecast_chart(result, annual),
+        territories=territories,
+        territory=territory,
+        horizons=horizons,
+        filters={"territory": territory, "horizon": horizon},
     )
     return render(request, "pages/analytics_forecast.html", context)
 
 
-def _forecast_chart(result: dict) -> str:
+def _forecast_chart(result: dict, annual: bool = False) -> str:
     """Подготовить описание графика «факт и прогноз».
 
     Ряды располагаются на общей шкале времени: фактические наблюдения
@@ -100,8 +124,9 @@ def _forecast_chart(result: dict) -> str:
     history = result["history"]
     forecast = result["forecast"]
 
-    labels = [row["month"].strftime("%m.%y") for row in history]
-    labels += [row["month"].strftime("%m.%y") for row in forecast]
+    fmt = "%Y" if annual else "%m.%y"
+    labels = [row["period"].strftime(fmt) for row in history]
+    labels += [row["period"].strftime(fmt) for row in forecast]
 
     fact = [row["volume"] for row in history] + [None] * len(forecast)
     # Прогнозная линия начинается с последнего фактического значения —

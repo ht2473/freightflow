@@ -5,23 +5,21 @@
 <form class="filters" method="get" data-autosubmit>
     <div class="filters__grid">
         <div class="field">
-            <label for="f-district">{% trans 'Округ' %}</label>
-            <select id="f-district" name="district">
-                <option value="">{% trans 'Весь город' %}</option>
-                {% for district in districts %}
-                    <option value="{{ district.pk }}"
-                            {% if filters.district == district.pk %}selected{% endif %}>
-                        {{ district.name }}</option>
+            <label for="f-territory">{% trans 'Территория' %}</label>
+            <select id="f-territory" name="territory">
+                {% for item in territories %}
+                    <option value="{{ item.name }}" {% if territory == item.name %}selected{% endif %}>
+                        {{ item.name }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class="field">
             <label for="f-horizon">{% trans 'Горизонт прогноза' %}</label>
             <select id="f-horizon" name="horizon">
-                <option value="3" {% if filters.horizon == 3 %}selected{% endif %}>{% trans '3 месяца' %}</option>
-                <option value="6" {% if filters.horizon == 6 %}selected{% endif %}>{% trans '6 месяцев' %}</option>
-                <option value="9" {% if filters.horizon == 9 %}selected{% endif %}>{% trans '9 месяцев' %}</option>
-                <option value="12" {% if filters.horizon == 12 %}selected{% endif %}>{% trans '12 месяцев' %}</option>
+                {% for value, label in horizons %}
+                    <option value="{{ value }}" {% if filters.horizon == value %}selected{% endif %}>
+                        {{ label }}</option>
+                {% endfor %}
             </select>
         </div>
         <div class="row">
@@ -33,7 +31,7 @@
 {% if result.available %}
     <div class="grid grid--4" style="margin-bottom:var(--sp-5)">
         <div class="metric metric--accent">
-            <span class="metric__label">{% trans 'Помесячный прирост тренда' %}</span>
+            <span class="metric__label">{% if annual %}{% trans 'Годовой прирост тренда' %}{% else %}{% trans 'Помесячный прирост тренда' %}{% endif %}</span>
             <span class="metric__value">
                 {% if result.slope > 0 %}+{% endif %}{{ result.slope|spaced:0 }}<small> т</small>
             </span>
@@ -45,14 +43,15 @@
             <span class="metric__note">{% trans 'доля объяснённой дисперсии' %}</span>
         </div>
         <div class="metric metric--{% if result.mape < 10 %}ok{% elif result.mape < 20 %}warn{% else %}alert{% endif %}">
-            <span class="metric__label">{% trans 'Средняя ошибка (MAPE)' %}</span>
+            <span class="metric__label">{% trans 'Ошибка на отложенной выборке' %}</span>
             <span class="metric__value">{{ result.mape|spaced:1 }}<small> %</small></span>
-            <span class="metric__note">качество: {{ result.quality }}</span>
+            <span class="metric__note">
+                {% blocktrans with count=result.holdout %}проверено на {{ count }} наблюдениях{% endblocktrans %}</span>
         </div>
         <div class="metric">
             <span class="metric__label">{% trans 'Наблюдений в ряду' %}</span>
             <span class="metric__value">{{ result.history|length }}</span>
-            <span class="metric__note">горизонт прогноза {{ result.horizon }} мес.</span>
+            <span class="metric__note">{% blocktrans with count=result.forecast|length %}прогноз на {{ count }} шагов ряда{% endblocktrans %}</span>
         </div>
     </div>
 
@@ -61,7 +60,7 @@
             <div class="card__head">
                 <div>
                     <p class="eyebrow">{% trans 'Факт и прогноз' %}</p>
-                    <h3>{% trans 'Объём перевозок, тонн' %}</h3>
+                    <h3>{% trans 'Объём перевозок, тонн' %} — {{ result.territory }}</h3>
                 </div>
             </div>
             <div class="card__body">
@@ -81,18 +80,16 @@
                 <div class="table-wrap" style="border:none">
                     <table class="data">
                         <thead>
-                            <tr><th>{% trans 'Месяц' %}</th><th class="num">{% trans 'Прогноз, т' %}</th>
-                                <th class="num">{% trans 'Тренд, т' %}</th><th class="num">{% trans 'Сезонная поправка' %}</th></tr>
+                            <tr><th>{% trans 'Период' %}</th><th class="num">{% trans 'Прогноз, т' %}</th>
+                                <th class="num">{% trans 'Тренд, т' %}</th></tr>
                         </thead>
                         <tbody>
                             {% for row in result.forecast %}
                                 <tr>
-                                    <td class="mono">{{ row.month|date:"m.Y" }}</td>
+                                    <td class="mono">
+                                        {% if annual %}{{ row.period|date:"Y" }}{% else %}{{ row.period|date:"m.Y" }}{% endif %}</td>
                                     <td class="num"><strong>{{ row.value|spaced:0 }}</strong></td>
                                     <td class="num faint">{{ row.trend|spaced:0 }}</td>
-                                    <td class="num">
-                                        {{ row.value|divide:row.trend|spaced:2 }}
-                                    </td>
                                 </tr>
                             {% endfor %}
                         </tbody>
@@ -103,8 +100,8 @@
             <div class="card">
                 <h3 style="margin-bottom:var(--sp-3)">{% trans 'Как читать прогноз' %}</h3>
                 <div class="prose">
-                    <p class="small muted">{% trans 'Модель складывает линейный тренд и сезонную составляющую, оценённую как среднее отклонение соответствующего месяца от линии тренда. Простая форма модели выбрана осознанно: на коротком ряде наблюдений сложные модели дают неустойчивые оценки параметров и кажущуюся точность.' %}</p>
-                    <p class="small muted">{% trans 'Средняя абсолютная процентная ошибка ниже 10 % считается высоким качеством, от 10 до 20 % — приемлемым, свыше 20 % — низким: в последнем случае прогноз следует трактовать как ориентировочный.' %}</p>
+                    <p class="small muted">{% trans 'Модель описывает ряд линейным трендом. На помесячных рядах к нему добавляется сезонная составляющая — среднее отклонение соответствующего месяца от линии тренда; на годовом ряде внутригодового профиля нет, и сезонная составляющая не оценивается. Простая форма выбрана осознанно: на ряде в десятки наблюдений сложные модели дают неустойчивые оценки параметров и мнимую точность.' %}</p>
+                    <p class="small muted">{% trans 'Качество измеряется на отложенной выборке: модель обучается на начале ряда, а ошибка считается на его хвосте, которого модель при обучении не видела. Ошибка на обучающих данных характеризовала бы гибкость модели, а не точность прогноза. Значение ниже 10 % считается высоким качеством, от 10 до 20 % — приемлемым, свыше 20 % — низким.' %}</p>
                     <p class="small muted">{% trans 'Прогноз описывает продолжение сложившихся тенденций и не учитывает изменения условий — ввод новых мощностей, изменение режима допуска транспорта, крупные ремонтные работы. Для оценки таких изменений предназначен' %}<a href="{% url 'analytics:scenario' %}">{% trans 'сценарный расчёт' %}</a>.
                     </p>
                 </div>
@@ -112,6 +109,6 @@
         </div>
     </section>
 {% else %}
-    {% include "partials/_empty.html" with empty_title="Прогноз недоступен" empty_text="Для построения модели требуется не менее четырёх помесячных наблюдений. Измените условия отбора." empty_action_url="/analytics/forecast/" %}
+    {% include "partials/_empty.html" with empty_title="Прогноз не строится" empty_text=result.reason empty_action_url="/analytics/forecast/" %}
 {% endif %}
 {% endblock %}

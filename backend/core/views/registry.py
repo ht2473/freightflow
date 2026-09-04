@@ -137,11 +137,13 @@ def object_detail(request, pk: int):
 def district_list(request):
     """Профили административных округов."""
     profiles = selectors.district_profiles()
+    # Неизмеренные величины в итог не входят и остаются неопределёнными:
+    # сумма из одних пропусков — не ноль, а отсутствие сведений.
     totals = {
         "objects": sum(p["object_count"] for p in profiles),
-        "capacity": sum(p["capacity_tons"] for p in profiles),
-        "volume": sum(p["volume_tons"] for p in profiles),
-        "roads": sum(p["road_length_km"] for p in profiles),
+        "capacity": _total(profiles, "capacity_tons"),
+        "volume": _total(profiles, "volume_tons"),
+        "roads": _total(profiles, "road_length_km"),
     }
     context = page_context(
         request,
@@ -156,10 +158,16 @@ def district_list(request):
         export_geojson=True,
         profiles=profiles,
         totals=totals,
-        max_volume=max((p["volume_tons"] for p in profiles), default=0) or 1,
+        max_volume=max((p["volume_tons"] or 0 for p in profiles), default=0) or 1,
         max_objects=max((p["object_count"] for p in profiles), default=0) or 1,
     )
     return render(request, "pages/district_list.html", context)
+
+
+def _total(profiles: list[dict], key: str) -> float | None:
+    """Сумма измеренных значений; ``None``, если не измерено ни одного."""
+    values = [profile[key] for profile in profiles if profile[key]]
+    return sum(values) if values else None
 
 
 def district_detail(request, pk: int):

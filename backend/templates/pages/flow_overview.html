@@ -19,35 +19,33 @@
 <form class="filters" method="get" data-autosubmit>
     <div class="filters__grid">
         <div class="field">
-            <label for="f-district">{% trans 'Округ' %}</label>
-            <select id="f-district" name="district">
-                <option value="">{% trans 'Все округа' %}</option>
-                {% for district in districts %}
-                    <option value="{{ district.pk }}"
-                            {% if filters.district == district.pk %}selected{% endif %}>
-                        {{ district.name }}</option>
+            <label for="f-territory">{% trans 'Территория' %}</label>
+            <select id="f-territory" name="territory">
+                {% for item in territories %}
+                    <option value="{{ item.name }}" {% if territory == item.name %}selected{% endif %}>
+                        {{ item.name }}{% if item.is_city %} — {% trans 'предмет системы' %}{% endif %}</option>
                 {% endfor %}
             </select>
         </div>
         <div class="field">
-            <label for="f-category">{% trans 'Категория груза' %}</label>
-            <select id="f-category" name="category">
-                <option value="">{% trans 'Все категории' %}</option>
-                {% for row in categories %}
-                    <option value="{{ row.id }}" {% if filters.category == row.id %}selected{% endif %}>
-                        {{ row.name }}</option>
+            <label for="f-scope">{% trans 'Круг перевозчиков' %}</label>
+            <select id="f-scope" name="scope">
+                {% for value, label in scopes %}
+                    <option value="{{ value }}" {% if filters.scope == value %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
             </select>
         </div>
-        <div class="field">
-            <label for="f-direction">{% trans 'Направление' %}</label>
-            <select id="f-direction" name="direction">
-                <option value="">{% trans 'Все направления' %}</option>
-                <option value="in" {% if filters.direction == "in" %}selected{% endif %}>{% trans 'Ввоз' %}</option>
-                <option value="out" {% if filters.direction == "out" %}selected{% endif %}>{% trans 'Вывоз' %}</option>
-                <option value="transit" {% if filters.direction == "transit" %}selected{% endif %}>{% trans 'Транзит' %}</option>
-            </select>
-        </div>
+        {% if directions|length > 1 %}
+            <div class="field">
+                <label for="f-direction">{% trans 'Направление' %}</label>
+                <select id="f-direction" name="direction">
+                    <option value="">{% trans 'Все направления' %}</option>
+                    {% for value, label in directions %}
+                        <option value="{{ value }}" {% if filters.direction == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        {% endif %}
         <div class="row">
             <button class="button button--primary" type="submit">{% trans 'Показать' %}</button>
             <a class="button button--ghost" href="{% url 'core:flow_overview' %}">{% trans 'Очистить' %}</a>
@@ -55,105 +53,122 @@
     </div>
 </form>
 
-<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Объём перевозок' %}</span>
-        <span class="metric__value">{{ total_volume|tons }}</span>
+{% if latest %}
+    <div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+        <div class="metric metric--accent">
+            <span class="metric__label">{% trans 'Перевезено грузов' %}</span>
+            <span class="metric__value">{{ latest.volume|tons }}</span>
+            <span class="metric__note">{{ latest.period|date:"Y" }} {% trans 'год' %} · {% trans 'измерено' %}</span>
+        </div>
+        <div class="metric">
+            <span class="metric__label">{% trans 'Грузооборот' %}</span>
+            <span class="metric__value">{{ latest.turnover|divide:1000000|spaced:0 }}<small> млн т·км</small></span>
+            <span class="metric__note">{% trans 'масса на расстояние перевозки' %}</span>
+        </div>
+        <div class="metric">
+            <span class="metric__label">{% trans 'Среднее плечо доставки' %}</span>
+            <span class="metric__value">{{ latest.haul|spaced:1|dash }}<small> км</small></span>
+            <span class="metric__note">{% trans 'грузооборот на тонну груза' %} · {% trans 'рассчитано' %}</span>
+        </div>
+        <div class="metric metric--{% if change > 0 %}ok{% elif change < 0 %}warn{% endif %}">
+            <span class="metric__label">{% trans 'Изменение за год' %}</span>
+            <span class="metric__value">
+                {% if change %}{% if change > 0 %}+{% endif %}{{ change|spaced:1 }}<small> %</small>
+                {% else %}—{% endif %}
+            </span>
+            <span class="metric__note">{% trans 'к предыдущему наблюдению' %}</span>
+        </div>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Число рейсов' %}</span>
-        <span class="metric__value">{{ total_vehicles|spaced }}</span>
-    </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Средняя загрузка рейса' %}</span>
-        <span class="metric__value">{{ avg_load|spaced:1 }}<small> т</small></span>
-    </div>
-    <div class="metric metric--{% if growth > 0 %}warn{% else %}ok{% endif %}">
-        <span class="metric__label">{% trans 'Изменение за период' %}</span>
-        <span class="metric__value">
-            {% if growth %}{% if growth > 0 %}+{% endif %}{{ growth|spaced:1 }}<small> %</small>
-            {% else %}—{% endif %}
-        </span>
-        <span class="metric__note">{% trans 'последний месяц к первому' %}</span>
-    </div>
-</div>
+{% endif %}
 
 <section class="section">
     <article class="card card--flush">
         <div class="card__head">
             <div>
-                <p class="eyebrow">{% trans 'Помесячная динамика' %}</p>
-                <h3>{% trans 'Объём грузопотока, тонн' %}</h3>
+                <p class="eyebrow">{% blocktrans with count=depth %}Ряд наблюдений: {{ count }}{% endblocktrans %}</p>
+                <h3>{% trans 'Объём перевозок, тонн' %} — {{ territory }}</h3>
             </div>
             <a class="small" href="{% url 'analytics:forecast' %}">{% trans 'Прогноз →' %}</a>
         </div>
         <div class="card__body">
             {% if timeseries %}
-                {% chart_from timeseries "month" "volume" as flow_chart %}
+                {% chart_from timeseries "period" "volume" "%Y" as flow_chart %}
                 <div data-chart='{{ flow_chart }}' data-height="280"></div>
             {% else %}
-                <p class="muted small">{% trans 'Под заданные условия отбора данных нет.' %}</p>
+                <p class="muted small">{% trans 'Под заданные условия отбора наблюдений нет.' %}</p>
             {% endif %}
         </div>
     </article>
 </section>
+
+{% if timeseries %}
+    <section class="section">
+        <div class="section__head">
+            <div>
+                <p class="eyebrow">{% trans 'Наблюдения' %}</p>
+                <h2>{% trans 'Ряд по годам' %}</h2>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th>{% trans 'Период' %}</th>
+                        <th class="num">{% trans 'Перевезено, т' %}</th>
+                        <th class="num">{% trans 'Грузооборот, млн т·км' %}</th>
+                        <th class="num">{% trans 'Среднее плечо, км' %}</th>
+                        <th class="num">{% trans 'Изменение' %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in timeseries reversed %}
+                        <tr>
+                            <td class="mono">
+                                {% if row.period_type == 'year' %}{{ row.period|date:"Y" }}
+                                {% elif row.period_type == 'month' %}{{ row.period|date:"m.Y" }}
+                                {% else %}{{ row.period|date:"d.m.Y" }}{% endif %}
+                            </td>
+                            <td class="num">{{ row.volume|spaced:0 }}</td>
+                            <td class="num">{{ row.turnover|divide:1000000|spaced:0|dash }}</td>
+                            <td class="num">{{ row.haul|spaced:1|dash }}</td>
+                            <td class="num {% if row.change_pct < 0 %}muted{% endif %}">
+                                {% if row.change_pct %}
+                                    {% if row.change_pct > 0 %}+{% endif %}{{ row.change_pct|spaced:1 }} %
+                                {% else %}—{% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+{% endif %}
 
 <section class="section">
     <div class="grid grid--2">
         <article class="card card--flush">
             <div class="card__head">
                 <div>
-                    <p class="eyebrow">{% trans 'Структура' %}</p>
-                    <h3>{% trans 'Категории грузов' %}</h3>
-                </div>
-                <a class="small" href="{% url 'core:cargo_list' %}">{% trans 'Классификатор →' %}</a>
-            </div>
-            <div class="card__body stack stack--tight">
-                {% for row in by_category %}
-                    <div>
-                        <div class="row row--between small">
-                            <span>
-                                {{ row.name }}
-                                {% if row.hazard_class %}
-                                    <span class="badge badge--alert">класс {{ row.hazard_class }}</span>
-                                {% endif %}
-                            </span>
-                            <span class="mono">{{ row.volume|tons }}</span>
-                        </div>
-                        <div class="bar" style="margin-top:6px">
-                            <div class="bar__fill{% if row.hazard_class %} bar__fill--alert{% endif %}"
-                                 style="width:{{ row.volume|ratio:max_category_volume }}%"></div>
-                        </div>
-                    </div>
-                {% empty %}
-                    <p class="muted small">{% trans 'Нет данных.' %}</p>
-                {% endfor %}
-            </div>
-        </article>
-
-        <article class="card card--flush">
-            <div class="card__head">
-                <div>
-                    <p class="eyebrow">{% trans 'Направления' %}</p>
-                    <h3>{% trans 'Ввоз, вывоз и транзит' %}</h3>
+                    <p class="eyebrow">{% trans 'Сопоставление' %}</p>
+                    <h3>{% trans 'Территории за последний год' %}</h3>
                 </div>
             </div>
             <div class="card__body">
                 <div class="table-wrap" style="border:none">
                     <table class="data">
                         <thead>
-                            <tr><th>{% trans 'Направление' %}</th><th class="num">{% trans 'Объём' %}</th>
-                                <th class="num">{% trans 'Рейсов' %}</th><th class="num">{% trans 'Средняя загрузка' %}</th></tr>
+                            <tr><th>{% trans 'Территория' %}</th><th class="num">{% trans 'Перевезено' %}</th>
+                                <th class="num">{% trans 'Плечо' %}</th><th class="num">{% trans 'Доля Москвы' %}</th></tr>
                         </thead>
                         <tbody>
-                            {% for row in by_direction %}
+                            {% for row in comparison %}
                                 <tr>
-                                    <td><span class="table-title">{{ row.label }}</span></td>
+                                    <td><span class="table-title">{{ row.territory }}</span>
+                                        <div class="small faint">{{ row.period|date:"Y" }}</div></td>
                                     <td class="num">{{ row.volume|tons }}</td>
-                                    <td class="num">{{ row.vehicles|spaced }}</td>
+                                    <td class="num">{{ row.haul|spaced:1|dash }}<small> км</small></td>
                                     <td class="num">
-                                        {% if row.vehicles %}
-                                            {{ row.volume|divide:row.vehicles|spaced:1 }} т
+                                        {% if row.contains_city %}{{ row.city_share|spaced:1|dash }} %
                                         {% else %}—{% endif %}
                                     </td>
                                 </tr>
@@ -161,6 +176,39 @@
                         </tbody>
                     </table>
                 </div>
+                <p class="small muted" style="margin-top:var(--sp-3)">{% trans 'Объёмы территорий не складываются: город входит в состав федерального округа и страны, и для них показана его доля. Область городу смежна, а не охватывает его, поэтому доли для неё нет.' %}</p>
+            </div>
+        </article>
+
+        <article class="card card--flush">
+            <div class="card__head">
+                <div>
+                    <p class="eyebrow">{% trans 'Происхождение' %}</p>
+                    <h3>{% trans 'Что показывает ряд' %}</h3>
+                </div>
+                <a class="small" href="{% url 'core:source_list' %}">{% trans 'Источники →' %}</a>
+            </div>
+            <div class="card__body prose">
+                <p class="small muted">{% trans 'Показатели получены из публикации государственной статистики и помечены измеренными. Среднее плечо доставки выведено расчётом — частное грузооборота и объёма перевозок; оно отличает рост перевозок от роста дальности.' %}</p>
+                <p class="small muted">{% trans 'Ряд «все перевозчики» включает перевозки предприятий для собственных нужд, ряд «на коммерческой основе» — только выполненные за плату. Различаются они кратно и сложению не подлежат.' %}</p>
+                <p class="small muted">{% trans 'По субъектам федерации показатель не включает оценку деятельности малых предприятий, по стране в целом — включает. Поэтому сумма по территориям меньше итога по стране; оговорка относится к источнику, а не к системе.' %}</p>
+                {% if by_direction|length > 1 %}
+                    <div class="table-wrap" style="border:none; margin-top:var(--sp-3)">
+                        <table class="data">
+                            <thead>
+                                <tr><th>{% trans 'Направление' %}</th><th class="num">{% trans 'Объём' %}</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for row in by_direction %}
+                                    <tr>
+                                        <td>{{ row.label }}</td>
+                                        <td class="num">{{ row.volume|tons }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
             </div>
         </article>
     </div>

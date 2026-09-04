@@ -223,6 +223,10 @@ class FreightFlowViewSet(ReadOnlyViewSet):
             queryset = queryset.filter(cargo_category_id=category)
         if params.get("direction"):
             queryset = queryset.filter(direction=params["direction"])
+        if params.get("territory"):
+            queryset = queryset.filter(territory=params["territory"])
+        if params.get("scope"):
+            queryset = queryset.filter(scope=params["scope"])
         if params.get("period_from"):
             queryset = queryset.filter(period_date__gte=params["period_from"])
         if params.get("period_to"):
@@ -293,39 +297,44 @@ def load_index(request):
 
 @extend_schema(
     tags=["Аналитика"],
-    summary="Прогноз грузопотока",
+    summary="Прогноз объёма перевозок",
     parameters=[
-        OpenApiParameter("district", int, description="Идентификатор округа"),
-        OpenApiParameter("horizon", int, description="Горизонт прогноза, месяцев (3–12)"),
+        OpenApiParameter("territory", str, description="Территория ряда"),
+        OpenApiParameter("horizon", int, description="Горизонт прогноза, шагов ряда (1–10)"),
     ],
     responses={200: OpenApiTypes.OBJECT},
 )
 @api_view(["GET"])
 def forecast(request):
-    """Оценка объёма перевозок на ближайшие месяцы."""
-    district = request.query_params.get("district")
-    horizon = request.query_params.get("horizon", "6")
+    """Продолжение ряда перевозок с оценкой качества на отложенной выборке."""
+    territory = (request.query_params.get("territory") or "").strip()
+    horizon = request.query_params.get("horizon", "5")
     result = analytics_services.forecast_flow(
-        int(district) if district and district.isdigit() else None,
-        min(max(int(horizon) if horizon.isdigit() else 6, 3), 12),
+        territory or None,
+        min(max(int(horizon) if horizon.isdigit() else 5, 1), 10),
     )
     if not result.get("available"):
         return Response({"detail": result.get("reason", "Прогноз недоступен")}, status=422)
 
     return Response(
         {
+            "territory": result["territory"],
+            "granularity": result["granularity"],
             "quality": {
                 "r_squared": result["r_squared"],
                 "mape": result["mape"],
+                "holdout": result["holdout"],
                 "label": result["quality"],
             },
-            "monthly_growth_tons": result["monthly_growth"],
+            "step_growth_tons": result["step_growth"],
             "history": [
-                {"month": row["month"].isoformat(), "volume": row["volume"]}
+                {"period": row["period"].isoformat(), "volume": row["volume"],
+                 "turnover_ton_km": row["turnover"]}
                 for row in result["history"]
             ],
             "forecast": [
-                {"month": row["month"].isoformat(), "value": row["value"], "trend": row["trend"]}
+                {"period": row["period"].isoformat(), "value": row["value"],
+                 "trend": row["trend"]}
                 for row in result["forecast"]
             ],
         }

@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from core import selectors
+from core.choices import FlowScope, PeriodType
 from django.conf import settings
 from django.core.cache import cache
 from django.utils.translation import gettext_lazy as _
@@ -56,6 +57,25 @@ CLUSTER_NAMES: tuple[str, ...] = (
 # ---------------------------------------------------------------------------
 #  Нормирование
 # ---------------------------------------------------------------------------
+
+
+def _index_weights(raw: dict[str, list]) -> dict[str, float]:
+    """Веса составляющих индекса с учётом того, что измерено.
+
+    Составляющая, не измеренная ни по одному округу, из расчёта исключается,
+    а её вес пропорционально распределяется между остальными: иначе пропуск
+    в источнике одинаково занижал бы оценку всех округов и выглядел бы
+    измеренным нулём.
+    """
+    present = {
+        key: weight
+        for key, weight in INDEX_WEIGHTS.items()
+        if any(value for value in raw.get(key, []))
+    }
+    if not present:
+        return dict(INDEX_WEIGHTS)
+    total = sum(present.values())
+    return {key: weight / total for key, weight in present.items()}
 
 
 def min_max_normalize(values: list[float]) -> list[float]:
@@ -114,23 +134,36 @@ def load_index() -> list[dict]:
         raw = {
             "capacity": [p["capacity_tons"] for p in profiles],
             "flow": [p["volume_tons"] for p in profiles],
-            "congestion": [p["congestion"] or 0.0 for p in profiles],
+            "congestion": [p["congestion"] for p in profiles],
             "incidents": [float(incidents.get(p["district"].id, 0)) for p in profiles],
         }
-        normalized = {key: min_max_normalize(values) for key, values in raw.items()}
+        # Составляющая, не измеренная ни по одному округу, из индекса
+        # исключается, а её вес распределяется между остальными. Иначе
+        # отсутствие сведений уменьшало бы оценку всех округов сразу,
+        # притворяясь измеренным нулём.
+        weights = _index_weights(raw)
+        normalized = {
+            key: min_max_normalize([value or 0.0 for value in raw[key]])
+            for key in INDEX_WEIGHTS
+        }
 
         rows: list[dict] = []
         for position, profile in enumerate(profiles):
             components = {
                 key: round(normalized[key][position] * 100, 1) for key in INDEX_WEIGHTS
             }
-            score = sum(normalized[key][position] * weight for key, weight in INDEX_WEIGHTS.items())
+            score = sum(normalized[key][position] * weight for key, weight in weights.items())
             rows.append(
                 {
                     "district": profile["district"],
                     "score": round(score * 100, 1),
                     "components": components,
-                    "raw": {key: raw[key][position] for key in raw},
+                    "weights": weights,
+                    "raw": {key: raw[key][position] or 0.0 for key in raw},
+                    # Отличие неизмеренной величины от измеренного нуля
+                    # сохраняется отдельно: в расчёте они ведут себя
+                    # одинаково, а в карточке округа — нет.
+                    "measured": {key: raw[key][position] is not None for key in raw},
                     "object_count": profile["object_count"],
                     "congestion": profile["congestion"],
                     "incidents": incidents.get(profile["district"].id, 0),
@@ -351,68 +384,145 @@ def linear_regression(xs: list[float], ys: list[float]) -> tuple[float, float, f
     return intercept, slope, r_squared
 
 
-def forecast_flow(district_id: int | None = None, horizon: int = 6) -> dict:
-    """Построить прогноз помесячного объёма грузопотока.
+#: Наименьшее число наблюдений, при котором строится прогноз. Ряд короче
+#: не позволяет ни выделить отложенную выборку, ни оценить надёжность тренда:
+#: подгонка по трём точкам всегда выглядит безупречной и ничего не означает.
+MIN_OBSERVATIONS = 8
 
-    Модель аддитивная: линейный тренд плюс сезонная составляющая, оценённая
-    как среднее отклонение соответствующего месяца от тренда. Такой подход
-    устойчив на коротких рядах, где методы вроде SARIMA дают неустойчивые
-    оценки из-за недостатка наблюдений.
+#: Доля ряда, отводимая под отложенную выборку. Качество измеряется на ней,
+#: а не на обучающей: ошибка на данных, по которым модель построена, оценивает
+#: не точность прогноза, а гибкость модели.
+HOLDOUT_SHARE = 0.2
+
+
+def forecast_flow(territory: str | None = None, horizon: int = 5,
+                  scope: str | None = None) -> dict:
+    """Построить прогноз объёма перевозок по территории.
+
+    Модель — линейный тренд; на помесячных рядах к нему добавляется сезонная
+    составляющая, оценённая как среднее отклонение соответствующего месяца
+    от линии тренда. Простая форма выбрана осознанно: на ряде в десятки
+    наблюдений сложные модели дают неустойчивые оценки параметров и мнимую
+    точность.
+
+    Качество измеряется на отложенной выборке: модель обучается на начале ряда
+    и проверяется на его хвосте, которого при обучении не видела. Ошибка,
+    посчитанная на обучающих данных, характеризует не точность прогноза.
     """
-    history = selectors.flow_timeseries(district_id=district_id)
-    if len(history) < 4:
-        return {"available": False, "history": history, "reason": _("Недостаточно наблюдений")}
+    # Без указания территории берётся ряд по городу: ведомственный, если он
+    # загружен, иначе внутригородской, собранный по округам.
+    history = (
+        selectors.flow_timeseries(territory, scope or FlowScope.ALL)
+        if territory
+        else selectors.city_flow_series(scope or FlowScope.ALL)
+    )
+    if len(history) < MIN_OBSERVATIONS:
+        return {
+            "available": False,
+            "history": history,
+            "territory": territory or selectors.CITY_TERRITORY,
+            "reason": _(
+                "Ряд короче %(minimum)d наблюдений: прогноз по нему "
+                "не строится, а оценка его качества была бы недостоверной."
+            ) % {"minimum": MIN_OBSERVATIONS},
+        }
 
-    xs = list(range(len(history)))
-    ys = [row["volume"] for row in history]
-    intercept, slope, r_squared = linear_regression(xs, ys)
+    annual = history[-1]["period_type"] == PeriodType.YEAR
+    # Сезонность оценивается только там, где она наблюдаема: на годовом ряде
+    # внутригодового профиля нет, а на помесячном нужны хотя бы два цикла.
+    seasonal_model = not annual and len(history) >= 24
 
-    # --- Сезонная составляющая по номеру месяца ----------------------------
-    residuals: dict[int, list[float]] = {}
-    for position, row in enumerate(history):
-        trend = intercept + slope * position
-        residuals.setdefault(row["month"].month, []).append(row["volume"] - trend)
-    seasonal = {
-        month: sum(values) / len(values) for month, values in residuals.items()
-    }
+    holdout = max(2, round(len(history) * HOLDOUT_SHARE))
+    train, test = history[:-holdout], history[-holdout:]
 
-    # --- Построение прогноза ------------------------------------------------
-    last_month: date = history[-1]["month"]
-    predictions: list[dict] = []
-    for step in range(1, horizon + 1):
-        position = len(history) - 1 + step
-        month_number = (last_month.month - 1 + step) % 12 + 1
-        year = last_month.year + (last_month.month - 1 + step) // 12
-        trend = intercept + slope * position
-        value = max(trend + seasonal.get(month_number, 0.0), 0.0)
-        predictions.append(
-            {
-                "month": date(year, month_number, 1),
-                "value": round(value, 1),
-                "trend": round(max(trend, 0.0), 1),
-            }
-        )
+    trained = _fit(train, seasonal_model)
+    mape = _mape(test, trained, offset=len(train))
 
-    # Средняя абсолютная процентная ошибка на исторических данных.
-    errors = []
-    for position, row in enumerate(history):
-        fitted = intercept + slope * position + seasonal.get(row["month"].month, 0.0)
-        if row["volume"]:
-            errors.append(abs(row["volume"] - fitted) / row["volume"])
-    mape = round(sum(errors) / len(errors) * 100, 1) if errors else None
+    # Прогноз строится по всему ряду: отложенная выборка нужна для проверки,
+    # а не для того, чтобы выбросить последние наблюдения из модели.
+    model = _fit(history, seasonal_model)
+    predictions = _predict(history, model, horizon, annual)
 
     return {
         "available": True,
         "history": history,
         "forecast": predictions,
-        "slope": round(slope, 1),
-        "r_squared": round(r_squared, 3),
+        "territory": territory or selectors.CITY_TERRITORY,
+        "granularity": PeriodType.YEAR if annual else history[-1]["period_type"],
+        "seasonal_model": seasonal_model,
+        "slope": round(model["slope"], 1),
+        "r_squared": round(model["r_squared"], 3),
         "mape": mape,
+        "holdout": len(test),
         "horizon": horizon,
-        "monthly_growth": round(slope, 1),
-        "seasonal": {month: round(value, 1) for month, value in sorted(seasonal.items())},
-        "quality": _quality_label(r_squared, mape),
+        "step_growth": round(model["slope"], 1),
+        "seasonal": {month: round(value, 1) for month, value in sorted(model["seasonal"].items())},
+        "quality": _quality_label(model["r_squared"], mape),
     }
+
+
+def _fit(rows: list[dict], seasonal_model: bool) -> dict:
+    """Оценить параметры модели по ряду наблюдений."""
+    xs = list(range(len(rows)))
+    ys = [row["volume"] for row in rows]
+    intercept, slope, r_squared = linear_regression(xs, ys)
+
+    seasonal: dict[int, float] = {}
+    if seasonal_model:
+        residuals: dict[int, list[float]] = {}
+        for position, row in enumerate(rows):
+            trend = intercept + slope * position
+            residuals.setdefault(row["period"].month, []).append(row["volume"] - trend)
+        seasonal = {
+            month: sum(values) / len(values) for month, values in residuals.items()
+        }
+
+    return {
+        "intercept": intercept,
+        "slope": slope,
+        "r_squared": r_squared,
+        "seasonal": seasonal,
+    }
+
+
+def _value_at(model: dict, position: int, month: int) -> float:
+    """Значение модели в заданной точке ряда."""
+    trend = model["intercept"] + model["slope"] * position
+    return max(trend + model["seasonal"].get(month, 0.0), 0.0)
+
+
+def _mape(rows: list[dict], model: dict, offset: int) -> float | None:
+    """Средняя абсолютная процентная ошибка на отложенной выборке."""
+    errors = []
+    for step, row in enumerate(rows):
+        fitted = _value_at(model, offset + step, row["period"].month)
+        if row["volume"]:
+            errors.append(abs(row["volume"] - fitted) / row["volume"])
+    return round(sum(errors) / len(errors) * 100, 1) if errors else None
+
+
+def _predict(history: list[dict], model: dict, horizon: int, annual: bool) -> list[dict]:
+    """Построить продолжение ряда на заданное число шагов."""
+    last: date = history[-1]["period"]
+    predictions = []
+    for step in range(1, horizon + 1):
+        position = len(history) - 1 + step
+        if annual:
+            period = date(last.year + step, last.month, 1)
+        else:
+            month = (last.month - 1 + step) % 12 + 1
+            period = date(last.year + (last.month - 1 + step) // 12, month, 1)
+        trend = model["intercept"] + model["slope"] * position
+        predictions.append(
+            {
+                "period": period,
+                # Ключ сохранён ради общего построителя графиков.
+                "month": period,
+                "value": round(_value_at(model, position, period.month), 1),
+                "trend": round(max(trend, 0.0), 1),
+            }
+        )
+    return predictions
 
 
 def _quality_label(r_squared: float, mape: float | None) -> str:

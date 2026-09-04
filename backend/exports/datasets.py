@@ -242,34 +242,54 @@ def flows_dataset(params) -> Dataset:
         queryset = queryset.filter(cargo_category_id=category)
     if params.get("direction"):
         queryset = queryset.filter(direction=params["direction"])
+    if params.get("territory"):
+        queryset = queryset.filter(territory=params["territory"])
+    if params.get("scope"):
+        queryset = queryset.filter(scope=params["scope"])
 
     rows = list(queryset)
-    total_volume = sum(float(row.volume_tons or 0) for row in rows)
+    # Объёмы суммируются только в пределах одной территории: территории
+    # вложены одна в другую, и общий итог по ним не измеряет ничего.
+    territories = {row.territory for row in rows}
+    total_volume = (
+        sum(float(row.volume_tons or 0) for row in rows) if len(territories) <= 1 else None
+    )
 
     return Dataset(
         code="flows",
         title="Статистика грузопотоков",
         description=(
-            "Объёмы перевозок в разрезе периодов, округов, направлений и "
-            "категорий грузов по данным ведомственных источников."
+            "Объёмы перевозок и грузооборот по периодам, территориям и кругу "
+            "перевозчиков по данным государственной статистики."
         ),
         columns=[
             Column("Период", lambda f: f.period_date.strftime("%m.%Y"), width=12),
             Column("Тип периода", lambda f: f.get_period_type_display(), width=14),
+            Column("Территория", lambda f: f.territory, width=30),
+            Column("Круг перевозчиков", lambda f: f.get_scope_display(), width=22),
             Column("Направление", lambda f: f.get_direction_display(), width=14),
             Column("Округ", lambda f: f.district.short_name if f.district_id else "", width=10),
             Column("Категория груза",
                    lambda f: f.cargo_category.name if f.cargo_category_id else "", width=32),
             Column("Маршрут", lambda f: f.route.name if f.route_id else "", width=36),
             Column("Объём, т", lambda f: f.volume_tons, width=15, numeric=True),
+            Column("Грузооборот, т·км", lambda f: f.turnover_ton_km, width=20, numeric=True),
+            Column("Среднее плечо, км",
+                   lambda f: round(f.average_haul_km, 1) if f.average_haul_km else None,
+                   width=18, numeric=True),
             Column("Рейсов", lambda f: f.vehicle_count, width=12, numeric=True),
             Column("Средняя скорость, км/ч", lambda f: f.avg_speed_kmh, width=21, numeric=True),
+            Column("Происхождение", lambda f: f.get_origin_display() or "", width=16),
         ],
         rows=rows,
         summary=[
             ("Записей в выборке", len(rows)),
-            ("Суммарный объём, т", round(total_volume, 2)),
-            ("Число рейсов", sum(row.vehicle_count or 0 for row in rows)),
+            ("Территорий в выборке", len(territories)),
+            (
+                "Суммарный объём, т",
+                round(total_volume, 2) if total_volume is not None
+                else "не суммируется: территории вложены одна в другую",
+            ),
         ],
     )
 

@@ -189,17 +189,21 @@ class FreightFlowSerializer(serializers.ModelSerializer):
     """Показатель грузопотока за период."""
 
     direction_label = serializers.CharField(source="get_direction_display", read_only=True)
+    scope_label = serializers.CharField(source="get_scope_display", read_only=True)
     district_name = serializers.CharField(source="district.short_name", read_only=True, default=None)
     category_name = serializers.CharField(
         source="cargo_category.name", read_only=True, default=None
     )
+    average_haul_km = serializers.FloatField(read_only=True)
 
     class Meta:
         model = FreightFlowStat
         fields = (
-            "id", "period_date", "period_type", "direction", "direction_label",
+            "id", "period_date", "period_type", "territory",
+            "direction", "direction_label", "scope", "scope_label",
             "district", "district_name", "cargo_category", "category_name", "route",
-            "volume_tons", "vehicle_count", "avg_speed_kmh",
+            "volume_tons", "turnover_ton_km", "average_haul_km",
+            "vehicle_count", "avg_speed_kmh", "origin",
         )
 
 

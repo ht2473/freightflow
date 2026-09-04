@@ -69,18 +69,23 @@
         </a>
 
         <a class="metric metric--accent" href="{% url 'core:district_list' %}">
-            <span class="metric__label">{% trans 'Мощность хранения' %}</span>
-            <span class="metric__value">{{ summary.capacity_tons|tons }}</span>
-            <span class="metric__note">{% trans 'суммарно по всем объектам' %}</span>
+            <span class="metric__label">{% trans 'Площадь территорий' %}</span>
+            <span class="metric__value">
+                {{ summary.area_sq_m|divide:1000000|spaced:1 }}<small> км²</small></span>
+            <span class="metric__note">{% trans 'по размеченным контурам объектов' %}</span>
         </a>
 
         <a class="metric metric--accent" href="{% url 'core:flow_overview' %}">
             <span class="metric__label">{% trans 'Перевезено грузов' %}</span>
             <span class="metric__value">{{ summary.volume_tons|tons }}</span>
             <span class="metric__note">
-                {% if summary.period_from %}
-                    {{ summary.period_from|date:"m.Y" }} — {{ summary.period_to|date:"m.Y" }}
-                {% else %}за период наблюдения{% endif %}
+                {% if summary.volume_period %}
+                    {% if summary.volume_period_type == 'year' %}
+                        {% blocktrans with period=summary.volume_period|date:"Y" %}Москва, {{ period }} год{% endblocktrans %}
+                    {% else %}
+                        {% blocktrans with period=summary.volume_period|date:"m.Y" %}Москва, {{ period }}{% endblocktrans %}
+                    {% endif %}
+                {% else %}{% trans 'наблюдений нет' %}{% endif %}
             </span>
         </a>
 
@@ -111,7 +116,7 @@
         <article class="card card--flush">
             <div class="card__head">
                 <div>
-                    <p class="eyebrow">{% trans 'Помесячная динамика' %}</p>
+                    <p class="eyebrow">{% if annual %}{% trans 'Годовая динамика' %}{% else %}{% trans 'Помесячная динамика' %}{% endif %}</p>
                     <h3>{% trans 'Объём перевозок, тонн' %}</h3>
                 </div>
                 <a class="small" href="{% url 'core:flow_overview' %}">{% trans 'Подробнее →' %}</a>
@@ -131,10 +136,10 @@
         <article class="card card--flush">
             <div class="card__head">
                 <p class="eyebrow">{% trans 'Структура' %}</p>
-                <h3 class="visually-hidden">{% trans 'Направления перевозок' %}</h3>
+                <h3 class="visually-hidden">{{ breakdown_title }}</h3>
             </div>
             <div class="card__body stack">
-                {% for row in by_direction %}
+                {% for row in breakdown %}
                     <div>
                         <div class="row row--between small">
                             <span>{{ row.label }}</span>
@@ -145,7 +150,7 @@
                         </div>
                     </div>
                 {% empty %}
-                    <p class="muted small">{% trans 'Нет данных по направлениям.' %}</p>
+                    <p class="muted small">{% trans 'Разрез ряда не заполнен.' %}</p>
                 {% endfor %}
 
                 <hr style="border:none;border-top:1px solid var(--border);margin:var(--sp-2) 0">
@@ -177,7 +182,7 @@
             <div class="card__head">
                 <div>
                     <p class="eyebrow">{% trans 'Рейтинг' %}</p>
-                    <h3>{% trans 'Округа с наибольшим грузопотоком' %}</h3>
+                    <h3>{% if ranked_by_flow %}{% trans 'Округа с наибольшим грузопотоком' %}{% else %}{% trans 'Округа с наибольшими складскими площадями' %}{% endif %}</h3>
                 </div>
                 <a class="small" href="{% url 'core:district_list' %}">{% trans 'Все округа →' %}</a>
             </div>
@@ -187,7 +192,7 @@
                         <tr>
                             <th>{% trans 'Округ' %}</th>
                             <th class="num">{% trans 'Объектов' %}</th>
-                            <th class="num">{% trans 'Грузопоток' %}</th>
+                            <th class="num">{% if ranked_by_flow %}{% trans 'Грузопоток' %}{% else %}{% trans 'Площадь, км²' %}{% endif %}</th>
                             <th>{% trans 'Обстановка' %}</th>
                         </tr>
                     </thead>
@@ -199,7 +204,10 @@
                                     <span class="table-sub">{{ profile.district.name }}</span>
                                 </td>
                                 <td class="num">{{ profile.object_count }}</td>
-                                <td class="num">{{ profile.volume_tons|tons }}</td>
+                                                <td class="num">
+                                    {% if ranked_by_flow %}{{ profile.volume_tons|tons }}
+                                    {% else %}{{ profile.area_sq_m|divide:1000000|spaced:2 }}{% endif %}
+                                </td>
                                 <td>
                                     <span class="badge badge--{{ profile.congestion_tone }}">
                                         {{ profile.congestion|spaced:1 }}

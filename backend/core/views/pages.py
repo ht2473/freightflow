@@ -18,6 +18,7 @@ from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_GET
 
 from .. import selectors
+from ..choices import PeriodType
 from ..context_processors import MAIN_NAV, flatten_nav
 from ..models import CargoRoute, District, InfrastructureObject, RoadSegment
 from .base import page_context
@@ -32,10 +33,17 @@ def home(request):
     # наиболее проблемных участков сети: этого достаточно для быстрой оценки
     # обстановки без перехода в детальные разделы.
     top_districts = profiles[:4]
+    # Округа выстраиваются по грузопотоку, когда он измерен; иначе —
+    # по складским площадям, и заголовок рейтинга говорит именно об этом.
+    ranked_by_flow = any(profile["volume_tons"] for profile in profiles)
     congested = selectors.top_congested_roads(limit=6)
     incidents = selectors.recent_incidents(limit=5)
-    timeseries = selectors.flow_timeseries()
-    by_direction = selectors.flow_by_direction()
+    timeseries = selectors.city_flow_series()
+    # Структура ряда показывается тем разрезом, который в нём действительно
+    # есть: ведомственная статистика делит перевозки по кругу перевозчиков,
+    # внутригородская — по направлениям.
+    by_scope = selectors.flow_by_scope()
+    by_direction = [] if len(by_scope) > 1 else selectors.flow_by_direction()
     by_type = selectors.objects_by_type()
 
     try:
@@ -45,7 +53,8 @@ def home(request):
     except Exception:  # pragma: no cover — модуль материалов может быть отключён
         articles = []
 
-    total_flow_volume = sum(row["volume"] for row in by_direction) or 1
+    breakdown = by_scope if len(by_scope) > 1 else by_direction
+    total_flow_volume = max((row["volume"] for row in breakdown), default=0) or 1
 
     context = page_context(
         request,
@@ -59,10 +68,14 @@ def home(request):
         crumbs=[],
         summary=summary,
         top_districts=top_districts,
+        ranked_by_flow=ranked_by_flow,
         congested=congested,
         incidents=incidents,
         timeseries=timeseries,
-        by_direction=by_direction,
+        breakdown=breakdown,
+        breakdown_title=(
+            _("Круг перевозчиков") if len(by_scope) > 1 else _("Направления перевозок")
+        ),
         by_type=by_type[:6],
         max_type_count=max((row["count"] for row in by_type), default=0) or 1,
         articles=articles,
@@ -73,10 +86,16 @@ def home(request):
         ribbon_items=sorted(
             selectors.latest_conditions(), key=lambda row: row.congestion_level
         ),
+        annual=bool(timeseries) and timeseries[-1]["period_type"] == PeriodType.YEAR,
         flow_chart=line_chart(
-            [row["month"].strftime("%m.%y") for row in timeseries],
+            [
+                row["period"].strftime(
+                    "%Y" if row["period_type"] == PeriodType.YEAR else "%m.%y"
+                )
+                for row in timeseries
+            ],
             [row["volume"] for row in timeseries],
-            title=_("Помесячный объём перевозок"),
+            title=_("Объём перевозок по городу"),
         ),
     )
     return render(request, "pages/home.html", context)

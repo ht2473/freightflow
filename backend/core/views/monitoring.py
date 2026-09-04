@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from .. import selectors
-from ..choices import IncidentType, congestion_state
+from ..choices import FlowDirection, FlowScope, IncidentType, congestion_state
 from ..models import District, TrafficCondition, TrafficIncident
 from .base import choice_param, int_param, page_context, paginate
 
@@ -174,44 +174,61 @@ def incident_detail(request, pk: int):
 
 
 def flow_overview(request):
-    """Аналитическая сводка по грузопотокам."""
-    district_id = int_param(request, "district")
-    category_id = int_param(request, "category")
-    direction = choice_param(request, "direction", ["in", "out", "transit"])
+    """Ряд перевозок грузов автомобильным транспортом.
 
-    timeseries = selectors.flow_timeseries(district_id, category_id, direction)
-    by_category = selectors.flow_by_category()
-    by_direction = selectors.flow_by_direction()
+    Показывается ряд одной территории. Складывать наблюдения города, области,
+    округа и страны нельзя — территории вложены одна в другую, — поэтому
+    территория и круг перевозчиков задаются условиями отбора, а не сводятся
+    в один итог.
+    """
+    territories = selectors.flow_territories()
+    names = [item["name"] for item in territories]
+    territory = request.GET.get("territory", "").strip()
+    if territory not in names:
+        territory = selectors.CITY_TERRITORY if selectors.CITY_TERRITORY in names else (
+            names[0] if names else ""
+        )
 
-    total_volume = sum(row["volume"] for row in timeseries)
-    total_vehicles = sum(row["vehicles"] for row in timeseries)
+    scope = choice_param(request, "scope", FlowScope.values) or FlowScope.ALL
+    direction = choice_param(request, "direction", FlowDirection.values)
 
-    # Темп прироста считается как отношение последнего месяца к первому:
-    # период наблюдения короткий, поэтому сложные модели тренда избыточны.
-    growth = None
-    if len(timeseries) >= 2 and timeseries[0]["volume"]:
-        growth = (timeseries[-1]["volume"] / timeseries[0]["volume"] - 1) * 100
+    # Условия отбора предлагаются только те, под которые в ряду есть
+    # наблюдения: пустой выбор вводит в заблуждение сильнее, чем его
+    # отсутствие.
+    by_direction = [
+        row for row in selectors.flow_by_direction(territory, scope) if row["volume"]
+    ]
+    series = selectors.flow_timeseries(territory, scope, direction)
+    latest = series[-1] if series else None
+    previous = series[-2] if len(series) >= 2 else None
+
+    change = None
+    if latest and previous and previous["volume"]:
+        change = (latest["volume"] / previous["volume"] - 1) * 100
 
     context = page_context(
         request,
-        title=_("Статистика грузопотоков"),
+        title=_("Статистика перевозок грузов"),
         lead=_(
-            "Объёмы перевозок в разрезе периодов, округов, направлений и "
-            "категорий грузов по данным ведомственных источников."
+            "Объёмы перевозок и грузооборот автомобильного транспорта "
+            "по данным государственной статистики. Ряды территорий "
+            "показываются раздельно: территории вложены одна в другую "
+            "и сложению не подлежат."
         ),
         active="flows",
         crumbs=[(_("Грузопотоки"), "core:flow_overview"), (_("Статистика"),)],
         export_dataset="flows",
-        timeseries=timeseries,
-        by_category=by_category,
+        timeseries=series,
+        latest=latest,
+        change=change,
+        depth=len(series),
         by_direction=by_direction,
-        total_volume=total_volume,
-        total_vehicles=total_vehicles,
-        avg_load=(total_volume / total_vehicles) if total_vehicles else None,
-        growth=growth,
+        comparison=selectors.flow_comparison(scope),
+        territories=territories,
+        territory=territory,
+        scopes=FlowScope.choices,
+        directions=[(row["code"], row["label"]) for row in by_direction],
         districts=District.objects.all(),
-        categories=selectors.flow_by_category(limit=100),
-        max_category_volume=max((row["volume"] for row in by_category), default=0) or 1,
-        filters={"district": district_id, "category": category_id, "direction": direction},
+        filters={"territory": territory, "scope": scope, "direction": direction},
     )
     return render(request, "pages/flow_overview.html", context)
