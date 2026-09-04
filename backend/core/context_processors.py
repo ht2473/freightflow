@@ -173,8 +173,6 @@ def project_meta(request) -> dict:
         "PROJECT_VERSION": settings.PROJECT_VERSION,
         "PROJECT_AUTHOR": settings.PROJECT_AUTHOR,
         "PROJECT_AUTHOR_ID": settings.PROJECT_AUTHOR_ID,
-        "MAP_TILE_URL": settings.MAP_TILE_URL,
-        "MAP_TILE_URL_DARK": settings.MAP_TILE_URL_DARK,
         "MAP_ATTRIBUTION": settings.MAP_ATTRIBUTION,
         "MAP_DEFAULT_CENTER": settings.MAP_DEFAULT_CENTER,
         "MAP_DEFAULT_ZOOM": settings.MAP_DEFAULT_ZOOM,

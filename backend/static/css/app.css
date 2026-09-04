@@ -983,6 +983,9 @@ a.metric:hover { border-color: var(--accent-line); }
 
 .button--sm { padding: 4px 10px; font-size: var(--fs-xs); }
 .button--block { width: 100%; }
+
+/* Кнопка, ожидающая указания точки на карте. */
+.button--active { border-color: var(--accent); color: var(--accent); }
 .button:disabled { opacity: 0.45; cursor: not-allowed; }
 .button svg { width: 15px; height: 15px; }
 
@@ -1312,36 +1315,98 @@ table.data th.num { text-align: right; font-variant-numeric: tabular-nums; }
     flex-shrink: 0;
 }
 
-/* Всплывающая подсказка Leaflet перекрашивается под тему интерфейса. */
-.leaflet-container {
-    background: var(--surface-sunken);
-    font-family: var(--font-body);
-}
+/* Оформление карты подчиняется теме интерфейса: подложка, всплывающие
+   карточки и элементы управления берут те же переменные, что и страницы. */
+.maplibregl-map { font-family: var(--font-body); }
+.maplibregl-canvas-container canvas { outline: none; }
 
-.leaflet-popup-content-wrapper,
-.leaflet-popup-tip {
+.maplibregl-popup-content {
     background: var(--surface);
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     box-shadow: var(--shadow-lg);
+    padding: var(--sp-3);
+    font-size: var(--fs-sm);
+    min-width: 220px;
 }
 
-.leaflet-popup-content { margin: var(--sp-3); font-size: var(--fs-sm); min-width: 200px; }
-.leaflet-popup-content h4 { font-size: var(--fs-base); margin-bottom: var(--sp-2); }
-.leaflet-popup-close-button { color: var(--text-faint) !important; }
-.leaflet-control-zoom a {
-    background: var(--surface) !important;
-    color: var(--text) !important;
-    border-color: var(--border) !important;
+.maplibregl-popup-content h4 { font-size: var(--fs-base); margin-bottom: var(--sp-2); }
+.maplibregl-popup-tip { border-top-color: var(--surface) !important; }
+.maplibregl-popup-close-button { color: var(--text-faint); font-size: var(--fs-lg); }
+
+.map-popup__lead { color: var(--text-faint); margin-bottom: var(--sp-2); }
+
+.map-popup__row {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: 2px 0;
 }
-.leaflet-control-attribution {
+
+.map-popup__row span:first-child { color: var(--text-faint); }
+.map-popup__link { margin-top: var(--sp-2); }
+
+.maplibregl-ctrl-group {
     background: var(--surface) !important;
+    border: 1px solid var(--border);
+    box-shadow: none !important;
+}
+
+.maplibregl-ctrl-group button + button { border-top-color: var(--border); }
+
+/* Значки элементов управления нарисованы тёмными: на светлой теме они
+   читаются как есть, на тёмной — обращаются. */
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
+[data-theme="light"] .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: none; }
+
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-scale {
     background: color-mix(in srgb, var(--surface) 85%, transparent) !important;
     color: var(--text-faint) !important;
+    border-color: var(--border) !important;
     font-size: 10px !important;
 }
-.leaflet-control-attribution a { color: var(--text-dim) !important; }
+
+.maplibregl-ctrl-attrib a { color: var(--text-dim) !important; }
+
+/* Названия округов выводятся разметкой, а не растеризованными глифами
+   тайлового стиля: набор глифов пришлось бы обслуживать отдельной службой
+   ради двенадцати подписей. */
+.map-label {
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    text-shadow: 0 0 4px var(--surface), 0 0 8px var(--surface);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.probe-list {
+    margin: 0;
+    padding-left: var(--sp-4);
+    font-size: var(--fs-sm);
+    display: grid;
+    gap: 4px;
+}
+
+/* Шкала раскраски округов повторяет ту же последовательность цветов,
+   что и заливка на карте. */
+.scale-legend { display: grid; gap: var(--sp-2); }
+
+.scale-legend__bar {
+    display: block;
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(
+        90deg,
+        var(--surface) 0%,
+        var(--tone-warn) 50%,
+        var(--tone-alert) 100%
+    );
+    border: 1px solid var(--border);
+}
 
 /* Графики отрисовываются как встроенная графика SVG без внешних библиотек. */
 .chart {

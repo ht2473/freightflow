@@ -20,9 +20,23 @@
 
 from __future__ import annotations
 
+import math
 import random
 
 from locust import HttpUser, between, task
+
+
+def tile_of(lon: float, lat: float, zoom: int) -> tuple[int, int]:
+    """Номер тайла сетки XYZ, в который попадает точка.
+
+    Расчёт повторён здесь намеренно: сценарий нагрузки обращается к системе
+    по сети, как обычный клиент, и не должен зависеть от её кода.
+    """
+    side = 1 << zoom
+    x = int((lon + 180.0) / 360.0 * side)
+    sin_lat = math.sin(math.radians(lat))
+    y = int((0.5 - math.log((1 + sin_lat) / (1 - sin_lat)) / (4 * math.pi)) * side)
+    return x, y
 
 
 class VisitorScenario(HttpUser):
@@ -87,8 +101,9 @@ class VisitorScenario(HttpUser):
 class MapScenario(HttpUser):
     """Работа с картой.
 
-    Слои GeoJSON — наиболее ресурсоёмкие запросы системы: они выполняют
-    пространственную выборку и сериализуют геометрию. Доля — около 20 %.
+    Тайлы — наиболее ресурсоёмкие запросы системы: они выполняют
+    пространственную выборку, обрезают геометрию и упаковывают её.
+    Доля — около 20 %.
     """
 
     weight = 2
@@ -99,27 +114,27 @@ class MapScenario(HttpUser):
         self.client.get("/map/", name="Карта")
 
     @task(6)
-    def objects_layer(self):
-        """Слой объектов инфраструктуры."""
-        self.client.get("/layers/objects/", name="Слой: объекты")
+    def city_tiles(self):
+        """Тайлы обзорного масштаба: город целиком."""
+        x, y = tile_of(random.uniform(37.4, 37.8), random.uniform(55.6, 55.9), 10)
+        self.client.get(f"/tiles/10/{x}/{y}.pbf", name="Тайл: обзор города")
 
     @task(5)
-    def roads_layer(self):
-        """Слой дорожной сети с текущей загруженностью."""
-        self.client.get("/layers/roads/", name="Слой: дорожная сеть")
+    def district_tiles(self):
+        """Тайлы масштаба округа."""
+        x, y = tile_of(random.uniform(37.4, 37.8), random.uniform(55.6, 55.9), 13)
+        self.client.get(f"/tiles/13/{x}/{y}.pbf", name="Тайл: округ")
 
     @task(3)
-    def objects_layer_in_bbox(self):
-        """Слой объектов в границах видимой области экрана."""
-        lon = round(random.uniform(37.4, 37.8), 3)
-        lat = round(random.uniform(55.6, 55.9), 3)
-        bbox = f"{lon - 0.1},{lat - 0.05},{lon + 0.1},{lat + 0.05}"
-        self.client.get(f"/layers/objects/?bbox={bbox}", name="Слой: объекты (bbox)")
+    def street_tiles(self):
+        """Тайлы масштаба улицы: появляются контуры объектов."""
+        x, y = tile_of(random.uniform(37.4, 37.8), random.uniform(55.6, 55.9), 15)
+        self.client.get(f"/tiles/15/{x}/{y}.pbf", name="Тайл: улица")
 
-    @task(3)
-    def incidents_layer(self):
-        """Слой дорожных событий."""
-        self.client.get("/layers/incidents/", name="Слой: события")
+    @task(2)
+    def tile_source(self):
+        """Описание источника тайлов."""
+        self.client.get("/tiles/tiles.json", name="Описание источника тайлов")
 
     @task(2)
     def nearby_search(self):

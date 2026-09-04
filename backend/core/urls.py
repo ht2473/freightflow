@@ -45,11 +45,5 @@ urlpatterns = [
     # префикс, чтобы их можно было отдельно кешировать на обратном прокси.
     path("tiles/tiles.json", views.tilejson, name="map_tilejson"),
     path("tiles/<int:z>/<int:x>/<int:y>.pbf", views.vector_tile, name="map_tile"),
-    # Слои карты (GeoJSON).
-    path("layers/objects/", views.layer_objects, name="layer_objects"),
-    path("layers/roads/", views.layer_roads, name="layer_roads"),
-    path("layers/routes/", views.layer_routes, name="layer_routes"),
-    path("layers/incidents/", views.layer_incidents, name="layer_incidents"),
-    path("layers/districts/", views.layer_districts, name="layer_districts"),
     path("layers/nearby/", views.nearby_objects, name="layer_nearby"),
 ]

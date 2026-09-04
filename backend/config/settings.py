@@ -437,16 +437,11 @@ LOGGING = {
 # Начальный охват карты: центр Москвы и масштаб, охватывающий МКАД.
 MAP_DEFAULT_CENTER = (55.7522, 37.6156)
 MAP_DEFAULT_ZOOM = env_int("MAP_ZOOM", 10)
-MAP_TILE_URL = env(
-    "MAP_TILE_URL", "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-)
-MAP_TILE_URL_DARK = env(
-    "MAP_TILE_URL_DARK", "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-)
-MAP_ATTRIBUTION = "© OpenStreetMap, © CARTO"
 
-# Максимальное число объектов, отдаваемых в один слой карты без кластеризации.
-MAP_MAX_FEATURES = env_int("MAP_MAX_FEATURES", 5000)
+# Подложка и слои карты собираются самой системой из данных OpenStreetMap
+# и обслуживаются с её домена: сторонние тайловые службы в работе не
+# участвуют, поэтому указание правообладателя относится к исходным данным.
+MAP_ATTRIBUTION = "© OpenStreetMap"
 
 # Габариты города с запасом: (min_lon, min_lat, max_lon, max_lat). Тайлы,
 # не задевающие этот прямоугольник, отдаются пустыми, не доходя до базы.

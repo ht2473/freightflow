@@ -1,26 +1,26 @@
 /* ==========================================================================
    ИС «ГрузПоток» — интерактивная карта
 
-   Карта строится на библиотеке Leaflet, размещённой локально в составе
-   проекта: внешние сети при работе системы не требуются, если используется
-   собственный тайловый сервер.
+   Карта строится на MapLibre GL и на собственных векторных тайлах: и
+   библиотека, и данные обслуживаются с домена системы, поэтому внешние
+   службы при работе не требуются.
 
-   Слои загружаются независимо и по требованию: включение слоя вызывает
-   запрос к соответствующей конечной точке GeoJSON, повторное включение
-   использует уже полученные данные. Такой порядок ограничивает объём
-   передаваемых данных тем, что пользователь действительно смотрит.
+   Слои приходят одним источником — тайлом того квадрата сетки, который
+   виден на экране. Поэтому включение слоя, отбор по округу и смена
+   показателя раскраски выполняются на уже полученных данных, без
+   обращения к серверу: перерисовка мгновенна, а объём переданного
+   зависит от видимой области, а не от размера реестра.
    ========================================================================== */
 
 (function () {
     "use strict";
 
     var node = document.getElementById("map-canvas");
-    if (!node || typeof L === "undefined") return;
+    if (!node || typeof maplibregl === "undefined") return;
 
     /* Настройки приходят отдельным элементом application/json, собранным на
-       стороне сервера. Разбор в data-атрибуте разметки был источником отказа:
-       координаты подставлялись через локализацию и приходили с десятичной
-       запятой. */
+       стороне сервера: подстановка чисел прямо в разметку проходит через
+       локализацию и при русском языке даёт десятичную запятую. */
     var settingsNode = document.getElementById("map-settings");
     if (!settingsNode) return;
 
@@ -31,8 +31,12 @@
         return;
     }
 
-    /* Цвета берутся из переменных оформления: при переключении темы карта
-       перекрашивается теми же значениями, что и остальной интерфейс. */
+    var SOURCE = "freightflow";
+
+    /* ----------------------------------------------------------------------
+       Цвета оформления
+       ---------------------------------------------------------------------- */
+
     function themeColor(name, fallback) {
         var value = getComputedStyle(document.documentElement)
             .getPropertyValue(name)
@@ -40,369 +44,550 @@
         return value || fallback;
     }
 
-    var palette = {
-        accent: themeColor("--accent", "#f2a03d"),
-        ok: themeColor("--tone-ok", "#3fbf6f"),
-        warn: themeColor("--tone-warn", "#f2a03d"),
-        alert: themeColor("--tone-alert", "#e2504a"),
-        crit: themeColor("--tone-crit", "#a32b26"),
-        muted: themeColor("--tone-muted", "#6b7885"),
-        route: themeColor("--series-2", "#4aa3d9")
-    };
+    /** Прочитать палитру заново: при смене оформления значения меняются. */
+    function readPalette() {
+        return {
+            canvas: themeColor("--surface-sunken", "#eef1f4"),
+            land: themeColor("--surface", "#ffffff"),
+            ink: themeColor("--ink", "#1c2733"),
+            accent: themeColor("--accent", "#f2a03d"),
+            ok: themeColor("--tone-ok", "#3fbf6f"),
+            warn: themeColor("--tone-warn", "#f2a03d"),
+            alert: themeColor("--tone-alert", "#e2504a"),
+            crit: themeColor("--tone-crit", "#a32b26"),
+            muted: themeColor("--tone-muted", "#6b7885"),
+            route: themeColor("--series-2", "#4aa3d9"),
+            line: themeColor("--border", "#c8d0d8")
+        };
+    }
 
-    function toneColor(tone) {
-        return palette[tone] || palette.muted;
+    var palette = readPalette();
+
+    function toneMatch(colors) {
+        return [
+            "match",
+            ["get", "tone"],
+            "ok", colors.ok,
+            "warn", colors.warn,
+            "alert", colors.alert,
+            "crit", colors.crit,
+            colors.muted
+        ];
     }
 
     /* ----------------------------------------------------------------------
-       Инициализация карты
+       Раскраска округов по выбранному показателю
        ---------------------------------------------------------------------- */
 
-    var map = L.map(node, {
-        center: settings.center || [55.7522, 37.6156],
-        zoom: settings.zoom || 10,
-        zoomControl: true,
-        preferCanvas: true
-    });
+    var metrics = settings.choropleth || [];
+    var currentMetric = metrics.length ? metrics[0] : null;
 
-    var lightTiles = L.tileLayer(settings.tileUrl, {
-        attribution: settings.attribution,
-        maxZoom: 19
-    });
-    var darkTiles = L.tileLayer(settings.tileUrlDark || settings.tileUrl, {
-        attribution: settings.attribution,
-        maxZoom: 19
-    });
-
-    /** Выбрать подложку, соответствующую текущему оформлению интерфейса. */
-    function applyBasemap() {
-        var dark = document.documentElement.getAttribute("data-theme") !== "light";
-        var active = dark ? darkTiles : lightTiles;
-        var inactive = dark ? lightTiles : darkTiles;
-        if (map.hasLayer(inactive)) map.removeLayer(inactive);
-        if (!map.hasLayer(active)) active.addTo(map);
+    /** Заливка округа: от светлого к насыщенному по величине показателя. */
+    function districtFill(colors) {
+        if (!currentMetric || !currentMetric.max) return colors.muted;
+        return [
+            "case",
+            ["has", currentMetric.property],
+            [
+                "interpolate",
+                ["linear"],
+                ["to-number", ["get", currentMetric.property]],
+                0, colors.land,
+                currentMetric.max / 2, colors.warn,
+                currentMetric.max, colors.alert
+            ],
+            // Округ, по которому показатель не измерен, остаётся нейтральным:
+            // ноль и «нет сведений» — разные состояния.
+            colors.line
+        ];
     }
-    applyBasemap();
-
-    /* Смена темы отслеживается наблюдателем: подложка меняется без
-       перезагрузки страницы. */
-    new MutationObserver(applyBasemap).observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ["data-theme"]
-    });
 
     /* ----------------------------------------------------------------------
-       Оформление объектов слоёв
+       Состав слоёв карты
+       ---------------------------------------------------------------------- */
+
+    function buildStyle(colors) {
+        return {
+            version: 8,
+            sources: {
+                freightflow: {
+                    type: "vector",
+                    url: settings.urls.tilejson,
+                    attribution: settings.attribution
+                },
+                probe: {
+                    type: "geojson",
+                    data: { type: "FeatureCollection", features: [] }
+                }
+            },
+            layers: [
+                {
+                    id: "canvas",
+                    type: "background",
+                    paint: { "background-color": colors.canvas }
+                },
+                {
+                    id: "districts-fill",
+                    type: "fill",
+                    source: SOURCE,
+                    "source-layer": "districts",
+                    paint: { "fill-color": districtFill(colors), "fill-opacity": 0.55 }
+                },
+                {
+                    id: "districts-outline",
+                    type: "line",
+                    source: SOURCE,
+                    "source-layer": "districts",
+                    paint: {
+                        "line-color": colors.ink,
+                        "line-width": 1,
+                        "line-opacity": 0.35
+                    }
+                },
+                {
+                    id: "zones-outline",
+                    type: "line",
+                    source: SOURCE,
+                    "source-layer": "zones",
+                    layout: { visibility: "none" },
+                    paint: {
+                        "line-color": colors.crit,
+                        "line-width": 2,
+                        "line-dasharray": [3, 2]
+                    }
+                },
+                {
+                    id: "footprints",
+                    type: "fill",
+                    source: SOURCE,
+                    "source-layer": "footprints",
+                    minzoom: 14,
+                    paint: {
+                        "fill-color": colors.accent,
+                        "fill-opacity": 0.35,
+                        "fill-outline-color": colors.accent
+                    }
+                },
+                {
+                    id: "routes",
+                    type: "line",
+                    source: SOURCE,
+                    "source-layer": "routes",
+                    layout: { visibility: "none", "line-cap": "round" },
+                    paint: {
+                        "line-color": colors.route,
+                        "line-width": ["interpolate", ["linear"], ["zoom"], 7, 1.5, 14, 5],
+                        "line-dasharray": [2, 1]
+                    }
+                },
+                {
+                    id: "roads",
+                    type: "line",
+                    source: SOURCE,
+                    "source-layer": "roads",
+                    layout: { "line-cap": "round", "line-join": "round" },
+                    paint: {
+                        "line-color": toneMatch(colors),
+                        "line-width": ["interpolate", ["linear"], ["zoom"], 7, 1, 12, 3, 16, 7]
+                    }
+                },
+                {
+                    id: "objects",
+                    type: "circle",
+                    source: SOURCE,
+                    "source-layer": "objects",
+                    paint: {
+                        "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 2.5, 13, 5, 16, 8],
+                        "circle-color": colors.accent,
+                        "circle-opacity": 0.8,
+                        "circle-stroke-width": 1,
+                        "circle-stroke-color": colors.land
+                    }
+                },
+                {
+                    id: "incidents",
+                    type: "circle",
+                    source: SOURCE,
+                    "source-layer": "incidents",
+                    layout: { visibility: "none" },
+                    paint: {
+                        "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 3, 16, 9],
+                        "circle-color": toneMatch(colors),
+                        "circle-stroke-width": 1,
+                        "circle-stroke-color": colors.land
+                    }
+                },
+                {
+                    id: "probe-results",
+                    type: "circle",
+                    source: "probe",
+                    paint: {
+                        "circle-radius": 7,
+                        "circle-color": "rgba(0,0,0,0)",
+                        "circle-stroke-width": 2,
+                        "circle-stroke-color": colors.ink
+                    }
+                }
+            ]
+        };
+    }
+
+    /* ----------------------------------------------------------------------
+       Создание карты
+       ---------------------------------------------------------------------- */
+
+    var map;
+    try {
+        map = new maplibregl.Map({
+            container: node,
+            style: buildStyle(palette),
+            center: [settings.center[1], settings.center[0]],
+            zoom: settings.zoom,
+            minZoom: settings.minZoom,
+            maxZoom: settings.maxZoom,
+            maxBounds: settings.maxBounds,
+            attributionControl: false
+        });
+    } catch (error) {
+        node.innerHTML =
+            "<p class='small faint' style='padding:var(--sp-4)'>" +
+            "Карта требует поддержки WebGL. Разделы «Реестр объектов» и " +
+            "«Дорожная обстановка» показывают те же данные таблицами.</p>";
+        return;
+    }
+
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: "metric" }));
+    map.addControl(
+        new maplibregl.AttributionControl({ compact: true, customAttribution: settings.attribution })
+    );
+
+    /* ----------------------------------------------------------------------
+       Подписи округов
+       ---------------------------------------------------------------------- */
+
+    /* Названия выводятся разметкой, а не средствами тайлового стиля: подписи
+       в стиле рисуются растеризованными наборами глифов, которые пришлось бы
+       обслуживать отдельной службой ради двенадцати названий. */
+    var districtLabels = (settings.districts || []).map(function (item) {
+        var element = document.createElement("span");
+        element.className = "map-label";
+        element.textContent = item.short_name;
+        element.title = item.name;
+        return new maplibregl.Marker({ element: element, anchor: "center" })
+            .setLngLat([item.lon, item.lat])
+            .addTo(map);
+    });
+
+    function toggleLabels(visible) {
+        districtLabels.forEach(function (marker) {
+            marker.getElement().style.display = visible ? "" : "none";
+        });
+    }
+
+    /* ----------------------------------------------------------------------
+       Всплывающие карточки
        ---------------------------------------------------------------------- */
 
     function escapeHtml(text) {
-        var div = document.createElement("div");
-        div.textContent = text == null ? "" : String(text);
-        return div.innerHTML;
+        var box = document.createElement("div");
+        box.textContent = text === null || text === undefined ? "" : String(text);
+        return box.innerHTML;
     }
 
-    function popupRow(label, value) {
+    function number(value, digits) {
+        if (value === null || value === undefined || value === "") return null;
+        return Number(value).toLocaleString("ru-RU", {
+            maximumFractionDigits: digits === undefined ? 0 : digits
+        });
+    }
+
+    function row(label, value) {
         if (value === null || value === undefined || value === "") return "";
-        return "<div style='display:flex;justify-content:space-between;gap:12px'>"
-            + "<span style='opacity:.7'>" + escapeHtml(label) + "</span>"
+        return "<div class='map-popup__row'><span>" + escapeHtml(label) + "</span>"
             + "<span>" + escapeHtml(value) + "</span></div>";
     }
 
-    function popupShell(title, subtitle, rows, url) {
+    function card(title, subtitle, rows, url) {
         return "<h4>" + escapeHtml(title) + "</h4>"
-            + (subtitle ? "<p style='opacity:.7;margin-bottom:8px'>" + escapeHtml(subtitle) + "</p>" : "")
+            + (subtitle ? "<p class='map-popup__lead'>" + escapeHtml(subtitle) + "</p>" : "")
             + rows.join("")
-            + (url ? "<p style='margin-top:10px'><a href='" + url + "'>Открыть карточку →</a></p>" : "");
+            + (url ? "<p class='map-popup__link'><a href='" + url + "'>Открыть карточку →</a></p>" : "");
     }
 
-    /* ----------------------------------------------------------------------
-       Описание слоёв
-       ---------------------------------------------------------------------- */
-
-    var layerDefs = {
-        objects: {
-            url: settings.urls.objects,
-            build: function (data) {
-                return L.geoJSON(data, {
-                    pointToLayer: function (feature, latlng) {
-                        return L.circleMarker(latlng, {
-                            radius: 6,
-                            color: palette.accent,
-                            weight: 1.5,
-                            fillColor: palette.accent,
-                            fillOpacity: 0.55
-                        });
-                    },
-                    onEachFeature: function (feature, layer) {
-                        var p = feature.properties;
-                        layer.bindPopup(popupShell(p.name, p.type + " · " + p.district, [
-                            popupRow("Адрес", p.address),
-                            popupRow("Мощность", p.capacity ? p.capacity.toLocaleString("ru-RU") + " т" : null),
-                            popupRow("Площадь", p.area ? p.area.toLocaleString("ru-RU") + " м²" : null),
-                            popupRow("Режим работы", p.hours)
-                        ], p.url));
-                    }
-                });
-            }
+    /* Состав карточки задаётся отдельно для каждого слоя: свойства объекта
+       описаны в реестре слоёв на стороне сервера, здесь — их подача. */
+    var cards = {
+        objects: function (p, id) {
+            return card(p.name, [p.type, p.district].filter(Boolean).join(" · "), [
+                row("Адрес", p.address),
+                row("Площадь", number(p.area) ? number(p.area) + " м²" : null),
+                row("Мощность хранения", number(p.capacity) ? number(p.capacity) + " т" : null),
+                row("Режим работы", p.hours),
+                row("Оператор", p.operator)
+            ], "/objects/" + id + "/");
         },
-
-        roads: {
-            url: settings.urls.roads,
-            build: function (data) {
-                return L.geoJSON(data, {
-                    style: function (feature) {
-                        return {
-                            color: toneColor(feature.properties.tone),
-                            weight: 4,
-                            opacity: 0.85
-                        };
-                    },
-                    onEachFeature: function (feature, layer) {
-                        var p = feature.properties;
-                        layer.bindPopup(popupShell(p.name, p.road_class, [
-                            popupRow("Загруженность", p.congestion !== null
-                                ? p.congestion + " из 10 · " + p.state_label : "нет данных"),
-                            popupRow("Скорость потока", p.speed ? p.speed + " км/ч" : null),
-                            popupRow("Разрешённая скорость", p.speed_limit ? p.speed_limit + " км/ч" : null),
-                            popupRow("Полос", p.lanes),
-                            popupRow("Протяжённость", p.length ? p.length + " км" : null)
-                        ], p.url));
-                    }
-                });
-            }
+        footprints: function (p, id) {
+            return card(p.name, "Контур объекта", [
+                row("Площадь", number(p.area) ? number(p.area) + " м²" : null)
+            ], "/objects/" + id + "/");
         },
-
-        routes: {
-            url: settings.urls.routes,
-            build: function (data) {
-                return L.geoJSON(data, {
-                    style: {
-                        color: palette.route,
-                        weight: 3,
-                        opacity: 0.8,
-                        dashArray: "8 6"
-                    },
-                    onEachFeature: function (feature, layer) {
-                        var p = feature.properties;
-                        layer.bindPopup(popupShell(p.name, p.route_type_label, [
-                            popupRow("Протяжённость", p.distance ? p.distance + " км" : null),
-                            popupRow("Интенсивность", p.trucks ? p.trucks + " ТС/сут" : null)
-                        ], p.url));
-                    }
-                });
-            }
+        roads: function (p, id) {
+            return card(p.name, p.class_label, [
+                row("Состояние", p.state_label),
+                row("Загруженность", p.congestion === undefined ? null : p.congestion + " из 10"),
+                row("Полос", p.lanes),
+                row("Протяжённость", number(p.length_km, 1) ? number(p.length_km, 1) + " км" : null),
+                row("Грузовой каркас", p.freight_frame === undefined
+                    ? "сведений нет"
+                    : (p.freight_frame ? "входит" : "не входит"))
+            ], "/roads/" + id + "/");
         },
-
-        incidents: {
-            url: settings.urls.incidents,
-            build: function (data) {
-                return L.geoJSON(data, {
-                    pointToLayer: function (feature, latlng) {
-                        var p = feature.properties;
-                        return L.circleMarker(latlng, {
-                            radius: 5 + p.severity,
-                            color: toneColor(p.tone),
-                            weight: 2,
-                            fillColor: toneColor(p.tone),
-                            fillOpacity: p.is_open ? 0.5 : 0.15
-                        });
-                    },
-                    onEachFeature: function (feature, layer) {
-                        var p = feature.properties;
-                        layer.bindPopup(popupShell(p.type_label, p.road, [
-                            popupRow("Серьёзность", p.severity + " · " + p.severity_label),
-                            popupRow("Состояние", p.is_open ? "открыт" : "устранён"),
-                            popupRow("Грузовой транспорт", p.affects_cargo ? "затронут" : "не затронут"),
-                            popupRow("Описание", p.description)
-                        ], p.url));
-                    }
-                });
-            }
+        incidents: function (p, id) {
+            return card(p.type_label, p.road, [
+                row("Серьёзность", p.severity_label),
+                row("Состояние", p.is_open ? "не закрыто" : "закрыто"),
+                row("Грузовое движение", p.affects_cargo ? "затрагивает" : "не затрагивает")
+            ], "/incidents/" + id + "/");
         },
-
-        districts: {
-            url: settings.urls.districts,
-            build: function (data) {
-                return L.geoJSON(data, {
-                    pointToLayer: function (feature, latlng) {
-                        var p = feature.properties;
-                        /* Округ обозначается подписью-меткой: величина
-                           показателя читается прямо на карте, без нажатия. */
-                        return L.marker(latlng, {
-                            icon: L.divIcon({
-                                className: "",
-                                html: "<div style=\"white-space:nowrap;padding:3px 8px;"
-                                    + "border-radius:4px;font-size:11px;font-weight:600;"
-                                    + "background:" + toneColor(p.tone) + ";color:#0e1216\">"
-                                    + escapeHtml(p.short_name) + " · " + p.objects + "</div>",
-                                iconSize: null
-                            })
-                        });
-                    },
-                    onEachFeature: function (feature, layer) {
-                        var p = feature.properties;
-                        layer.bindPopup(popupShell(p.name + " округ", null, [
-                            popupRow("Объектов", p.objects),
-                            popupRow("Мощность", Math.round(p.capacity).toLocaleString("ru-RU") + " т"),
-                            popupRow("Грузопоток", Math.round(p.volume).toLocaleString("ru-RU") + " т"),
-                            popupRow("Загруженность", p.congestion)
-                        ], p.url));
-                    }
-                });
-            }
+        routes: function (p, id) {
+            return card(p.name, p.type_label, [
+                row("Протяжённость", number(p.distance_km, 1) ? number(p.distance_km, 1) + " км" : null),
+                row("Грузовых в сутки", number(p.trucks))
+            ], "/routes/" + id + "/");
+        },
+        zones: function (p) {
+            return card(p.name, "Зона ограничения движения", [
+                row("Пропуск требуется при РММ от", p.permit_from_tons + " т"),
+                row("Сезонное ограничение при РММ от",
+                    p.seasonal_from_tons ? p.seasonal_from_tons + " т" : null),
+                row("Экологический класс не ниже",
+                    p.eco_class ? "Евро-" + p.eco_class : null),
+                row("Штраф", number(p.fine) ? number(p.fine) + " ₽" : null)
+            ], "/methodology/");
+        },
+        "districts-fill": function (p, id) {
+            var rows = [
+                row("Объектов", number(p.objects)),
+                row("Площадь", number(p.area_sq_km, 1) ? number(p.area_sq_km, 1) + " км²" : null),
+                row("Население", number(p.population) ? number(p.population) + " чел." : null),
+                row("Индекс нагрузки", p.index === undefined ? null : p.index + " из 100"),
+                row("Место по индексу", p.rank),
+                row("Загруженность сети", p.congestion === undefined ? null : p.congestion + " из 10")
+            ];
+            return card(p.name, p.short_name, rows, "/districts/" + id + "/");
         }
     };
 
-    var loaded = {};
-    var active = {};
+    var popup = new maplibregl.Popup({ closeButton: true, maxWidth: "320px" });
 
-    /** Загрузить слой и добавить его на карту. */
-    function enableLayer(name) {
-        var def = layerDefs[name];
-        if (!def) return;
-
-        if (loaded[name]) {
-            loaded[name].addTo(map);
-            active[name] = true;
-            return;
-        }
-
-        setStatus(name, "загрузка…");
-        var url = def.url + buildQuery();
-
-        fetch(url, { headers: { "X-Requested-With": "fetch" } })
-            .then(function (response) {
-                if (!response.ok) throw new Error("HTTP " + response.status);
-                return response.json();
-            })
-            .then(function (data) {
-                var layer = def.build(data);
-                loaded[name] = layer;
-                if (active[name] !== false) layer.addTo(map);
-                setStatus(name, data.count + " объектов");
-            })
-            .catch(function () {
-                setStatus(name, "не загружен");
-            });
-        active[name] = true;
-    }
-
-    function disableLayer(name) {
-        active[name] = false;
-        if (loaded[name]) map.removeLayer(loaded[name]);
-    }
-
-    function setStatus(name, text) {
-        var badge = document.querySelector("[data-layer-status='" + name + "']");
-        if (badge) badge.textContent = text;
-    }
-
-    /** Собрать строку запроса из значений панели условий отбора. */
-    function buildQuery() {
-        var params = new URLSearchParams();
-        document.querySelectorAll("[data-map-filter]").forEach(function (control) {
-            if (control.value) params.set(control.dataset.mapFilter, control.value);
+    Object.keys(cards).forEach(function (layer) {
+        map.on("click", layer, function (event) {
+            var feature = event.features && event.features[0];
+            if (!feature) return;
+            popup
+                .setLngLat(event.lngLat)
+                .setHTML(cards[layer](feature.properties, feature.id))
+                .addTo(map);
         });
-        var query = params.toString();
-        return query ? "?" + query : "";
-    }
+        map.on("mouseenter", layer, function () {
+            map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", layer, function () {
+            map.getCanvas().style.cursor = "";
+        });
+    });
 
     /* ----------------------------------------------------------------------
-       Панель управления слоями
+       Управление слоями и отбором
        ---------------------------------------------------------------------- */
 
-    document.querySelectorAll("[data-layer]").forEach(function (checkbox) {
-        if (checkbox.checked) enableLayer(checkbox.dataset.layer);
-        checkbox.addEventListener("change", function () {
-            if (checkbox.checked) {
-                enableLayer(checkbox.dataset.layer);
-            } else {
-                disableLayer(checkbox.dataset.layer);
+    // Переключатель панели → слои стиля, которыми он управляет.
+    var groups = {
+        objects: ["objects", "footprints"],
+        roads: ["roads"],
+        incidents: ["incidents"],
+        routes: ["routes"],
+        districts: ["districts-fill", "districts-outline"],
+        zones: ["zones-outline"]
+    };
+
+    function setVisible(group, visible) {
+        (groups[group] || []).forEach(function (layer) {
+            if (map.getLayer(layer)) {
+                map.setLayoutProperty(layer, "visibility", visible ? "visible" : "none");
             }
         });
-    });
+        if (group === "districts") toggleLabels(visible);
+    }
 
-    /* Изменение условий отбора сбрасывает загруженные слои: данные должны
-       соответствовать выбранным параметрам. */
-    document.querySelectorAll("[data-map-filter]").forEach(function (control) {
-        control.addEventListener("change", function () {
-            Object.keys(loaded).forEach(function (name) {
-                map.removeLayer(loaded[name]);
-                delete loaded[name];
-            });
-            document.querySelectorAll("[data-layer]").forEach(function (checkbox) {
-                if (checkbox.checked) enableLayer(checkbox.dataset.layer);
-            });
+    var toggles = Array.prototype.slice.call(document.querySelectorAll("[data-layer]"));
+
+    function applyToggles() {
+        toggles.forEach(function (input) {
+            setVisible(input.getAttribute("data-layer"), input.checked);
+        });
+    }
+
+    toggles.forEach(function (input) {
+        input.addEventListener("change", function () {
+            setVisible(input.getAttribute("data-layer"), input.checked);
         });
     });
 
+    /* Отбор выполняется выражением стиля: тайл уже получен, и объекты,
+       не отвечающие условию, просто перестают рисоваться. */
+    var filters = { district: "", type: "" };
+
+    function applyFilters() {
+        var conditions = ["all"];
+        if (filters.district) conditions.push(["==", ["get", "district"], filters.district]);
+        if (filters.type) conditions.push(["==", ["get", "type_code"], filters.type]);
+        var expression = conditions.length > 1 ? conditions : null;
+        if (map.getLayer("objects")) map.setFilter("objects", expression);
+        if (map.getLayer("footprints")) {
+            map.setFilter("footprints", filters.type
+                ? ["==", ["get", "type_code"], filters.type]
+                : null);
+        }
+    }
+
+    Array.prototype.slice.call(document.querySelectorAll("[data-map-filter]")).forEach(
+        function (control) {
+            control.addEventListener("change", function () {
+                filters[control.getAttribute("data-map-filter")] = control.value;
+                applyFilters();
+            });
+        }
+    );
+
+    var metricControl = document.getElementById("m-metric");
+    if (metricControl) {
+        metricControl.addEventListener("change", function () {
+            currentMetric = metrics.filter(function (item) {
+                return item.key === metricControl.value;
+            })[0] || currentMetric;
+            if (map.getLayer("districts-fill")) {
+                map.setPaintProperty("districts-fill", "fill-color", districtFill(palette));
+            }
+            var legend = document.getElementById("map-legend-metric");
+            if (legend && currentMetric) {
+                legend.textContent = currentMetric.title + ", до "
+                    + Number(currentMetric.max).toLocaleString("ru-RU") + " " + currentMetric.unit;
+            }
+        });
+    }
+
     /* ----------------------------------------------------------------------
-       Инструмент «что рядом»
+       Инструмент «что рядом с точкой»
        ---------------------------------------------------------------------- */
 
     var probeButton = document.getElementById("map-probe");
     var probeResults = document.getElementById("probe-results");
     var probeMarker = null;
-    var probeCircle = null;
     var probing = false;
+
+    function probeSource() {
+        return map.getSource("probe");
+    }
+
+    function showProbe(payload) {
+        if (!probeResults) return;
+        if (!payload.results.length) {
+            probeResults.innerHTML = "<p class='small faint'>В радиусе "
+                + payload.radius_km + " км объектов нет.</p>";
+        } else {
+            probeResults.innerHTML = "<ol class='probe-list'>"
+                + payload.results.map(function (item) {
+                    return "<li><a href='" + item.url + "'>" + escapeHtml(item.name) + "</a>"
+                        + "<span class='faint'> — " + item.distance_km.toLocaleString("ru-RU")
+                        + " км</span></li>";
+                }).join("")
+                + "</ol>";
+        }
+
+        var source = probeSource();
+        if (source) {
+            source.setData({
+                type: "FeatureCollection",
+                features: payload.results.map(function (item) {
+                    return {
+                        type: "Feature",
+                        geometry: { type: "Point", coordinates: [item.lon, item.lat] },
+                        properties: { name: item.name }
+                    };
+                })
+            });
+        }
+    }
+
+    function probeAt(lngLat) {
+        var radiusControl = document.getElementById("probe-radius");
+        var radius = radiusControl ? radiusControl.value : 3;
+        var address = settings.urls.nearby
+            + "?lon=" + lngLat.lng.toFixed(6)
+            + "&lat=" + lngLat.lat.toFixed(6)
+            + "&radius=" + encodeURIComponent(radius);
+
+        if (probeMarker) probeMarker.remove();
+        probeMarker = new maplibregl.Marker({ color: palette.ink })
+            .setLngLat(lngLat)
+            .addTo(map);
+
+        if (probeResults) probeResults.innerHTML = "<p class='small faint'>Идёт поиск…</p>";
+        fetch(address, { headers: { Accept: "application/json" } })
+            .then(function (response) { return response.json(); })
+            .then(showProbe)
+            .catch(function () {
+                if (probeResults) {
+                    probeResults.innerHTML = "<p class='small faint'>Поиск не выполнен.</p>";
+                }
+            });
+    }
 
     if (probeButton) {
         probeButton.addEventListener("click", function () {
             probing = !probing;
-            probeButton.classList.toggle("button--primary", probing);
-            probeButton.textContent = probing
-                ? "Укажите точку на карте"
-                : "Что рядом с точкой";
-            node.style.cursor = probing ? "crosshair" : "";
+            probeButton.classList.toggle("button--active", probing);
+            map.getCanvas().style.cursor = probing ? "crosshair" : "";
+            if (probeResults && probing) {
+                probeResults.innerHTML =
+                    "<p class='small faint'>Укажите точку на карте.</p>";
+            }
         });
     }
 
     map.on("click", function (event) {
         if (!probing) return;
-
-        var radius = Number(document.getElementById("probe-radius").value || 3);
-        if (probeMarker) map.removeLayer(probeMarker);
-        if (probeCircle) map.removeLayer(probeCircle);
-
-        probeMarker = L.circleMarker(event.latlng, {
-            radius: 5, color: palette.accent, fillColor: palette.accent, fillOpacity: 1
-        }).addTo(map);
-        probeCircle = L.circle(event.latlng, {
-            radius: radius * 1000,
-            color: palette.accent,
-            weight: 1,
-            fillOpacity: 0.06
-        }).addTo(map);
-
-        probeResults.innerHTML = "<p class='small muted'>Поиск объектов…</p>";
-
-        fetch(settings.urls.nearby + "?lon=" + event.latlng.lng
-            + "&lat=" + event.latlng.lat + "&radius=" + radius + "&limit=15")
-            .then(function (response) { return response.json(); })
-            .then(function (data) {
-                if (!data.count) {
-                    probeResults.innerHTML =
-                        "<p class='small muted'>В радиусе " + radius
-                        + " км объектов не найдено. Увеличьте радиус или укажите другую точку.</p>";
-                    return;
-                }
-                probeResults.innerHTML =
-                    "<p class='eyebrow' style='margin-bottom:8px'>Найдено: " + data.count + "</p>"
-                    + data.results.map(function (item) {
-                        return "<a href='" + item.url + "' class='row row--between small' "
-                            + "style='color:inherit;padding:5px 0;border-bottom:1px solid var(--border)'>"
-                            + "<span>" + escapeHtml(item.name)
-                            + "<span class='table-sub'>" + escapeHtml(item.type) + "</span></span>"
-                            + "<span class='mono faint'>" + item.distance_km.toFixed(1) + " км</span></a>";
-                    }).join("");
-            })
-            .catch(function () {
-                probeResults.innerHTML =
-                    "<p class='small muted'>Не удалось выполнить поиск. Повторите попытку.</p>";
-            });
+        probing = false;
+        if (probeButton) probeButton.classList.remove("button--active");
+        map.getCanvas().style.cursor = "";
+        probeAt(event.lngLat);
     });
 
-    /* Карта доступна прочим сценариям страницы — например, для перехода к
-       объекту, переданному в адресной строке. */
-    window.FreightFlowMap = { map: map, enableLayer: enableLayer, palette: palette };
+    /* ----------------------------------------------------------------------
+       Смена оформления
+       ---------------------------------------------------------------------- */
+
+    /* Стиль собирается заново теми же цветами, что и остальной интерфейс.
+       Тайлы при этом не запрашиваются повторно — они уже получены. */
+    function applyTheme() {
+        palette = readPalette();
+        map.setStyle(buildStyle(palette));
+        map.once("styledata", function () {
+            applyToggles();
+            applyFilters();
+        });
+    }
+
+    new MutationObserver(applyTheme).observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["data-theme"]
+    });
+
+    map.on("load", function () {
+        applyToggles();
+        applyFilters();
+        node.setAttribute("data-map-ready", "1");
+    });
 })();

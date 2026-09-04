@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% load ff static i18n %}
 
+{% block head %}
+<link rel="stylesheet" href="{% static 'vendor/maplibre/maplibre-gl.css' %}">
+{% endblock %}
+
 {% block page_header %}
 <header class="page-header">
     <div class="page-header__row">
@@ -30,40 +34,31 @@
                 <span>{% trans 'Объекты инфраструктуры' %}</span>
                 <i style="background:var(--accent)"></i>
             </label>
-            <p class="small faint" style="padding:0 var(--sp-2) var(--sp-2)"
-               data-layer-status="objects"></p>
-
             <label class="layer-toggle">
                 <input type="checkbox" data-layer="roads" checked>
-                <span>{% trans 'Дорожная сеть' %}</span>
+                <span>{% trans 'Магистральная сеть' %}</span>
                 <i style="background:var(--tone-warn)"></i>
             </label>
-            <p class="small faint" style="padding:0 var(--sp-2) var(--sp-2)"
-               data-layer-status="roads"></p>
-
+            <label class="layer-toggle">
+                <input type="checkbox" data-layer="districts" checked>
+                <span>{% trans 'Округа с показателями' %}</span>
+                <i style="background:var(--tone-ok)"></i>
+            </label>
+            <label class="layer-toggle">
+                <input type="checkbox" data-layer="zones">
+                <span>{% trans 'Зоны ограничения движения' %}</span>
+                <i style="background:var(--tone-crit)"></i>
+            </label>
             <label class="layer-toggle">
                 <input type="checkbox" data-layer="incidents">
                 <span>{% trans 'Дорожные события' %}</span>
                 <i style="background:var(--tone-alert)"></i>
             </label>
-            <p class="small faint" style="padding:0 var(--sp-2) var(--sp-2)"
-               data-layer-status="incidents"></p>
-
             <label class="layer-toggle">
                 <input type="checkbox" data-layer="routes">
-                <span>{% trans 'Грузовые маршруты' %}</span>
+                <span>{% trans 'Грузовые коридоры' %}</span>
                 <i style="background:var(--series-2)"></i>
             </label>
-            <p class="small faint" style="padding:0 var(--sp-2) var(--sp-2)"
-               data-layer-status="routes"></p>
-
-            <label class="layer-toggle">
-                <input type="checkbox" data-layer="districts">
-                <span>{% trans 'Округа с показателями' %}</span>
-                <i style="background:var(--tone-ok)"></i>
-            </label>
-            <p class="small faint" style="padding:0 var(--sp-2) var(--sp-2)"
-               data-layer-status="districts"></p>
         </div>
 
         {# --- Условия отбора --------------------------------------------- #}
@@ -74,7 +69,7 @@
                 <select id="m-district" data-map-filter="district">
                     <option value="">{% trans 'Все округа' %}</option>
                     {% for district in districts %}
-                        <option value="{{ district.pk }}">{{ district.name }}</option>
+                        <option value="{{ district.short_name }}">{{ district.name }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -83,12 +78,39 @@
                 <select id="m-type" data-map-filter="type">
                     <option value="">{% trans 'Все типы' %}</option>
                     {% for type in types %}
-                        <option value="{{ type.pk }}">{{ type.name }}</option>
+                        <option value="{{ type.code }}">{{ type.name }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <p class="small faint" style="margin-top:var(--sp-2)">{% trans 'Изменение условий перезагружает включённые слои.' %}</p>
+            <p class="small faint" style="margin-top:var(--sp-2)">
+                {% trans 'Отбор применяется к уже полученным данным: карта перерисовывается без запроса к серверу.' %}
+            </p>
         </div>
+
+        {# --- Раскраска округов ------------------------------------------ #}
+        {% if metrics %}
+        <div>
+            <h3>{% trans 'Раскраска округов' %}</h3>
+            <div class="field">
+                <label for="m-metric">{% trans 'Показатель' %}</label>
+                <select id="m-metric">
+                    {% for metric in metrics %}
+                        <option value="{{ metric.key }}">{{ metric.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="scale-legend" style="margin-top:var(--sp-3)">
+                <span class="scale-legend__bar"></span>
+                <span class="small faint" id="map-legend-metric">
+                    {{ metrics.0.title }}, {% trans 'до' %}
+                    {{ metrics.0.max|spaced:0 }} {{ metrics.0.unit }}
+                </span>
+            </div>
+            <p class="small faint" style="margin-top:var(--sp-2)">
+                {% trans 'Округ, по которому показатель не измерен, остаётся серым.' %}
+            </p>
+        </div>
+        {% endif %}
 
         {# --- Инструмент «что рядом» -------------------------------------- #}
         <div>
@@ -98,7 +120,7 @@
                 <input type="number" id="probe-radius" value="3" min="0.5" max="25" step="0.5">
             </div>
             <button class="button button--block" type="button" id="map-probe"
-                    style="margin-top:var(--sp-3)">{% trans 'Что рядом с точкой' %}</button>
+                    style="margin-top:var(--sp-3)">{% trans 'Указать точку на карте' %}</button>
             <div id="probe-results" style="margin-top:var(--sp-3)"></div>
         </div>
 
@@ -111,6 +133,9 @@
                 <span><i style="background:var(--tone-alert)"></i>{% trans 'пробки (7–8)' %}</span>
                 <span><i style="background:var(--tone-crit)"></i>{% trans 'движение остановлено (9–10)' %}</span>
             </div>
+            <p class="small faint" style="margin-top:var(--sp-2)">
+                {% trans 'Загруженность рассчитана имитационной моделью и помечена происхождением «смоделировано».' %}
+            </p>
         </div>
     </div>
 
@@ -122,12 +147,11 @@
 </div>
 
 <p class="small faint" style="margin-top:var(--sp-3)">
-    Слои загружаются по требованию. Одновременно отображается не более
-    {{ max_features }} объектов на слой — при большем числе записей уточните
-    условия отбора.
+    {% trans 'Данные приходят векторными тайлами: на экран передаётся содержимое видимой области, а подробность геометрии соответствует масштабу. Контуры объектов появляются при увеличении.' %}
 </p>
 {% endblock %}
 
 {% block scripts %}
+<script src="{% static 'vendor/maplibre/maplibre-gl.js' %}" defer></script>
 <script src="{% static 'js/ff-map.js' %}" defer></script>
 {% endblock %}

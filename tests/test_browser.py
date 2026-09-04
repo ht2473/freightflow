@@ -7,10 +7,10 @@
 остаётся вне его охвата. Здесь страницы открываются управляемым браузером,
 и любое сообщение об ошибке в консоли считается отказом.
 
-Внешняя сеть при этом не используется: запросы к тайловому серверу и к
-службе шрифтов перехватываются и обслуживаются заглушками. Проверка не
-должна зависеть от доступности стороннего сервиса — иначе она начнёт
-падать по причинам, к приложению не относящимся.
+Внешняя сеть при этом не используется: тайлы карты система отдаёт сама,
+а запросы к службе шрифтов перехватываются и обслуживаются заглушками.
+Проверка не должна зависеть от доступности стороннего сервиса — иначе она
+начнёт падать по причинам, к приложению не относящимся.
 
 Запуск:
     pytest tests/test_browser.py
@@ -20,7 +20,7 @@
 
 from __future__ import annotations
 
-import base64
+import io
 import os
 
 import pytest
@@ -35,15 +35,8 @@ pytest.importorskip("playwright", reason="Playwright не установлен")
 
 pytestmark = [pytest.mark.django_db, pytest.mark.browser]
 
-#: Прозрачный однопиксельный PNG — заглушка тайла подложки.
-BLANK_TILE = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
-    "YPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
-)
-
 #: Адреса, которые страница запрашивает у сторонних служб.
 EXTERNAL_PATTERNS = (
-    "**/*.basemaps.cartocdn.com/**",
     "**/fonts.googleapis.com/**",
     "**/fonts.gstatic.com/**",
 )
@@ -53,15 +46,11 @@ EXTERNAL_PATTERNS = (
 def offline_page(page):
     """Страница браузера, отрезанная от внешних служб."""
 
-    def stub_tile(route):
-        route.fulfill(status=200, content_type="image/png", body=BLANK_TILE)
-
     def stub_text(route):
         route.fulfill(status=200, content_type="text/css", body="")
 
-    page.route("**/*.basemaps.cartocdn.com/**", stub_tile)
-    page.route("**/fonts.googleapis.com/**", stub_text)
-    page.route("**/fonts.gstatic.com/**", stub_text)
+    for pattern in EXTERNAL_PATTERNS:
+        page.route(pattern, stub_text)
     return page
 
 
@@ -111,17 +100,43 @@ class TestMap:
     """Карта — раздел, ради которого этот набор и появился."""
 
     def test_map_initializes(self, live_server, offline_page, console_errors, full_dataset):
-        """Карта создаётся и отрисовывает подложку.
+        """Карта создаётся и сообщает о готовности.
 
-        Проверяется не отсутствие исключения, а результат: контейнер получил
-        разметку Leaflet и на нём появились плитки подложки.
+        Проверяется не отсутствие исключения, а результат: холст WebGL создан
+        и сценарий довёл построение до конца.
         """
         offline_page.goto(f"{live_server.url}/map/", wait_until="networkidle")
+        offline_page.wait_for_selector("#map-canvas[data-map-ready]", timeout=20_000)
 
         assert console_errors == [], console_errors
-        assert offline_page.locator("#map-canvas.leaflet-container").count() == 1
-        offline_page.wait_for_selector("img.leaflet-tile", timeout=10_000)
-        assert offline_page.locator("img.leaflet-tile").count() > 0
+        assert offline_page.locator("#map-canvas canvas.maplibregl-canvas").count() == 1
+
+    def test_map_requests_vector_tiles(
+        self, live_server, offline_page, console_errors, full_dataset
+    ):
+        """Данные приходят тайлами со своего домена, а не сторонней службы.
+
+        Запросы считаются по журналу браузера, а не по ``performance``
+        страницы: тайлы забирает и разбирает рабочий поток, и его обращения
+        в перечень ресурсов главного потока не попадают.
+        """
+        requested: list[str] = []
+        offline_page.on("request", lambda request: requested.append(request.url))
+
+        offline_page.goto(f"{live_server.url}/map/", wait_until="networkidle")
+        offline_page.wait_for_selector("#map-canvas[data-map-ready]", timeout=20_000)
+        offline_page.wait_for_timeout(2000)
+
+        tiles = [url for url in requested if url.endswith(".pbf")]
+        assert tiles, requested
+        assert any(url.endswith("/tiles/tiles.json") for url in requested), requested
+        assert all(url.startswith(live_server.url) for url in tiles), tiles
+
+        # Всё, что относится к карте, приходит со своего домена: внешними
+        # остаются только запросы к службе шрифтов, перехваченные заглушкой.
+        external = [url for url in requested if not url.startswith(live_server.url)]
+        assert all("fonts.g" in url for url in external), external
+        assert console_errors == [], console_errors
 
     def test_map_centered_on_moscow(self, live_server, offline_page, full_dataset):
         """Карта центрирована на Москве, а не на нулевом меридиане.
@@ -139,15 +154,45 @@ class TestMap:
         assert 55.0 < latitude < 56.5
         assert 36.5 < longitude < 38.5
 
-    def test_object_layer_renders(self, live_server, offline_page, console_errors, full_dataset):
-        """Слой объектов инфраструктуры загружается и отрисовывается."""
+    def test_layers_are_drawn(self, live_server, offline_page, console_errors, full_dataset):
+        """На холсте появляется изображение, а не однотонная заливка.
+
+        Слои рисуются средствами WebGL, поэтому проверяется само
+        изображение: снимок холста снимается браузером, потому что чтение
+        буфера из сценария даёт пустоту — содержимое кадра после отрисовки
+        не сохраняется.
+        """
+        from PIL import Image
+
         offline_page.goto(f"{live_server.url}/map/", wait_until="networkidle")
-        offline_page.wait_for_function(
-            "document.querySelectorAll("
-            "'#map-canvas canvas, #map-canvas .leaflet-overlay-pane path'"
-            ").length > 0",
-            timeout=10_000,
-        )
+        offline_page.wait_for_selector("#map-canvas[data-map-ready]", timeout=20_000)
+        offline_page.wait_for_timeout(2500)
+
+        shot = offline_page.locator("#map-canvas canvas.maplibregl-canvas").screenshot()
+        colours = Image.open(io.BytesIO(shot)).convert("RGB").getcolors(maxcolors=1 << 20)
+
+        assert colours is not None and len(colours) > 8, "на холсте карты только фон"
+        assert console_errors == [], console_errors
+
+    def test_district_labels_are_shown(self, live_server, offline_page, full_dataset):
+        """Названия округов выводятся разметкой поверх карты."""
+        offline_page.goto(f"{live_server.url}/map/", wait_until="networkidle")
+        offline_page.wait_for_selector("#map-canvas[data-map-ready]", timeout=20_000)
+        assert offline_page.locator(".map-label").count() > 0
+
+    def test_layer_toggle_does_not_reload(
+        self, live_server, offline_page, console_errors, full_dataset
+    ):
+        """Включение слоя выполняется на полученных данных, без запроса."""
+        offline_page.goto(f"{live_server.url}/map/", wait_until="networkidle")
+        offline_page.wait_for_selector("#map-canvas[data-map-ready]", timeout=20_000)
+
+        requested: list[str] = []
+        offline_page.on("request", lambda request: requested.append(request.url))
+        offline_page.click("input[data-layer='incidents']")
+        offline_page.wait_for_timeout(500)
+
+        assert not [url for url in requested if url.endswith(".pbf")], requested
         assert console_errors == [], console_errors
 
 
@@ -159,15 +204,15 @@ class TestTheme:
     ):
         """Смена оформления не роняет карту.
 
-        Подложка меняется наблюдателем за атрибутом data-theme. Ошибка
-        в этом обработчике не видна на снимке страницы, но ломает карту
-        при первом же переключении темы.
+        Стиль собирается заново теми же переменными, что и остальной
+        интерфейс. Ошибка в этом обработчике не видна на снимке страницы,
+        но ломает карту при первом же переключении темы.
         """
         offline_page.goto(f"{live_server.url}/map/", wait_until="networkidle")
-        offline_page.wait_for_selector("img.leaflet-tile", timeout=10_000)
+        offline_page.wait_for_selector("#map-canvas[data-map-ready]", timeout=20_000)
 
         offline_page.click("button[data-action='theme']")
-        offline_page.wait_for_timeout(500)
+        offline_page.wait_for_timeout(1000)
 
         assert console_errors == [], console_errors
-        assert offline_page.locator("img.leaflet-tile").count() > 0
+        assert offline_page.locator("#map-canvas canvas.maplibregl-canvas").count() == 1

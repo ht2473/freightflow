@@ -1,9 +1,10 @@
-"""Интерактивная карта и обслуживающие её слои GeoJSON.
+"""Интерактивная карта.
 
-Страница карты отдаёт только каркас, а данные загружаются асинхронно
-отдельными слоями. Такое разделение позволяет включать и выключать слои без
-перезагрузки страницы и ограничивать объём передаваемых данных видимой
-областью экрана.
+Страница отдаёт каркас и настройки, а содержимое приходит векторными
+тайлами: клиент получает данные того квадрата сетки, который видит, и с той
+подробностью, которая различима на его масштабе. Включение слоёв, отбор по
+округу и смена показателя раскраски выполняются на уже полученном тайле,
+без обращения к серверу.
 """
 
 from __future__ import annotations
@@ -14,33 +15,63 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_GET
-from geo import simplify, to_feature_collection
-from geo.queries import in_bbox
 
 from .. import selectors
-from ..choices import IncidentType, RoadClass, RouteType, congestion_state
-from ..models import (
-    CargoRoute,
-    District,
-    InfrastructureObject,
-    InfrastructureType,
-    RoadSegment,
-    TrafficIncident,
-)
-from .base import choice_param, int_param, page_context
+from ..models import District, InfrastructureType
+from ..tilelayers import MAX_ZOOM, MIN_ZOOM
+from .base import int_param, page_context
 
-#: Шаг прореживания границ округов при отдаче на карту. Значение
-#: подобрано по виду контура: при шаге восемь очертания округов
-#: на экранном масштабе неотличимы от исходных.
-DISTRICT_SIMPLIFY_STEP = 8
+#: Наибольший масштаб, до которого карта увеличивается. Тайлы собираются
+#: до шестнадцатого; дальше клиент растягивает последний, и это верно —
+#: подробнее исходных данных карта всё равно не станет.
+MAP_MAX_ZOOM = 18
 
-#: Шаг прореживания геометрии магистралей. Магистраль собрана из сотен
-#: частей и содержит тысячи вершин; на экранном масштабе различима
-#: примерно каждая четвёртая.
-ROAD_SIMPLIFY_STEP = 4
+#: Запас вокруг города, за который карта не выпускает вид. Без него
+#: пользователь уводит карту в пустой океан и не понимает, куда вернуться.
+BOUNDS_MARGIN = 0.35
 
 
-def map_settings() -> dict:
+def choropleth_metrics(profiles: list[dict], index: list[dict]) -> list[dict]:
+    """Показатели, по которым раскрашиваются округа.
+
+    Верхняя граница шкалы берётся из самих данных, а не назначается: она
+    определяет, что считать насыщенным цветом, и при другом составе округов
+    должна быть другой. Показатель, не измеренный ни по одному округу,
+    в перечень не попадает — раскрашивать по нему нечего.
+    """
+    scores = [row["score"] for row in index if row.get("score") is not None]
+    congestion = [
+        float(row["congestion"]) for row in profiles if row.get("congestion") is not None
+    ]
+    counts = [row["object_count"] for row in profiles if row.get("object_count")]
+
+    candidates = [
+        {
+            "key": "index",
+            "title": _("Индекс логистической нагрузки"),
+            "property": "index",
+            "unit": _("баллов"),
+            "max": max(scores) if scores else 0,
+        },
+        {
+            "key": "congestion",
+            "title": _("Загруженность сети"),
+            "property": "congestion",
+            "unit": _("баллов"),
+            "max": max(congestion) if congestion else 0,
+        },
+        {
+            "key": "objects",
+            "title": _("Число объектов"),
+            "property": "objects",
+            "unit": _("объектов"),
+            "max": max(counts) if counts else 0,
+        },
+    ]
+    return [item for item in candidates if item["max"]]
+
+
+def map_settings(metrics: list[dict]) -> dict:
     """Собрать настройки карты для передачи в клиентский сценарий.
 
     Словарь формируется здесь, а не в разметке. Подстановка чисел в шаблон
@@ -50,19 +81,42 @@ def map_settings() -> dict:
     ``json_script``, сериализуются средствами Python и локализации
     не подчиняются.
     """
+    min_lon, min_lat, max_lon, max_lat = settings.MAP_CITY_BOUNDS
+    districts = [
+        {
+            "name": district.name,
+            "short_name": district.short_name,
+            "lon": center[0],
+            "lat": center[1],
+        }
+        for district in District.objects.with_geometry()
+        if (center := district.map_center) is not None
+    ]
+
     return {
         "center": [settings.MAP_DEFAULT_CENTER[0], settings.MAP_DEFAULT_CENTER[1]],
         "zoom": settings.MAP_DEFAULT_ZOOM,
-        "tileUrl": settings.MAP_TILE_URL,
-        "tileUrlDark": settings.MAP_TILE_URL_DARK,
+        "minZoom": MIN_ZOOM,
+        "maxZoom": MAP_MAX_ZOOM,
+        "sourceMaxZoom": MAX_ZOOM,
+        "maxBounds": [
+            [min_lon - BOUNDS_MARGIN, min_lat - BOUNDS_MARGIN],
+            [max_lon + BOUNDS_MARGIN, max_lat + BOUNDS_MARGIN],
+        ],
         "attribution": settings.MAP_ATTRIBUTION,
-        "maxFeatures": settings.MAP_MAX_FEATURES,
+        "districts": districts,
+        "choropleth": [
+            {
+                "key": item["key"],
+                "title": str(item["title"]),
+                "property": item["property"],
+                "unit": str(item["unit"]),
+                "max": float(item["max"]),
+            }
+            for item in metrics
+        ],
         "urls": {
-            "objects": reverse("core:layer_objects"),
-            "roads": reverse("core:layer_roads"),
-            "routes": reverse("core:layer_routes"),
-            "incidents": reverse("core:layer_incidents"),
-            "districts": reverse("core:layer_districts"),
+            "tilejson": reverse("core:map_tilejson"),
             "nearby": reverse("core:layer_nearby"),
         },
     }
@@ -70,6 +124,9 @@ def map_settings() -> dict:
 
 def map_page(request):
     """Страница интерактивной карты логистической инфраструктуры."""
+    from analytics.services import load_index
+
+    metrics = choropleth_metrics(selectors.district_profiles(), load_index())
     context = page_context(
         request,
         title=_("Карта логистической инфраструктуры"),
@@ -81,217 +138,11 @@ def map_page(request):
         crumbs=[(_("Карта"),)],
         districts=District.objects.all(),
         types=InfrastructureType.objects.all(),
-        road_classes=RoadClass.choices,
-        route_types=RouteType.choices,
-        incident_types=IncidentType.choices,
+        metrics=metrics,
         summary=selectors.dashboard_summary(),
-        max_features=settings.MAP_MAX_FEATURES,
-        map_settings=map_settings(),
+        map_settings=map_settings(metrics),
     )
     return render(request, "pages/map.html", context)
-
-
-def _parse_bbox(request) -> list[float] | None:
-    """Разобрать параметр ``bbox=minLon,minLat,maxLon,maxLat``."""
-    raw = request.GET.get("bbox")
-    if not raw:
-        return None
-    try:
-        values = [float(part) for part in raw.split(",")]
-    except ValueError:
-        return None
-    return values if len(values) == 4 else None
-
-
-@require_GET
-def layer_objects(request) -> JsonResponse:
-    """Слой объектов инфраструктуры в формате GeoJSON."""
-    queryset = InfrastructureObject.objects.with_refs().located()
-
-    district_id = int_param(request, "district")
-    type_id = int_param(request, "type")
-    term = (request.GET.get("q") or "").strip()
-    queryset = queryset.in_district(district_id).of_type(type_id).search(term)
-
-    bbox = _parse_bbox(request)
-    rows = in_bbox(queryset, bbox) if bbox else queryset
-    # Ограничение накладывается до материализации: вызов list() над полной
-    # выборкой создавал бы объекты модели для всех записей реестра, тогда
-    # как на слой попадает лишь их часть. На выборке ORM срез превращается
-    # в LIMIT, на списке (результат отбора по прямоугольнику на SQLite) —
-    # в обычный срез.
-    rows = list(rows[: settings.MAP_MAX_FEATURES])
-
-    payload = to_feature_collection(
-        rows,
-        lambda obj: {
-            "id": obj.id,
-            "name": obj.name,
-            "type": obj.type.name,
-            "type_code": obj.type.code,
-            "district": obj.district.short_name,
-            "address": obj.address or "",
-            "capacity": float(obj.capacity_tons) if obj.capacity_tons else None,
-            "area": float(obj.area_sq_m) if obj.area_sq_m else None,
-            "hours": obj.operating_hours or "",
-            "url": obj.get_absolute_url(),
-        },
-    )
-    return JsonResponse(payload)
-
-
-@require_GET
-def layer_roads(request) -> JsonResponse:
-    """Слой участков дорожной сети с текущей загруженностью."""
-    queryset = (
-        RoadSegment.objects.select_related("district")
-        .defer("district__geom")
-        .exclude(geom__isnull=True)
-    )
-
-    road_class = choice_param(request, "class", RoadClass.values)
-    if road_class:
-        queryset = queryset.filter(road_class=road_class)
-
-    conditions = {c.road_id: c for c in selectors.latest_conditions()}
-    rows = list(queryset)
-    for road in rows:
-        if road.geom is not None:
-            road.geom = simplify(road.geom, every=ROAD_SIMPLIFY_STEP)
-
-    def properties(road: RoadSegment) -> dict:
-        condition = conditions.get(road.id)
-        level = condition.congestion_level if condition else None
-        code, label, tone = congestion_state(level)
-        return {
-            "id": road.id,
-            "name": road.name,
-            "road_class": road.get_road_class_display(),
-            "lanes": road.lanes,
-            "length": float(road.length_km) if road.length_km else None,
-            "speed_limit": road.speed_limit_kmh,
-            "congestion": level,
-            "state": code,
-            "state_label": label,
-            "tone": tone,
-            "speed": float(condition.avg_speed_kmh)
-            if condition and condition.avg_speed_kmh
-            else None,
-            "url": road.get_absolute_url(),
-        }
-
-    return JsonResponse(to_feature_collection(rows, properties))
-
-
-@require_GET
-def layer_routes(request) -> JsonResponse:
-    """Слой грузовых маршрутов."""
-    queryset = CargoRoute.objects.exclude(geom__isnull=True)
-
-    route_type = choice_param(request, "type", RouteType.values)
-    if route_type:
-        queryset = queryset.filter(route_type=route_type)
-
-    rows = list(queryset[: settings.MAP_MAX_FEATURES])
-    payload = to_feature_collection(
-        rows,
-        lambda route: {
-            "id": route.id,
-            "name": route.name,
-            "route_type": route.route_type,
-            "route_type_label": route.get_route_type_display(),
-            "distance": float(route.distance_km) if route.distance_km else None,
-            "trucks": route.truck_count_day,
-            "url": route.get_absolute_url(),
-        },
-        # Маршруты передаются в упрощённом виде: детализация ломаной за
-        # пределами видимого масштаба не влияет на восприятие коридора.
-        simplify_every=2,
-    )
-    return JsonResponse(payload)
-
-
-@require_GET
-def layer_incidents(request) -> JsonResponse:
-    """Слой дорожных инцидентов."""
-    queryset = TrafficIncident.objects.with_refs().exclude(geom__isnull=True)
-
-    incident_type = choice_param(request, "type", IncidentType.values)
-    if incident_type:
-        queryset = queryset.filter(incident_type=incident_type)
-    if request.GET.get("state") == "open":
-        queryset = queryset.filter(resolved_at__isnull=True)
-    if request.GET.get("cargo") == "1":
-        queryset = queryset.filter(affects_cargo=True)
-
-    rows = list(queryset.order_by("-reported_at")[: settings.MAP_MAX_FEATURES])
-    payload = to_feature_collection(
-        rows,
-        lambda incident: {
-            "id": incident.id,
-            "type": incident.incident_type,
-            "type_label": incident.get_incident_type_display(),
-            "severity": incident.severity,
-            "severity_label": incident.severity_state[0],
-            "tone": incident.severity_state[1],
-            "road": incident.road.name if incident.road_id else "",
-            "description": incident.description or "",
-            "reported_at": incident.reported_at.isoformat(),
-            "is_open": incident.is_open,
-            "affects_cargo": incident.affects_cargo,
-            "url": incident.get_absolute_url(),
-        },
-    )
-    return JsonResponse(payload)
-
-
-@require_GET
-def layer_districts(request) -> JsonResponse:
-    """Слой округов с агрегированными показателями.
-
-    Округ отображается своей границей: показатель, отнесённый к территории,
-    читается по площади, а не по одной метке в условном центре.
-
-    Границы упрощаются перед отдачей. Исходный контур округа содержит до трёх
-    тысяч вершин — на экранном масштабе такая подробность неразличима, но
-    увеличивает ответ в разы.
-    """
-    boundaries = {
-        district.id: district.geom
-        for district in District.objects.with_geometry().exclude(geom__isnull=True)
-    }
-
-    features = []
-    for profile in selectors.district_profiles():
-        district = profile["district"]
-        boundary = boundaries.get(district.id)
-        center = district.map_center
-
-        if boundary is not None:
-            geometry = simplify(boundary, every=DISTRICT_SIMPLIFY_STEP).geojson
-        elif center:
-            geometry = {"type": "Point", "coordinates": [center[0], center[1]]}
-        else:
-            continue
-
-        features.append(
-            {
-                "type": "Feature",
-                "geometry": geometry,
-                "properties": {
-                    "id": district.id,
-                    "name": district.name,
-                    "short_name": district.short_name,
-                    "objects": profile["object_count"],
-                    "capacity": profile["capacity_tons"],
-                    "volume": profile["volume_tons"],
-                    "congestion": profile["congestion"],
-                    "tone": profile["congestion_tone"],
-                    "url": district.get_absolute_url(),
-                },
-            }
-        )
-    return JsonResponse({"type": "FeatureCollection", "features": features, "count": len(features)})
 
 
 @require_GET
@@ -302,6 +153,8 @@ def nearby_objects(request) -> JsonResponse:
     система возвращает ближайшие объекты с расстоянием до каждого.
     """
     from geo import nearest
+
+    from ..models import InfrastructureObject
 
     try:
         lon = float(request.GET.get("lon"))

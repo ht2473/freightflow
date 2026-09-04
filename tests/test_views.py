@@ -167,34 +167,7 @@ class TestPagination:
 
 
 class TestMapLayers:
-    """Слои карты в формате GeoJSON."""
-
-    def test_objects_layer(self, client, full_dataset):
-        """Слой объектов возвращает коллекцию GeoJSON."""
-        payload = client.get(reverse("core:layer_objects")).json()
-        assert payload["type"] == "FeatureCollection"
-        assert payload["count"] == 4
-
-    def test_roads_layer_has_congestion(self, client, full_dataset):
-        """Слой дорожной сети содержит оценку загруженности."""
-        payload = client.get(reverse("core:layer_roads")).json()
-        assert payload["features"][0]["properties"]["congestion"] is not None
-
-    def test_incidents_layer(self, client, full_dataset):
-        """Слой инцидентов формируется."""
-        assert client.get(reverse("core:layer_incidents")).json()["count"] == 4
-
-    def test_districts_layer(self, client, full_dataset):
-        """Слой округов содержит агрегированные показатели."""
-        payload = client.get(reverse("core:layer_districts")).json()
-        assert payload["features"][0]["properties"]["objects"] >= 0
-
-    def test_bbox_filter(self, client, full_dataset):
-        """Ограничение областью экрана сокращает выдачу."""
-        payload = client.get(
-            reverse("core:layer_objects"), {"bbox": "37.60,55.73,37.63,55.76"}
-        ).json()
-        assert payload["count"] < 4
+    """Инструменты карты, работающие поверх тайлов."""
 
     def test_nearby_search(self, client, full_dataset):
         """Поиск ближайших объектов возвращает расстояния."""

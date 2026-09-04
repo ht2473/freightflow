@@ -4,15 +4,7 @@
 пространство имён, чтобы маршруты объявлялись компактно и единообразно.
 """
 
-from .mapview import (
-    layer_districts,
-    layer_incidents,
-    layer_objects,
-    layer_roads,
-    layer_routes,
-    map_page,
-    nearby_objects,
-)
+from .mapview import map_page, nearby_objects
 from .monitoring import flow_overview, incident_detail, incident_list, traffic
 from .pages import about, api_docs, health, help_page, home, methodology, sitemap_page
 from .registry import (
@@ -45,11 +37,6 @@ __all__ = [
     "home",
     "incident_detail",
     "incident_list",
-    "layer_districts",
-    "layer_incidents",
-    "layer_objects",
-    "layer_roads",
-    "layer_routes",
     "map_page",
     "methodology",
     "nearby_objects",

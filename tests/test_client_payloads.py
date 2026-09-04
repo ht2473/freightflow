@@ -77,15 +77,35 @@ class TestMapSettings:
         assert 55.0 < latitude < 56.5, latitude
         assert 36.5 < longitude < 38.5, longitude
 
-    def test_layer_urls_present(self, client, full_dataset):
-        """Адреса всех слоёв переданы клиенту."""
+    def test_source_addresses_present(self, client, full_dataset):
+        """Адреса источника тайлов и поиска по точке переданы клиенту."""
         response = client.get(reverse("core:map"))
         payload = json_script_payload(response.content.decode(), "map-settings")
-        assert set(payload["urls"]) == {
-            "objects", "roads", "routes", "incidents", "districts", "nearby",
-        }
+        assert set(payload["urls"]) == {"tilejson", "nearby"}
         for url in payload["urls"].values():
             assert url.startswith("/")
+
+    @pytest.mark.parametrize("language", LANGUAGES)
+    def test_choropleth_limits_are_numbers(self, client, full_dataset, language):
+        """Границы шкалы раскраски остаются числами на любом языке.
+
+        Значение шкалы задаёт цвет заливки: локализованная запятая сделала бы
+        из одного числа два, и раскраска перестала бы соответствовать данным.
+        """
+        with translation.override(language):
+            response = client.get(reverse("core:map"))
+        payload = json_script_payload(response.content.decode(), "map-settings")
+        for metric in payload["choropleth"]:
+            assert isinstance(metric["max"], (int, float)), metric
+
+    def test_district_labels_carry_coordinates(self, client, full_dataset):
+        """Подписи округов приходят с координатами их центров."""
+        response = client.get(reverse("core:map"))
+        payload = json_script_payload(response.content.decode(), "map-settings")
+        assert payload["districts"]
+        for district in payload["districts"]:
+            assert 36.5 < district["lon"] < 38.5
+            assert 55.0 < district["lat"] < 56.5
 
     def test_no_raw_numbers_in_data_attributes(self, client, full_dataset):
         """На странице карты не осталось чисел, подставленных в разметку.
