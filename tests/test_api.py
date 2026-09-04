@@ -104,9 +104,16 @@ class TestNetworkEndpoints:
         assert client.get(f"{BASE}roads/").json()["count"] == len(roads)
 
     def test_road_geometry(self, client, full_dataset):
-        """Геометрия участка отдаётся ломаной GeoJSON."""
+        """Геометрия магистрали отдаётся набором ломаных GeoJSON.
+
+        Именно набором: магистраль собрана из разрозненных частей, а
+        разделённая проезжая часть размечена двумя независимыми линиями.
+        Тип не зависит от того, какая СУБД обслуживает контур.
+        """
         payload = client.get(f"{BASE}roads/").json()
-        assert payload["results"][0]["geometry"]["type"] == "LineString"
+        geometry = payload["results"][0]["geometry"]
+        assert geometry["type"] == "MultiLineString"
+        assert len(geometry["coordinates"][0]) >= 2
 
     def test_current_traffic(self, client, full_dataset, roads):
         """Текущая обстановка возвращает по одному замеру на участок."""

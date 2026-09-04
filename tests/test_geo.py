@@ -229,3 +229,41 @@ class TestGeometryField:
             "МУСОР", None, SimpleNamespace(vendor="sqlite")
         )
         assert result is None
+
+
+class TestGeometryNormalization:
+    """Приведение геометрии к типу колонки при записи.
+
+    Иначе приведение выполняет сама СУБД: PostGIS приводит значение к типу
+    колонки, SQLite хранит текст как есть, и одна и та же запись читалась бы
+    из двух контуров разными типами.
+    """
+
+    def test_line_becomes_a_set_of_lines(self):
+        from geo.fields import MultiLineStringField
+
+        prepared = MultiLineStringField().get_prep_value(
+            Geometry.line([(37.6, 55.7), (37.7, 55.8)])
+        )
+        assert prepared.startswith("MULTILINESTRING")
+
+    def test_polygon_becomes_a_multipolygon(self):
+        from geo.fields import MultiPolygonField
+
+        ring = [[37.6, 55.7], [37.7, 55.7], [37.7, 55.8], [37.6, 55.7]]
+        prepared = MultiPolygonField().get_prep_value(Geometry("POLYGON", [ring]))
+        assert prepared.startswith("MULTIPOLYGON")
+
+    def test_matching_type_is_left_alone(self):
+        from geo.fields import MultiLineStringField
+
+        prepared = MultiLineStringField().get_prep_value(
+            Geometry("MULTILINESTRING", [[[37.6, 55.7], [37.7, 55.8]]])
+        )
+        assert prepared.count("MULTILINESTRING") == 1
+        assert prepared.count("((") == 1
+
+    def test_point_field_is_not_touched(self):
+        from geo.fields import PointField
+
+        assert PointField().get_prep_value(Geometry.point(37.6, 55.7)) == "POINT(37.6 55.7)"

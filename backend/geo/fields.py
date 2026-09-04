@@ -76,20 +76,40 @@ class GeometryField(models.Field):
             return f"ST_GeomFromText(%s, {self.srid})"
         return "%s"
 
+    #: Составной тип колонки → одиночная геометрия, которую он принимает.
+    MULTI_FORMS = {
+        "MultiLineString": ("LINESTRING", "MULTILINESTRING"),
+        "MultiPolygon": ("POLYGON", "MULTIPOLYGON"),
+    }
+
+    def normalize(self, geometry: Geometry) -> Geometry:
+        """Привести геометрию к типу колонки.
+
+        Одиночная ломаная, записанная в колонку набора линий, хранится
+        набором из одной части. Приведение выполняется здесь, потому что
+        иначе его выполняет сама СУБД: PostGIS приводит значение к типу
+        колонки, а SQLite хранит текст как есть, и одна и та же запись
+        читалась бы из двух контуров разными типами.
+        """
+        forms = self.MULTI_FORMS.get(self.geom_type)
+        if forms and geometry.geom_type == forms[0]:
+            return Geometry(forms[1], [geometry.coordinates], geometry.srid)
+        return geometry
+
     def get_prep_value(self, value):
         """Привести значение прикладного уровня к строке WKT."""
         value = super().get_prep_value(value)
         if value is None or value == "":
             return None
         if isinstance(value, Geometry):
-            return value.wkt
+            return self.normalize(value).wkt
         if isinstance(value, dict):
-            return Geometry.from_geojson(value).wkt
+            return self.normalize(Geometry.from_geojson(value)).wkt
         if isinstance(value, (list, tuple)) and len(value) == 2:
-            return Geometry.point(value[0], value[1]).wkt
+            return self.normalize(Geometry.point(value[0], value[1])).wkt
         if isinstance(value, str):
             # Строка уже в WKT — нормализуем, попутно проверив корректность.
-            return Geometry.from_wkt(value).wkt
+            return self.normalize(Geometry.from_wkt(value)).wkt
         raise TypeError(f"Невозможно привести {type(value)!r} к геометрии")
 
     # --------------------------------------------------------------- чтение
