@@ -80,7 +80,7 @@ class TestRanking:
 
     def test_area_alone_orders_by_area(self, prepared):
         """При единственной значимой составляющей порядок задаёт она."""
-        weights = {code: 0.0 for code in siting.DEFAULT_WEIGHTS}
+        weights = dict.fromkeys(siting.DEFAULT_WEIGHTS, 0.0)
         weights["area"] = 1.0
         result = siting.select(siting.Requirements(weights=weights))
         areas = [item.values["area"] for item in result["candidates"]]
@@ -88,7 +88,7 @@ class TestRanking:
 
     def test_frame_alone_orders_by_distance(self, prepared):
         """Составляющая «меньше — лучше» упорядочивает по возрастанию."""
-        weights = {code: 0.0 for code in siting.DEFAULT_WEIGHTS}
+        weights = dict.fromkeys(siting.DEFAULT_WEIGHTS, 0.0)
         weights["frame"] = 1.0
         result = siting.select(siting.Requirements(weights=weights))
         distances = [item.values["frame"] for item in result["candidates"]]
@@ -101,7 +101,7 @@ class TestRanking:
 
     def test_best_and_worst_bound_the_scale(self, prepared):
         """Нормирование по выборке ставит крайние площадки на границы шкалы."""
-        weights = {code: 0.0 for code in siting.DEFAULT_WEIGHTS}
+        weights = dict.fromkeys(siting.DEFAULT_WEIGHTS, 0.0)
         weights["area"] = 1.0
         candidates = siting.select(siting.Requirements(weights=weights))["candidates"]
         assert candidates[0].total == 100.0

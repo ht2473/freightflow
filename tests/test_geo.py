@@ -7,7 +7,12 @@
 from __future__ import annotations
 
 import pytest
-from geo.geometry import Geometry, GeometryError, haversine_km
+from geo.geometry import (
+    Geometry,
+    GeometryError,
+    distance_to_polyline_km,
+    haversine_km,
+)
 
 
 class TestWktParsing:
@@ -174,6 +179,50 @@ class TestHaversine:
         """Соблюдается неравенство треугольника."""
         a, b, c = (37.0, 55.0), (38.0, 56.0), (39.0, 57.0)
         assert haversine_km(a, c) <= haversine_km(a, b) + haversine_km(b, c) + 1e-6
+
+
+class TestPolylineDistance:
+    """Расстояние от точки до ломаной."""
+
+    #: Отрезок по меридиану длиной около одиннадцати километров.
+    LINE = [[37.620, 55.700], [37.620, 55.800]]
+
+    def test_point_on_the_line(self):
+        """Точка на линии отстоит от неё на ноль."""
+        assert distance_to_polyline_km(self.LINE, 37.620, 55.750) == pytest.approx(0, abs=1e-6)
+
+    def test_distance_measured_to_the_line_not_to_vertices(self):
+        """Расстояние измеряется до самой линии, а не до её вершин.
+
+        Точка напротив середины длинного звена отстоит от дороги на метры,
+        тогда как до ближайшей размеченной вершины — километры.
+        """
+        to_line = distance_to_polyline_km(self.LINE, 37.630, 55.750)
+        to_nearest_vertex = min(
+            haversine_km((37.630, 55.750), point) for point in self.LINE
+        )
+        assert to_line < 1.0
+        assert to_nearest_vertex > 5.0
+
+    def test_beyond_the_end_measures_from_the_end(self):
+        """За пределами звена расстояние отсчитывается от его конца."""
+        beyond = distance_to_polyline_km(self.LINE, 37.620, 55.900)
+        assert beyond == pytest.approx(haversine_km((37.620, 55.900), (37.620, 55.800)), rel=0.01)
+
+    def test_single_point_line(self):
+        """Ломаная из одной вершины сводится к расстоянию до точки."""
+        assert distance_to_polyline_km([[37.62, 55.75]], 37.62, 55.76) == pytest.approx(
+            haversine_km((37.62, 55.76), (37.62, 55.75)), rel=0.01
+        )
+
+    def test_empty_line(self):
+        """Пустая ломаная не имеет расстояния."""
+        assert distance_to_polyline_km([], 37.62, 55.75) == float("inf")
+
+    def test_nearest_of_several_links(self):
+        """Из нескольких звеньев выбирается ближайшее."""
+        line = [[37.60, 55.70], [37.60, 55.75], [37.70, 55.75]]
+        assert distance_to_polyline_km(line, 37.65, 55.751) < 0.2
 
 
 class TestGeometryField:

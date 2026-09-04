@@ -32,6 +32,9 @@ DEFAULT_SRID = 4326
 # Средний радиус Земли, км. Используется в формуле гаверсинуса.
 EARTH_RADIUS_KM = 6371.0088
 
+#: Длина дуги в один градус по меридиану, километры.
+DEGREE_KM = EARTH_RADIUS_KM * math.pi / 180.0
+
 # Допустимые типы геометрии. Ограничение осознанное: предметная область
 # оперирует точками (объекты, инциденты), линиями и наборами линий (дороги
 # и маршруты, состоящие из разрозненных участков) и полигонами (границы
@@ -446,6 +449,48 @@ def haversine_km(a: Sequence[float], b: Sequence[float]) -> float:
     dlat = lat2 - lat1
     h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
     return 2 * EARTH_RADIUS_KM * math.asin(math.sqrt(h))
+
+
+def distance_to_polyline_km(
+    points: Sequence[Sequence[float]], lon: float, lat: float
+) -> float:
+    """Расстояние по прямой от точки до ломаной, километры.
+
+    Расстояние измеряется до самой линии, а не до её вершин: точка,
+    оказавшаяся посередине длинного звена, отстоит от дороги на метры,
+    тогда как до ближайшей размеченной вершины могут быть километры.
+
+    Вычисление ведётся в местной плоской системе с началом в самой точке:
+    на городских расстояниях кривизна поверхности даёт погрешность меньше
+    той, что вносит прореживание разметки.
+    """
+    if not points:
+        return math.inf
+    if len(points) == 1:
+        return haversine_km((lon, lat), points[0])
+
+    scale_lon = math.cos(math.radians(lat)) * DEGREE_KM
+    projected = [
+        ((point[0] - lon) * scale_lon, (point[1] - lat) * DEGREE_KM) for point in points
+    ]
+    best = math.inf
+    for start, end in zip(projected, projected[1:], strict=False):
+        best = min(best, _segment_distance_from_origin(start, end))
+    return best
+
+
+def _segment_distance_from_origin(
+    start: tuple[float, float], end: tuple[float, float]
+) -> float:
+    """Расстояние от начала координат до отрезка в плоской системе."""
+    ax, ay = start
+    dx, dy = end[0] - ax, end[1] - ay
+    if dx == 0 and dy == 0:
+        return math.hypot(ax, ay)
+    # Положение проекции начала координат на отрезке, в долях его длины.
+    share = -(ax * dx + ay * dy) / (dx * dx + dy * dy)
+    share = max(0.0, min(1.0, share))
+    return math.hypot(ax + share * dx, ay + share * dy)
 
 
 def bbox_contains(bbox: Sequence[float], point: Sequence[float]) -> bool:

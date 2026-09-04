@@ -34,14 +34,13 @@ from core.models import (
 from django.conf import settings
 from django.core.cache import cache
 from django.utils.translation import gettext_lazy as _
-from geo.geometry import haversine_km
+from geo.geometry import distance_to_polyline_km
 
 from . import services
 
-#: Шаг прореживания ломаных при построении опорных точек.
-#: Магистраль размечена вершинами через десятки метров, тогда как расстояние
-#: до неё нужно с точностью до сотен: каждая пятая вершина сохраняет форму
-#: линии и на порядок сокращает перебор.
+#: Шаг прореживания осей. Магистраль размечена вершинами через десятки
+#: метров, тогда как расстояние до неё нужно с точностью до сотен: каждая
+#: пятая вершина сохраняет форму линии и на порядок сокращает перебор.
 VERTEX_STEP = 5
 
 #: Наибольшее число площадок в итоге сопоставления.
@@ -130,8 +129,8 @@ class Candidate:
 def select(requirements: Requirements) -> dict:
     """Подобрать площадки под требования и упорядочить их сопоставлением."""
     zones = list(RestrictionZone.objects.exclude(geom__isnull=True).order_by("level"))
-    frame_points = _frame_points()
-    corridor_points = _corridor_points()
+    frame_lines = _frame_lines()
+    corridor_lines = _corridor_lines()
     load_by_district = _district_load()
 
     # Рассмотренными считаются все площадки реестра с координатами: без них
@@ -150,7 +149,7 @@ def select(requirements: Requirements) -> dict:
     candidates: list[Candidate] = []
     for obj in queryset:
         lon, lat = obj.geom.lon, obj.geom.lat
-        frame_km = _nearest_km(frame_points, lon, lat)
+        frame_km = _nearest_km(frame_lines, lon, lat)
         if requirements.max_frame_km is not None and frame_km > requirements.max_frame_km:
             continue
 
@@ -169,7 +168,7 @@ def select(requirements: Requirements) -> dict:
                 values={
                     "area": float(obj.area_sq_m) if obj.area_sq_m is not None else None,
                     "frame": frame_km if math.isfinite(frame_km) else None,
-                    "corridor": _finite(_nearest_km(corridor_points, lon, lat)),
+                    "corridor": _finite(_nearest_km(corridor_lines, lon, lat)),
                     "permits": float(len(demanding)),
                     "load": load_by_district.get(obj.district_id),
                 },
@@ -230,11 +229,11 @@ def _rank(candidates: list[Candidate], weights: dict[str, float]) -> None:
     candidates.sort(key=lambda item: (-item.total, item.obj.name))
 
 
-def _nearest_km(points: list[tuple[float, float]], lon: float, lat: float) -> float:
-    """Расстояние до ближайшей опорной точки набора."""
-    if not points:
+def _nearest_km(lines: list[list], lon: float, lat: float) -> float:
+    """Расстояние до ближайшей из линий набора."""
+    if not lines:
         return math.inf
-    return min(haversine_km((lon, lat), point) for point in points)
+    return min(distance_to_polyline_km(line, lon, lat) for line in lines)
 
 
 def _finite(value: float) -> float | None:
@@ -242,8 +241,8 @@ def _finite(value: float) -> float | None:
     return value if math.isfinite(value) else None
 
 
-def _frame_points() -> list[tuple[float, float]]:
-    """Опорные точки улиц грузового каркаса."""
+def _frame_lines() -> list[list]:
+    """Оси улиц грузового каркаса."""
     return _cached(
         "analytics:siting:frame",
         lambda: _thin(
@@ -254,8 +253,8 @@ def _frame_points() -> list[tuple[float, float]]:
     )
 
 
-def _corridor_points() -> list[tuple[float, float]]:
-    """Опорные точки федеральных грузовых коридоров."""
+def _corridor_lines() -> list[list]:
+    """Оси федеральных грузовых коридоров."""
     return _cached(
         "analytics:siting:corridors",
         lambda: _thin(
@@ -264,19 +263,28 @@ def _corridor_points() -> list[tuple[float, float]]:
     )
 
 
-def _thin(geometries) -> list[tuple[float, float]]:
-    """Собрать прореженный набор вершин из ломаных."""
-    points: list[tuple[float, float]] = []
+def _thin(geometries) -> list[list]:
+    """Проредить оси линий, сохранив их форму.
+
+    Линии остаются линиями: расстояние измеряется до самой оси, и потеря
+    промежуточной вершины меняет его на доли её отклонения — тогда как
+    замена линии облаком вершин отнесла бы площадку посреди длинного звена
+    к дороге, до которой километры.
+    """
+    lines: list[list] = []
     for geometry in geometries:
         if geometry is None:
             continue
         vertices = geometry.points
-        points.extend(vertices[::VERTEX_STEP])
+        if len(vertices) < 2:
+            continue
+        thinned = vertices[::VERTEX_STEP]
         # Конец линии сохраняется всегда: прореживание не должно укорачивать
         # магистраль, обрывая её за несколько сотен метров до перекрёстка.
-        if vertices and vertices[-1] not in points[-1:]:
-            points.append(vertices[-1])
-    return points
+        if thinned[-1] != vertices[-1]:
+            thinned.append(vertices[-1])
+        lines.append(thinned)
+    return lines
 
 
 def _district_load() -> dict[int, float | None]:
@@ -285,7 +293,7 @@ def _district_load() -> dict[int, float | None]:
 
 
 def _cached(key: str, builder):
-    """Кешировать опорные точки на срок, заданный настройками."""
+    """Кешировать оси на срок, заданный настройками."""
     value = cache.get(key)
     if value is None:
         value = builder()
@@ -294,7 +302,7 @@ def _cached(key: str, builder):
 
 
 def invalidate() -> None:
-    """Сбросить кеш опорных точек."""
+    """Сбросить кеш осей."""
     cache.delete_many(["analytics:siting:frame", "analytics:siting:corridors"])
 
 

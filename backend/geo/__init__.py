@@ -12,7 +12,14 @@ from .fields import (
     MultiPolygonField,
     PointField,
 )
-from .geometry import DEFAULT_SRID, Geometry, GeometryError, feature_collection, haversine_km
+from .geometry import (
+    DEFAULT_SRID,
+    Geometry,
+    GeometryError,
+    distance_to_polyline_km,
+    feature_collection,
+    haversine_km,
+)
 from .mvt import TILE_CONTENT_TYPE, TileFeature, render_tile
 from .queries import (
     annotate_distance,
@@ -40,6 +47,7 @@ __all__ = [
     "TileFeature",
     "annotate_distance",
     "bbox_of",
+    "distance_to_polyline_km",
     "feature_collection",
     "haversine_km",
     "in_bbox",
