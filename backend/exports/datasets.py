@@ -35,6 +35,27 @@ def _int(params, name: str) -> int | None:
 # ---------------------------------------------------------------------------
 
 
+def _rounded(value, digits: int = 2):
+    """Округлить величину, оставив неизмеренную неопределённой.
+
+    Неизмеренная величина доходит до выгрузки пустой ячейкой. Заменять её
+    нулём нельзя: в отчёте ноль читается как измеренное отсутствие
+    мощностей, а не как отсутствие сведений о них.
+    """
+    return None if value is None else round(value, digits)
+
+
+def _total(rows, key: str, absent: str = "не измерена ни по одной записи"):
+    """Сумма измеренных значений.
+
+    Если не измерено ни одно, в сводку идёт пояснение, а не ноль: пустая
+    ячейка в итоговой строке отчёта неотличима от измеренного нуля.
+    """
+    values = [row[key] if isinstance(row, dict) else getattr(row, key) for row in rows]
+    measured = [float(value) for value in values if value is not None]
+    return round(sum(measured), 2) if measured else absent
+
+
 def objects_dataset(params) -> Dataset:
     """Реестр объектов логистической инфраструктуры."""
     queryset = (
@@ -46,8 +67,6 @@ def objects_dataset(params) -> Dataset:
     )
     rows = list(queryset)
 
-    total_capacity = sum(float(row.capacity_tons or 0) for row in rows)
-    total_area = sum(float(row.area_sq_m or 0) for row in rows)
 
     return Dataset(
         code="objects",
@@ -73,8 +92,10 @@ def objects_dataset(params) -> Dataset:
         rows=rows,
         summary=[
             ("Число объектов", len(rows)),
-            ("Суммарная мощность хранения, т", round(total_capacity, 2)),
-            ("Суммарная площадь, м²", round(total_area, 2)),
+            ("Суммарная мощность хранения, т",
+             _total(rows, "capacity_tons", "не измерена ни у одного объекта")),
+            ("Суммарная площадь, м²", _total(rows, "area_sq_m")),
+            ("С измеренной площадью", sum(1 for row in rows if row.area_sq_m is not None)),
             ("С указанными координатами", sum(1 for row in rows if row.geom)),
         ],
     )
@@ -93,8 +114,8 @@ def districts_dataset(params) -> Dataset:
         code="districts",
         title="Профили административных округов",
         description=(
-            "Сравнительные показатели двенадцати округов Москвы: обеспеченность "
-            "складскими мощностями, объёмы грузопотока и загруженность сети."
+            "Сравнительные показатели двенадцати округов Москвы: складские "
+            "площади, магистральная сеть и расчётная загруженность движения."
         ),
         columns=[
             Column("Округ", lambda p: p["district"].name, width=26),
@@ -102,18 +123,23 @@ def districts_dataset(params) -> Dataset:
             Column("Площадь, км²", lambda p: p["district"].area_sq_km, width=14, numeric=True),
             Column("Население, чел.", lambda p: p["district"].population, width=16, numeric=True),
             Column("Объектов", lambda p: p["object_count"], width=11, numeric=True),
-            Column("Мощность, т", lambda p: round(p["capacity_tons"], 2), width=16, numeric=True),
-            Column("Грузопоток, т", lambda p: round(p["volume_tons"], 2), width=16, numeric=True),
+            Column("Площадь объектов, м²",
+                   lambda p: _rounded(p["area_sq_m"]), width=20, numeric=True),
+            Column("Мощность, т", lambda p: _rounded(p["capacity_tons"]), width=16, numeric=True),
+            Column("Грузопоток, т", lambda p: _rounded(p["volume_tons"]), width=16, numeric=True),
             Column("Рейсов", lambda p: p["vehicle_count"], width=12, numeric=True),
-            Column("Дороги, км", lambda p: round(p["road_length_km"], 2), width=13, numeric=True),
-            Column("Загруженность", lambda p: p["congestion"], width=14, numeric=True),
+            Column("Дороги, км", lambda p: _rounded(p["road_length_km"]), width=13, numeric=True),
+            Column("Загруженность (расчёт)", lambda p: p["congestion"], width=22, numeric=True),
             Column("Состояние движения", lambda p: p["congestion_label"], width=26),
         ],
         rows=profiles,
         summary=[
             ("Округов в выборке", len(profiles)),
             ("Объектов всего", sum(p["object_count"] for p in profiles)),
-            ("Суммарный грузопоток, т", round(sum(p["volume_tons"] for p in profiles), 2)),
+            ("Суммарная площадь объектов, м²",
+             _total(profiles, "area_sq_m", "не измерена ни по одному округу")),
+            ("Суммарный грузопоток, т",
+             _total(profiles, "volume_tons", "не публикуется в разрезе округов")),
         ],
     )
 

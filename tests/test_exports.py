@@ -429,3 +429,32 @@ class TestCleanup:
         call_command("cleanup_exports", "--days", "14")
         assert not path.exists()
         assert not ExportJob.objects.filter(pk=job.pk).exists()
+
+
+class TestUnmeasuredValues:
+    """Неизмеренная величина не превращается в выгрузке в ноль."""
+
+    def test_absent_total_is_explained(self, objects):
+        """Итог по неизмеренной величине сопровождается пояснением."""
+        from core.models import InfrastructureObject
+
+        InfrastructureObject.objects.update(capacity_tons=None)
+        summary = dict(DATASETS["objects"][0]({}).summary)
+        assert summary["Суммарная мощность хранения, т"] == "не измерена ни у одного объекта"
+
+    def test_absent_cell_stays_empty(self, objects):
+        """Пустая величина доходит до колонки неопределённой, а не нулём."""
+        from core.models import InfrastructureObject
+
+        InfrastructureObject.objects.update(capacity_tons=None)
+        dataset = DATASETS["objects"][0]({})
+        column = next(item for item in dataset.columns if item.title == "Мощность, т")
+        assert all(column.accessor(row) is None for row in dataset.rows)
+
+    def test_district_profiles_build_without_measurements(self, districts, roads):
+        """Профили округов выгружаются и тогда, когда мощность не измерена."""
+        dataset = DATASETS["districts"][0]({})
+        for row in dataset.rows:
+            for column in dataset.columns:
+                column.accessor(row)
+        assert len(list(dataset.rows)) == len(districts)
