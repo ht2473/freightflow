@@ -609,7 +609,28 @@ def reference_counts() -> dict:
     }
 
 
+#: Счётчик поколений данных карты. Входит в ключ каждого собранного тайла:
+#: перечислить тайлы по одному невозможно — квадратов сетки миллионы, —
+#: а смена поколения делает недействительными сразу все.
+TILE_GENERATION_KEY = "map:tiles:generation"
+
+
+def tile_generation() -> int:
+    """Текущее поколение данных карты."""
+    return cache.get_or_set(TILE_GENERATION_KEY, 1, None) or 1
+
+
+def invalidate_tiles() -> None:
+    """Объявить собранные тайлы устаревшими."""
+    try:
+        cache.incr(TILE_GENERATION_KEY)
+    except ValueError:
+        # Счётчика в кеше нет — значит, нет и собранных по нему тайлов.
+        cache.set(TILE_GENERATION_KEY, 1, None)
+
+
 def invalidate_caches() -> None:
     """Сбросить кеш сводок после загрузки или изменения данных."""
     for key in ("dashboard:summary", "district:profiles", "traffic:latest_ids"):
         cache.delete(key)
+    invalidate_tiles()

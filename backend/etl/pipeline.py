@@ -38,6 +38,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any
 
+from core import selectors
 from core.choices import EtlStatus, EtlTrigger
 from core.models import DataSource, EtlReject, EtlRun
 from django.conf import settings
@@ -426,6 +427,10 @@ def run(pipeline: Pipeline, context: Context | None = None) -> RunReport:
 
     report.status = _status(report)
     _journal(entry, report, context)
+    if report.created or report.updated or report.removed:
+        # Сводки и тайлы карты собраны по прежнему составу данных: загрузка,
+        # что-либо изменившая, делает их недействительными.
+        selectors.invalidate_caches()
     logger.info("%s", report.summary())
     return report
 

@@ -30,6 +30,7 @@ from .registry import (
     source_list,
     type_list,
 )
+from .tileview import tilejson, vector_tile
 
 __all__ = [
     "about",
@@ -61,6 +62,8 @@ __all__ = [
     "sitemap_page",
     "source_detail",
     "source_list",
+    "tilejson",
     "traffic",
     "type_list",
+    "vector_tile",
 ]
