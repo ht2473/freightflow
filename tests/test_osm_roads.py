@@ -71,16 +71,57 @@ class TestGroupingKey:
 
     def test_name_preferred(self):
         assert roads._road_key({"name": "Каширское шоссе", "ref": "А-105"}) == (
-            "Каширское шоссе"
+            "каширское шоссе"
         )
 
     def test_ref_used_without_name(self):
         """Безымянная часть с учётным номером относится к трассе."""
-        assert roads._road_key({"ref": "М-4"}) == "М-4"
+        assert roads._road_key({"ref": "М-4"}) == "м-4"
 
     def test_unnamed_part_is_not_grouped(self):
         """Съезды и развязочные связки самостоятельной магистралью не являются."""
         assert roads._road_key({"highway": "trunk_link"}) is None
+
+    def test_case_differences_group_together(self):
+        """Разное написание прописных букв не разделяет магистраль.
+
+        Разметка сообщества непоследовательна: «Северо-Восточная хорда»
+        соседствует с «Северо-восточной хордой». Без приведения ключа одна
+        магистраль попадала бы в реестр двумя записями — так и было
+        до введения нормализации.
+        """
+        first = roads._road_key({"name": "Северо-Восточная хорда"})
+        second = roads._road_key({"name": "Северо-восточная хорда"})
+        assert first == second
+
+
+class TestDisplayName:
+    """Написание наименования, попадающее в реестр."""
+
+    def test_most_common_spelling_wins(self):
+        """Берётся написание, встречающееся у частей чаще."""
+        tags = [
+            {"name": "Северо-Восточная хорда"},
+            {"name": "Северо-Восточная хорда"},
+            {"name": "Северо-восточная хорда"},
+        ]
+        assert roads._display_name(tags) == "Северо-Восточная хорда"
+
+    def test_lowercase_spelling_is_preserved(self):
+        """Строчная буква в наименовании не «исправляется».
+
+        «шоссе Энтузиастов» пишется со строчной, и правило расстановки
+        прописных букв здесь навредило бы. Голосование по частям
+        от такого правила избавляет.
+        """
+        tags = [{"name": "шоссе Энтузиастов"}] * 3
+        assert roads._display_name(tags) == "шоссе Энтузиастов"
+
+    def test_ref_used_without_names(self):
+        assert roads._display_name([{"ref": "М-4"}]) == "М-4"
+
+    def test_empty_input(self):
+        assert roads._display_name([{}]) == ""
 
 
 class TestTagParsing:

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import logging
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 from core.choices import DataOrigin, RoadClass
 from core.models import DataSource, District, RoadSegment
@@ -122,12 +122,37 @@ def _hgv_allowed(tags_list: list[dict[str, str]]) -> bool | None:
 
 
 def _road_key(tags: dict[str, str]) -> str | None:
-    """Ключ группировки: наименование магистрали либо её учётный номер."""
+    """Ключ группировки: наименование магистрали либо её учётный номер.
+
+    Ключ приводится к нижнему регистру: разметка сообщества непоследовательна
+    в написании прописных букв, и «Северо-Восточная хорда» соседствует
+    с «Северо-восточной хордой». Без приведения одна магистраль попадала бы
+    в реестр двумя записями. Написание для отображения выбирается отдельно —
+    :func:`_display_name`.
+    """
     name = normalize_road_name(tags.get("name") or "")
     if name:
-        return name
+        return name.lower()
     ref = (tags.get("ref") or "").strip()
-    return ref or None
+    return ref.lower() or None
+
+
+def _display_name(tags_list: list[dict[str, str]]) -> str:
+    """Написание наименования для реестра — наиболее частое среди частей.
+
+    Голосование по частям надёжнее любого правила расстановки прописных букв:
+    в наименованиях встречаются и «шоссе Энтузиастов» со строчной, и
+    «Проспект Мира» с прописной, и оба написания правильны.
+    """
+    spellings = Counter(
+        normalize_road_name(tags.get("name") or "")
+        for tags in tags_list
+        if tags.get("name")
+    )
+    if spellings:
+        return spellings.most_common(1)[0][0]
+    refs = Counter((tags.get("ref") or "").strip() for tags in tags_list if tags.get("ref"))
+    return refs.most_common(1)[0][0] if refs else ""
 
 
 def load_road_network(client: OverpassClient, refresh: bool = False,
@@ -151,10 +176,14 @@ def load_road_network(client: OverpassClient, refresh: bool = False,
                 report.skipped += 1
                 continue
 
+            display_name = record.pop("name")
             _, created = RoadSegment.objects.update_or_create(
-                name=record.pop("name"), defaults=record,
+                name=display_name, defaults=record,
             )
-            present.add(key)
+            # В набор сохранившихся заносится отображаемое наименование:
+            # именно по нему приводится реестр к составу источника, тогда как
+            # ключ группировки приведён к нижнему регистру.
+            present.add(display_name)
             if created:
                 report.created += 1
             else:
@@ -225,8 +254,9 @@ def _build_road(key: str, ways: list[dict], districts, source,
     speeds = [value for value in (_int_tag(t, "maxspeed") for t in tags_list) if value]
     refs = [(t.get("ref") or "").strip() for t in tags_list if t.get("ref")]
 
+    display_name = _display_name(tags_list) or key
     return {
-        "name": key[:200],
+        "name": display_name[:200],
         "ref": refs[0][:32] if refs else "",
         "road_class": road_class,
         # Число полос — наибольшее из размеченных: оно определяет пропускную

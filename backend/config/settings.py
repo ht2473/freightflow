@@ -461,6 +461,11 @@ OVERPASS_ENDPOINT = env("OVERPASS_ENDPOINT", "https://overpass-api.de/api/interp
 # воспроизводимой: по сохранённому ответу видно, какие данные легли в базу.
 OSM_CACHE_DIR = Path(env("OSM_CACHE_DIR", str(ROOT_DIR / "data" / "osm")))
 
+# Каталог справочных наборов, ведущихся вручную. Часть сведений предметной
+# области публикуется только схемами и печатными перечнями, машиночитаемой
+# выгрузки не имеет и потому входит в поставку проекта файлами.
+REFERENCE_DIR = Path(env("REFERENCE_DIR", str(ROOT_DIR / "data" / "reference")))
+
 # Размер страницы реестров по умолчанию.
 PAGE_SIZE = env_int("PAGE_SIZE", 25)
 

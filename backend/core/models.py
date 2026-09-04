@@ -452,10 +452,24 @@ class RoadSegment(models.Model):
         default="",
     )
     allows_hgv = models.BooleanField(
-        _("Открыта для грузового движения"),
+        _("Разметка допускает грузовое движение"),
         null=True,
         blank=True,
-        help_text=_("Пустое значение означает, что ограничение не размечено"),
+        help_text=_("По разметке OpenStreetMap; пустое значение — сведений нет"),
+    )
+    in_freight_frame = models.BooleanField(
+        _("Входит в грузовой каркас"),
+        null=True,
+        blank=True,
+        help_text=_(
+            "По перечню Департамента транспорта. Вне каркаса движение "
+            "транспорта тяжелее 2,5 т допускается только для доставки груза "
+            "до адреса внутри района. Пустое значение — сведений нет"
+        ),
+    )
+    freight_frame_kind = models.CharField(
+        _("Роль в каркасе"), max_length=16, blank=True, default="",
+        help_text=_("Кольцевая, вылетная, хордовая магистраль"),
     )
     segment_count = models.IntegerField(
         _("Частей в исходных данных"), default=0,
