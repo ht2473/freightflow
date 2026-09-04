@@ -110,14 +110,16 @@ def _slugify(text: str) -> str:
     return cleaned[:60] or "report"
 
 
-def build_filename(dataset: Dataset, fmt: str) -> str:
-    """Сформировать имя файла отчёта с отметкой времени.
+def build_filename(dataset: Dataset, fmt: str, number: int | None = None) -> str:
+    """Сформировать имя файла отчёта с отметкой времени и номером задания.
 
-    Отметка времени в имени исключает совпадение имён при повторных выгрузках
-    одного набора и позволяет упорядочить файлы в каталоге хронологически.
+    Отметка времени упорядочивает файлы в каталоге хронологически, а номер
+    задания делает имя единственным: повторить отчёт можно и в ту же секунду,
+    и тогда одной отметки времени для различения не хватает.
     """
     stamp = timezone.localtime().strftime("%Y%m%d-%H%M%S")
-    return f"freightflow-{_slugify(dataset.code)}-{stamp}.{fmt}"
+    tail = f"-{number}" if number is not None else ""
+    return f"freightflow-{_slugify(dataset.code)}-{stamp}{tail}.{fmt}"
 
 
 def ensure_export_root() -> Path:

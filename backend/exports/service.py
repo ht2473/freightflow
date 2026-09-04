@@ -68,7 +68,7 @@ def perform(user, dataset_code: str, fmt: str, filters, *, path: str = "",
 
     try:
         dataset = builder(filters)
-        file_name = build_filename(dataset, fmt)
+        file_name = build_filename(dataset, fmt, job.pk)
         target = ensure_export_root() / file_name
 
         if fmt == "geojson":

@@ -48,6 +48,9 @@
                     <tr>
                         <td>
                             <span class="table-title">{{ job.title }}</span>
+                            {% if job.query %}
+                                <span class="table-sub">{{ job.query }}</span>
+                            {% endif %}
                         </td>
                         <td><span class="badge badge--plain">{{ job.fmt|upper }}</span></td>
                         <td class="num">{{ job.row_count|spaced }}</td>
@@ -63,10 +66,23 @@
                             {% endif %}
                         </td>
                         <td class="right">
-                            {% if job.is_ready %}
-                                <a class="button button--sm"
-                                   href="{% url 'accounts:export_download' job.pk %}">{% trans 'Скачать' %}</a>
-                            {% endif %}
+                            <div class="row" style="gap:var(--sp-2);justify-content:flex-end">
+                                {% if job.is_ready %}
+                                    <a class="button button--sm"
+                                       href="{% url 'accounts:export_download' job.pk %}">{% trans 'Скачать' %}</a>
+                                {% endif %}
+                                {% if can_export %}
+                                    <form method="post" action="{% url 'exports:create' %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="dataset" value="{{ job.dataset }}">
+                                        <input type="hidden" name="format" value="{{ job.fmt }}">
+                                        <input type="hidden" name="filters" value="{{ job.query }}">
+                                        <input type="hidden" name="next" value="{% url 'accounts:exports' %}">
+                                        <button class="button button--sm button--ghost" type="submit"
+                                                title="{% trans 'Сформировать тот же отчёт на текущих данных' %}">{% trans 'Повторить' %}</button>
+                                    </form>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                 {% endfor %}
