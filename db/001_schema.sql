@@ -8,10 +8,12 @@
 --  как миграциями Django, так и «сырым» SQL — результат идентичен.
 --
 --  Порядок применения:
---      psql -d freightflow -f db/001_schema.sql
---      psql -d freightflow -f db/002_seed_data_scale1.sql   (данные)
---      psql -d freightflow -f db/003_views.sql              (представления)
---      psql -d freightflow -f db/004_district_centers.sql   (геометрия округов)
+--      psql -d freightflow -f db/001_schema.sql              (схема)
+--      psql -d freightflow -f db/003_views.sql               (представления)
+--      psql -d freightflow -f db/004_district_centers.sql    (центры округов)
+--
+--  Данными база наполняется загрузкой из источников, а не поставляемым
+--  набором: python backend/manage.py etl --all
 -- =============================================================================
 
 BEGIN;
@@ -68,8 +70,10 @@ CREATE TABLE IF NOT EXISTS cargo_categories (
 COMMENT ON TABLE  cargo_categories IS 'Классификатор категорий перевозимых грузов';
 COMMENT ON COLUMN cargo_categories.hazard_class IS 'Класс опасности ADR: 0 — неопасный груз';
 
--- Реестр источников данных, интегрированных в систему (ЦОДД, СВП, Росстат и др.).
--- source_type определяет способ получения: api | csv | open_data | gis_service | manual.
+-- Реестр источников данных, интегрированных в систему. Источник объявляется
+-- здесь только вместе с работающим загрузчиком: запись означает, что данные
+-- оттуда действительно поступают.
+-- source_type: api | csv | open_data | gis_service | manual | model.
 CREATE TABLE IF NOT EXISTS data_sources (
     id               SERIAL PRIMARY KEY,
     code             VARCHAR(32)  NOT NULL UNIQUE,
@@ -79,11 +83,11 @@ CREATE TABLE IF NOT EXISTS data_sources (
     update_frequency VARCHAR(32),
     is_active        BOOLEAN      NOT NULL DEFAULT TRUE,
     CONSTRAINT data_sources_type_allowed CHECK (
-        source_type IN ('api', 'csv', 'open_data', 'gis_service', 'manual')
+        source_type IN ('api', 'csv', 'open_data', 'gis_service', 'manual', 'model')
     )
 );
 
-COMMENT ON TABLE  data_sources IS 'Реестр внешних источников данных';
+COMMENT ON TABLE  data_sources IS 'Реестр источников данных, наполняющих систему';
 COMMENT ON COLUMN data_sources.update_frequency IS 'Регламент обновления: hourly | daily | weekly | monthly | quarterly';
 
 -- -----------------------------------------------------------------------------

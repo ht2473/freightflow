@@ -50,6 +50,7 @@ class Command(BaseCommand):
                             help="Удалить прежние расчётные оценки")
 
     def handle(self, *args, **options) -> None:
+        started_at = timezone.now()
         source = self._ensure_source()
         roads = list(RoadSegment.objects.exclude(geom__isnull=True))
         if not roads:
@@ -59,6 +60,7 @@ class Command(BaseCommand):
         contexts = self._build_contexts(roads)
         moments = self._moments(options["days"], options["step"])
 
+        removed = 0
         with transaction.atomic():
             if options["replace"]:
                 removed, _ = TrafficCondition.objects.all().delete()
@@ -85,6 +87,11 @@ class Command(BaseCommand):
                     )
             TrafficCondition.objects.bulk_create(records, batch_size=2000)
 
+        self._journal(
+            source, started_at, len(records), removed,
+            f"глубина {options['days']} сут., шаг {options['step']} ч",
+        )
+
         self.stdout.write(self.style.SUCCESS(
             f"\nРассчитано оценок: {len(records)} "
             f"({len(roads)} магистралей, {len(moments)} моментов)"
@@ -99,19 +106,48 @@ class Command(BaseCommand):
 
     @staticmethod
     def _ensure_source() -> DataSource:
-        from core.choices import SourceType, UpdateFrequency
+        from core.choices import SourceType
 
         source, _ = DataSource.objects.update_or_create(
             code=SOURCE_CODE,
             defaults={
                 "name": "Имитационная модель загруженности",
-                "source_type": SourceType.MANUAL,
+                "source_type": SourceType.MODEL,
                 "url": "",
-                "update_frequency": UpdateFrequency.HOURLY,
+                # Регламента у расчёта нет: он выполняется по требованию,
+                # а не по расписанию, и объявлять периодичность значило бы
+                # обещать обновление, которого не происходит.
+                "update_frequency": "",
                 "is_active": True,
             },
         )
         return source
+
+    @staticmethod
+    def _journal(source: DataSource, started_at, written: int, removed: int,
+                 note: str) -> None:
+        """Записать расчёт в журнал наравне с загрузками из внешних служб.
+
+        Расчёт наполняет таблицу системы, поэтому и виден он должен быть там же,
+        где загрузки: иначе часть записей появлялась бы в базе без следа
+        о том, когда и чем она получена.
+        """
+        from core.choices import EtlStatus, EtlTrigger
+        from core.models import EtlRun
+
+        EtlRun.objects.create(
+            source=source,
+            pipeline="model.traffic",
+            target_table="traffic_conditions",
+            trigger=EtlTrigger.CLI,
+            status=EtlStatus.SUCCESS if written else EtlStatus.FAILED,
+            started_at=started_at,
+            finished_at=timezone.now(),
+            records_created=written,
+            records_loaded=written,
+            records_removed=removed,
+            parameters=note,
+        )
 
     def _moments(self, days: int, step: int):
         """Моменты расчёта: назад от текущего часа с заданным шагом."""

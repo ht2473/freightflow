@@ -13,13 +13,19 @@ from django.utils.translation import gettext_lazy as _
 
 
 class SourceType(models.TextChoices):
-    """Способ получения данных из внешнего источника."""
+    """Способ получения данных.
+
+    Расчётная модель стоит в одном ряду с внешними службами намеренно:
+    она тоже наполняет таблицы системы, и в реестре источников её место
+    рядом с ними — иначе происхождение части сведений оказалось бы скрыто.
+    """
 
     API = "api", _("Программный интерфейс (API)")
     CSV = "csv", _("Выгрузка CSV")
     OPEN_DATA = "open_data", _("Портал открытых данных")
     GIS_SERVICE = "gis_service", _("Геоинформационный сервис")
     MANUAL = "manual", _("Ручной ввод")
+    MODEL = "model", _("Расчётная модель")
 
 
 class UpdateFrequency(models.TextChoices):
