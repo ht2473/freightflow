@@ -133,6 +133,7 @@ def methodology(request):
     """Методика формирования и расчёта показателей системы."""
     # Расчётное ядро ввозится внутри представления: обратная зависимость
     # между разделами на уровне модуля замкнула бы их друг на друга.
+    from analytics import metrics as analytics_metrics
     from analytics import services as analytics_services
 
     context = page_context(
@@ -146,6 +147,8 @@ def methodology(request):
         crumbs=[(_("Данные"), "core:source_list"), (_("Методология"),)],
         coverage=selectors.data_coverage(),
         index_formula=analytics_services.index_formula(),
+        sections=analytics_metrics.by_section(),
+        metric_count=len(analytics_metrics.REGISTRY),
     )
     return render(request, "pages/methodology.html", context)
 

@@ -95,6 +95,17 @@
         </article>
     </section>
 
+<section class="section">
+    <div class="card">
+        <h3 style="margin-bottom:var(--sp-3)">{% trans 'Меры ошибки прогноза' %}</h3>
+        <div class="stack stack--tight">
+            {% for item in notes %}
+                {% include "partials/_metric_note.html" with value=item.unit %}
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
     <section class="section">
         <div class="section__head">
             <div>

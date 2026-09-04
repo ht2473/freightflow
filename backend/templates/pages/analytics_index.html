@@ -88,6 +88,7 @@
             <h3 style="margin-bottom:var(--sp-3)">{% trans 'Как устроен расчёт' %}</h3>
             <p class="small muted" style="margin-bottom:var(--sp-4)">{% trans 'Удельные величины округа нормируются методом «минимум — максимум», умножаются на веса и суммируются. Результат приводится к стобалльной шкале.' %}</p>
             <div class="stack stack--tight">
+                {% include "partials/_metric_note.html" with item=score_note value=score_note.unit %}
                 {% for item in components %}
                     {% include "partials/_metric_note.html" with value=item.weight|spaced:2 %}
                 {% endfor %}

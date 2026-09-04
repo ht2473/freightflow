@@ -14,7 +14,7 @@ from django.shortcuts import render
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_GET
 
-from . import services, spatial
+from . import metrics, services, spatial
 
 
 def _float_param(request, name: str, default: float = 0.0) -> float:
@@ -43,6 +43,7 @@ def index(request):
         rows=rows,
         summary=services.index_summary(),
         components=services.COMPONENTS,
+        score_note=metrics.describe("score"),
     )
     return render(request, "pages/analytics_index.html", context)
 
@@ -61,6 +62,7 @@ def sensitivity(request):
         crumbs=[(_("Аналитика"), "analytics:index"), (_("Чувствительность"),)],
         result=result,
         components=services.COMPONENTS,
+        notes=[metrics.describe(key) for key in ("spearman", "pearson", "entropy_weight")],
     )
     return render(request, "pages/analytics_sensitivity.html", context)
 
@@ -98,6 +100,7 @@ def spatial_analysis(request):
         metric_unit=unit,
         metrics=spatial.CHOROPLETH_METRICS,
         coverage=spatial.coverage(radius),
+        notes=[metrics.describe(key) for key in ("coverage_share", "mean_distance")],
         radius=radius,
         radius_options=spatial.RADIUS_OPTIONS,
     )
@@ -132,6 +135,7 @@ def typology(request):
         result=result,
         quality=quality,
         components=services.INDEX_COMPONENTS,
+        notes=[metrics.describe(key) for key in ("silhouette", "inertia")],
         verdict=services.silhouette_verdict(result.get("silhouette") or 0.0),
         k=k,
         k_options=bounds,
@@ -181,6 +185,7 @@ def forecast(request):
         territories=territories,
         territory=territory,
         horizons=horizons,
+        notes=[metrics.describe(key) for key in ("mae", "rmse", "mape", "gain")],
         filters={"territory": territory, "horizon": horizon,
                  "model": result.get("model").code if result.get("available") else ""},
     )
