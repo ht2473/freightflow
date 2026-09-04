@@ -185,25 +185,43 @@ COMMENT ON COLUMN cargo_routes.truck_count_day IS 'Среднесуточная 
 -- -----------------------------------------------------------------------------
 
 -- Агрегированная статистика грузопотоков по периодам.
--- direction: in (ввоз) | out (вывоз) | transit (транзит).
+-- direction: in (ввоз) | out (вывоз) | transit (транзит) | total (без деления).
+-- scope:     all (все перевозчики) | commercial (перевозки на коммерческой основе).
+-- Внутригородской ряд привязан к округу и маршруту; ведомственный приходит
+-- в разрезе территорий (territory) и круга перевозчиков, без направлений.
 CREATE TABLE IF NOT EXISTS freight_flow_stats (
-    id            SERIAL PRIMARY KEY,
-    period_date   DATE        NOT NULL,
-    period_type   VARCHAR(16) NOT NULL DEFAULT 'month',
-    route_id      INTEGER REFERENCES cargo_routes (id) ON DELETE SET NULL,
-    district_id   INTEGER REFERENCES districts (id) ON DELETE SET NULL,
-    cargo_cat_id  INTEGER REFERENCES cargo_categories (id) ON DELETE SET NULL,
-    direction     VARCHAR(16) NOT NULL,
-    volume_tons   NUMERIC(14, 2),
-    vehicle_count INTEGER,
-    avg_speed_kmh NUMERIC(6, 2),
-    source_id     INTEGER REFERENCES data_sources (id) ON DELETE SET NULL,
+    id              SERIAL PRIMARY KEY,
+    period_date     DATE        NOT NULL,
+    period_type     VARCHAR(16) NOT NULL DEFAULT 'month',
+    route_id        INTEGER REFERENCES cargo_routes (id) ON DELETE SET NULL,
+    district_id     INTEGER REFERENCES districts (id) ON DELETE SET NULL,
+    cargo_cat_id    INTEGER REFERENCES cargo_categories (id) ON DELETE SET NULL,
+    territory       VARCHAR(120) NOT NULL DEFAULT '',
+    direction       VARCHAR(16) NOT NULL,
+    scope           VARCHAR(16) NOT NULL DEFAULT 'all',
+    volume_tons     NUMERIC(14, 2),
+    turnover_ton_km NUMERIC(18, 2),
+    vehicle_count   INTEGER,
+    origin          VARCHAR(16),
+    avg_speed_kmh   NUMERIC(6, 2),
+    source_id       INTEGER REFERENCES data_sources (id) ON DELETE SET NULL,
+    external_key    VARCHAR(120) NOT NULL DEFAULT '',
     CONSTRAINT flow_period_allowed CHECK (period_type IN ('day', 'week', 'month', 'quarter', 'year')),
-    CONSTRAINT flow_direction_allowed CHECK (direction IN ('in', 'out', 'transit')),
-    CONSTRAINT flow_volume_positive CHECK (volume_tons IS NULL OR volume_tons >= 0)
+    CONSTRAINT flow_direction_allowed CHECK (direction IN ('in', 'out', 'transit', 'total')),
+    CONSTRAINT flow_scope_allowed CHECK (scope IN ('all', 'commercial')),
+    CONSTRAINT flow_volume_positive CHECK (volume_tons IS NULL OR volume_tons >= 0),
+    CONSTRAINT flow_turnover_positive CHECK (turnover_ton_km IS NULL OR turnover_ton_km >= 0)
 );
 
-COMMENT ON TABLE freight_flow_stats IS 'Статистика грузопотоков в разрезе периодов, округов и категорий грузов';
+-- Ключ записи в источнике уникален в пределах источника: повторная загрузка
+-- обновляет строку, а не добавляет вторую. Ряды, введённые вручную, ключа
+-- не имеют и ограничением не связаны — отсюда частичный индекс.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_flow_external_key
+    ON freight_flow_stats (source_id, external_key) WHERE external_key <> '';
+
+COMMENT ON TABLE  freight_flow_stats IS 'Статистика грузопотоков в разрезе периодов, округов и категорий грузов';
+COMMENT ON COLUMN freight_flow_stats.turnover_ton_km IS 'Грузооборот: произведение массы груза на расстояние перевозки';
+COMMENT ON COLUMN freight_flow_stats.external_key IS 'Ключ сопоставления с записью источника при повторной загрузке';
 
 -- Замеры дорожной обстановки. congestion_level — балл загруженности по шкале
 -- ЦОДД (0 — свободно, 10 — движение парализовано).
@@ -236,7 +254,9 @@ CREATE TABLE IF NOT EXISTS traffic_incidents (
     description   TEXT,
     geom          geometry(Point, 4326),
     affects_cargo BOOLEAN     NOT NULL DEFAULT FALSE,
+    origin        VARCHAR(16),
     source_id     INTEGER REFERENCES data_sources (id) ON DELETE SET NULL,
+    external_key  VARCHAR(120) NOT NULL DEFAULT '',
     CONSTRAINT incident_type_allowed CHECK (
         incident_type IN ('accident', 'roadworks', 'restriction', 'weather', 'event', 'other')
     ),
@@ -244,29 +264,66 @@ CREATE TABLE IF NOT EXISTS traffic_incidents (
     CONSTRAINT incident_period_valid CHECK (resolved_at IS NULL OR resolved_at >= reported_at)
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_incident_external_key
+    ON traffic_incidents (source_id, external_key) WHERE external_key <> '';
+
 COMMENT ON TABLE  traffic_incidents IS 'Инциденты на улично-дорожной сети';
 COMMENT ON COLUMN traffic_incidents.affects_cargo IS 'Признак влияния инцидента на движение грузового транспорта';
+COMMENT ON COLUMN traffic_incidents.external_key IS 'Ключ сопоставления с записью источника при повторной загрузке';
 
 -- -----------------------------------------------------------------------------
 --  4. СЛУЖЕБНЫЕ ТАБЛИЦЫ
 -- -----------------------------------------------------------------------------
 
--- Журнал загрузок ETL: одна строка на один запуск загрузчика по одному источнику.
+-- Журнал загрузок ETL: одна строка на одно прохождение конвейера по одному
+-- набору данных. Счётчики разделены — по соотношению «создано / обновлено /
+-- без изменений» видно, работает ли инкрементальная загрузка: при исправном
+-- источнике повторный запуск оставляет почти всё без изменений.
 CREATE TABLE IF NOT EXISTS etl_log (
-    id             SERIAL PRIMARY KEY,
-    started_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-    finished_at    TIMESTAMPTZ,
-    source_id      INTEGER REFERENCES data_sources (id) ON DELETE SET NULL,
-    target_table   VARCHAR(64) NOT NULL,
-    records_loaded INTEGER NOT NULL DEFAULT 0,
-    records_errors INTEGER NOT NULL DEFAULT 0,
-    status         VARCHAR(16) NOT NULL DEFAULT 'running',
-    error_message  TEXT,
+    id                SERIAL PRIMARY KEY,
+    started_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    finished_at       TIMESTAMPTZ,
+    source_id         INTEGER REFERENCES data_sources (id) ON DELETE SET NULL,
+    pipeline          VARCHAR(64) NOT NULL DEFAULT '',
+    target_table      VARCHAR(64) NOT NULL,
+    trigger           VARCHAR(16) NOT NULL DEFAULT 'cli',
+    actor_id          INTEGER REFERENCES auth_user (id) ON DELETE SET NULL,
+    parameters        VARCHAR(200) NOT NULL DEFAULT '',
+    records_loaded    INTEGER NOT NULL DEFAULT 0,
+    records_created   INTEGER NOT NULL DEFAULT 0,
+    records_updated   INTEGER NOT NULL DEFAULT 0,
+    records_unchanged INTEGER NOT NULL DEFAULT 0,
+    records_removed   INTEGER NOT NULL DEFAULT 0,
+    records_errors    INTEGER NOT NULL DEFAULT 0,
+    status            VARCHAR(16) NOT NULL DEFAULT 'running',
+    error_message     TEXT,
     CONSTRAINT etl_status_allowed CHECK (status IN ('running', 'success', 'partial', 'failed')),
+    CONSTRAINT etl_trigger_allowed CHECK (trigger IN ('schedule', 'console', 'upload', 'cli')),
     CONSTRAINT etl_counters_positive CHECK (records_loaded >= 0 AND records_errors >= 0)
 );
 
 COMMENT ON TABLE etl_log IS 'Журнал запусков процедур загрузки данных (ETL)';
+
+-- Карантин загрузки: записи источника, не прошедшие проверку качества.
+-- Отклонённая запись сохраняется целиком вместе с не пройденной проверкой —
+-- иначе о качестве источника можно было бы судить только по счётчику ошибок,
+-- а причина отклонения оставалась бы неизвестной.
+CREATE TABLE IF NOT EXISTS etl_rejects (
+    id             SERIAL PRIMARY KEY,
+    run_id         INTEGER NOT NULL REFERENCES etl_log (id) ON DELETE CASCADE,
+    position       VARCHAR(120) NOT NULL DEFAULT '',
+    record_key     VARCHAR(200) NOT NULL DEFAULT '',
+    check_code     VARCHAR(64)  NOT NULL,
+    message        VARCHAR(500) NOT NULL,
+    payload        TEXT,
+    created_at     TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    reviewed_at    TIMESTAMPTZ,
+    reviewed_by_id INTEGER REFERENCES auth_user (id) ON DELETE SET NULL
+);
+
+COMMENT ON TABLE  etl_rejects IS 'Карантин: записи источника, отклонённые проверками качества';
+COMMENT ON COLUMN etl_rejects.position IS 'Элемент выгрузки или номер строки файла';
+COMMENT ON COLUMN etl_rejects.check_code IS 'Код не пройденной проверки';
 
 -- -----------------------------------------------------------------------------
 --  5. ИНДЕКСЫ
@@ -304,6 +361,11 @@ CREATE INDEX IF NOT EXISTS idx_incidents_open ON traffic_incidents (reported_at 
     WHERE resolved_at IS NULL;
 
 CREATE INDEX IF NOT EXISTS idx_etl_started ON etl_log (started_at DESC);
+
+-- Карантин разбирается двумя способами: по времени поступления и по коду
+-- проверки — «покажи всё, что отклонено из-за отсутствия координат».
+CREATE INDEX IF NOT EXISTS idx_rejects_time  ON etl_rejects (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_rejects_check ON etl_rejects (check_code);
 
 COMMIT;
 

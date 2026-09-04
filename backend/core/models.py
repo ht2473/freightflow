@@ -30,7 +30,9 @@ from .choices import (
     HAZARD_CLASS_LABELS,
     DataOrigin,
     EtlStatus,
+    EtlTrigger,
     FlowDirection,
+    FlowScope,
     IncidentType,
     OsmElement,
     PeriodType,
@@ -589,7 +591,14 @@ class CargoRoute(models.Model):
 
 
 class FreightFlowStat(models.Model):
-    """Агрегированный показатель грузопотока за период."""
+    """Агрегированный показатель грузопотока за период.
+
+    Ряд ведётся в двух разрезах сразу. Внутригородской разрез привязан
+    к округу, маршруту и категории груза; ведомственная статистика приходит
+    в разрезе территорий и круга перевозчиков, без деления по направлениям.
+    Обе формы описывают одну величину — объём перевезённого груза, — поэтому
+    хранятся одной таблицей, а различает их набор заполненных признаков.
+    """
 
     period_date = models.DateField(_("Начало периода"))
     period_type = models.CharField(
@@ -622,9 +631,29 @@ class FreightFlowStat(models.Model):
         blank=True,
         verbose_name=_("Категория груза"),
     )
+    territory = models.CharField(
+        _("Территория"), max_length=120, blank=True, default="",
+        help_text=_(
+            "Наименование территории в ведомственной статистике: субъект "
+            "федерации или федеральный округ. Для внутригородских рядов "
+            "не заполняется — территорию задаёт округ"
+        ),
+    )
     direction = models.CharField(_("Направление"), max_length=16, choices=FlowDirection.choices)
+    scope = models.CharField(
+        _("Круг перевозчиков"), max_length=16, choices=FlowScope.choices,
+        default=FlowScope.ALL,
+    )
     volume_tons = models.DecimalField(
         _("Объём, т"), max_digits=14, decimal_places=2, null=True, blank=True
+    )
+    turnover_ton_km = models.DecimalField(
+        _("Грузооборот, т·км"), max_digits=18, decimal_places=2, null=True, blank=True,
+        help_text=_(
+            "Произведение массы груза на расстояние перевозки. Показатель "
+            "самостоятельный: рост перевозок при падении грузооборота "
+            "означает укорочение плеча доставки"
+        ),
     )
     vehicle_count = models.IntegerField(_("Число рейсов"), null=True, blank=True)
     origin = models.CharField(
@@ -646,6 +675,13 @@ class FreightFlowStat(models.Model):
         blank=True,
         verbose_name=_("Источник данных"),
     )
+    external_key = models.CharField(
+        _("Ключ записи в источнике"), max_length=120, blank=True, default="",
+        help_text=_(
+            "Обозначение, по которому запись сопоставляется с исходной при "
+            "повторной загрузке. Обеспечивает обновление вместо дублирования"
+        ),
+    )
 
     class Meta:
         db_table = "freight_flow_stats"
@@ -656,9 +692,40 @@ class FreightFlowStat(models.Model):
             models.Index(fields=["period_date"], name="idx_flow_period"),
             models.Index(fields=["district", "period_date"], name="idx_flow_district"),
         ]
+        constraints = [
+            # Ключ источника уникален в пределах источника: повторная загрузка
+            # обновляет запись, а не добавляет вторую. Ряды, введённые без
+            # ключа, ограничением не связаны.
+            models.UniqueConstraint(
+                fields=["source", "external_key"],
+                condition=~models.Q(external_key=""),
+                name="uq_flow_external_key",
+            ),
+        ]
 
     def __str__(self) -> str:
+        if self.territory:
+            return f"{self.period_date:%Y} · {self.territory}"
         return f"{self.period_date:%Y-%m} · {self.get_direction_display()}"
+
+    @property
+    def turnover_million_ton_km(self) -> float | None:
+        """Грузооборот в миллионах тонно-километров — форма для отчётов."""
+        if self.turnover_ton_km is None:
+            return None
+        return float(self.turnover_ton_km) / 1_000_000
+
+    @property
+    def average_haul_km(self) -> float | None:
+        """Среднее расстояние перевозки, км.
+
+        Частное грузооборота и объёма перевозок. Величина показывает, на какое
+        плечо в среднем везут груз, и отличает рост перевозок от роста
+        дальности.
+        """
+        if not self.turnover_ton_km or not self.volume_tons:
+            return None
+        return float(self.turnover_ton_km) / float(self.volume_tons)
 
     @property
     def avg_load_per_vehicle(self) -> float | None:
@@ -797,6 +864,13 @@ class TrafficIncident(models.Model):
     description = models.TextField(_("Описание"), blank=True, default="")
     geom = PointField(_("Координаты"), null=True, blank=True)
     affects_cargo = models.BooleanField(_("Влияет на грузовой транспорт"), default=False)
+    origin = models.CharField(
+        _("Происхождение сведений"),
+        max_length=16,
+        choices=DataOrigin.choices,
+        blank=True,
+        default="",
+    )
     source = models.ForeignKey(
         DataSource,
         on_delete=models.SET_NULL,
@@ -805,6 +879,13 @@ class TrafficIncident(models.Model):
         null=True,
         blank=True,
         verbose_name=_("Источник данных"),
+    )
+    external_key = models.CharField(
+        _("Ключ записи в источнике"), max_length=120, blank=True, default="",
+        help_text=_(
+            "Обозначение исходной записи. По нему событие обновляется при "
+            "повторной загрузке вместо появления второй записи о том же"
+        ),
     )
 
     objects = TrafficIncidentQuerySet.as_manager()
@@ -815,6 +896,13 @@ class TrafficIncident(models.Model):
         verbose_name = _("Дорожный инцидент")
         verbose_name_plural = _("Дорожные инциденты")
         indexes = [models.Index(fields=["-reported_at"], name="idx_incidents_time")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["source", "external_key"],
+                condition=~models.Q(external_key=""),
+                name="uq_incident_external_key",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"{self.get_incident_type_display()} · {self.reported_at:%d.%m.%Y %H:%M}"
@@ -845,7 +933,14 @@ class TrafficIncident(models.Model):
 
 
 class EtlRun(models.Model):
-    """Запись журнала загрузки данных из внешнего источника."""
+    """Запись журнала загрузки данных из внешнего источника.
+
+    Одна запись соответствует одному прохождению конвейера по одному набору
+    данных. Счётчики разделены: сколько записей появилось, сколько обновлено,
+    сколько осталось без изменений и сколько отклонено проверками. Разделение
+    существенно — по нему видно, работает ли инкрементальная загрузка: при
+    исправном источнике повторный запуск оставляет почти всё без изменений.
+    """
 
     started_at = models.DateTimeField(_("Начало"), default=timezone.now)
     finished_at = models.DateTimeField(_("Окончание"), null=True, blank=True)
@@ -858,8 +953,32 @@ class EtlRun(models.Model):
         blank=True,
         verbose_name=_("Источник данных"),
     )
+    pipeline = models.CharField(
+        _("Конвейер"), max_length=64, blank=True, default="",
+        help_text=_("Обозначение процедуры загрузки в реестре конвейеров"),
+    )
     target_table = models.CharField(_("Целевая таблица"), max_length=64)
+    trigger = models.CharField(
+        _("Начало загрузки"), max_length=16, choices=EtlTrigger.choices,
+        default=EtlTrigger.CLI,
+    )
+    actor = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        db_column="actor_id",
+        related_name="etl_runs",
+        null=True,
+        blank=True,
+        verbose_name=_("Начал загрузку"),
+    )
+    parameters = models.CharField(
+        _("Параметры запуска"), max_length=200, blank=True, default=""
+    )
     records_loaded = models.IntegerField(_("Загружено записей"), default=0)
+    records_created = models.IntegerField(_("Создано записей"), default=0)
+    records_updated = models.IntegerField(_("Обновлено записей"), default=0)
+    records_unchanged = models.IntegerField(_("Без изменений"), default=0)
+    records_removed = models.IntegerField(_("Удалено записей"), default=0)
     records_errors = models.IntegerField(_("Отклонено записей"), default=0)
     status = models.CharField(
         _("Статус"), max_length=16, choices=EtlStatus.choices, default=EtlStatus.RUNNING
@@ -900,22 +1019,80 @@ class EtlRun(models.Model):
 
     @property
     def target_label(self) -> str:
-        """Наименование раздела, наполненного загрузкой.
-
-        Записи вида ``seed:`` относятся к первоначальному наполнению
-        поставляемого набора целиком; для них выводится обобщённое название,
-        поскольку имя файла ничего не сообщает пользователю.
-        """
-        if self.target_table.startswith("seed:"):
-            return str(_("Полная загрузка набора"))
+        """Наименование раздела, наполненного загрузкой."""
         label = self.TARGET_LABELS.get(self.target_table)
         return str(label) if label else self.target_table
 
     @property
     def error_rate(self) -> float:
         """Доля отклонённых записей от общего числа обработанных, %."""
-        total = self.records_loaded + self.records_errors
+        total = self.records_loaded + self.records_unchanged + self.records_errors
         return (self.records_errors / total * 100) if total else 0.0
+
+    @property
+    def records_seen(self) -> int:
+        """Всего записей, прошедших через конвейер."""
+        return self.records_loaded + self.records_unchanged + self.records_errors
+
+
+class EtlReject(models.Model):
+    """Запись источника, не прошедшая проверку качества.
+
+    Отклонённая запись не пропадает: она откладывается в карантин вместе
+    с не пройденной проверкой, положением в источнике и исходным содержимым.
+    Без этого качество данных пришлось бы оценивать по одному лишь счётчику
+    ошибок, а причина отклонения оставалась бы неизвестной.
+
+    Карантин — рабочее место оператора: по нему видно, что именно в источнике
+    подлежит исправлению, а разобранные записи отмечаются и уходят из очереди.
+    """
+
+    run = models.ForeignKey(
+        EtlRun,
+        on_delete=models.CASCADE,
+        db_column="run_id",
+        related_name="rejects",
+        verbose_name=_("Загрузка"),
+    )
+    position = models.CharField(
+        _("Положение в источнике"), max_length=120, blank=True, default="",
+        help_text=_("Элемент выгрузки или номер строки файла"),
+    )
+    record_key = models.CharField(_("Ключ записи"), max_length=200, blank=True, default="")
+    check_code = models.CharField(_("Код проверки"), max_length=64)
+    message = models.CharField(_("Причина отклонения"), max_length=500)
+    payload = models.TextField(
+        _("Исходная запись"), blank=True, default="",
+        help_text=_("Содержимое записи в том виде, в каком оно поступило"),
+    )
+    created_at = models.DateTimeField(_("Отложено"), default=timezone.now)
+    reviewed_at = models.DateTimeField(_("Разобрано"), null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        db_column="reviewed_by_id",
+        related_name="etl_rejects_reviewed",
+        null=True,
+        blank=True,
+        verbose_name=_("Разобрал"),
+    )
+
+    class Meta:
+        db_table = "etl_rejects"
+        ordering = ("-created_at", "id")
+        verbose_name = _("Запись в карантине")
+        verbose_name_plural = _("Карантин загрузки")
+        indexes = [
+            models.Index(fields=["-created_at"], name="idx_rejects_time"),
+            models.Index(fields=["check_code"], name="idx_rejects_check"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.check_code} · {self.record_key or self.position}"
+
+    @property
+    def is_reviewed(self) -> bool:
+        return self.reviewed_at is not None
 
 
 # =============================================================================
