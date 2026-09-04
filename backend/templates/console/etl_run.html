@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% include "partials/_tabs.html" %}
+
+<section class="section">
+    <div class="card">
+        <div class="row row--between">
+            <div>
+                <p class="eyebrow">{{ run.pipeline|dash }}</p>
+                <h2>{{ run.target_label }}</h2>
+            </div>
+            <span class="badge badge--{% if run.status == 'success' %}ok{% elif run.status == 'failed' %}alert{% elif run.status == 'partial' %}warn{% endif %}">
+                {{ run.get_status_display }}
+            </span>
+        </div>
+
+        <dl class="facts" style="margin-top:var(--sp-4)">
+            <div><dt>{% trans 'Начало' %}</dt><dd class="mono">{{ run.started_at|date:"d.m.Y H:i:s" }}</dd></div>
+            <div><dt>{% trans 'Окончание' %}</dt><dd class="mono">{{ run.finished_at|date:"d.m.Y H:i:s"|dash }}</dd></div>
+            <div><dt>{% trans 'Источник' %}</dt><dd>{{ run.source.name|dash }}</dd></div>
+            <div><dt>{% trans 'Таблица' %}</dt><dd class="mono">{{ run.target_table }}</dd></div>
+            <div><dt>{% trans 'Начало загрузки' %}</dt><dd>{{ run.get_trigger_display }}</dd></div>
+            <div><dt>{% trans 'Начал' %}</dt><dd>{{ run.actor.username|dash }}</dd></div>
+            <div><dt>{% trans 'Параметры' %}</dt><dd class="mono small">{{ run.parameters|dash }}</dd></div>
+        </dl>
+    </div>
+</section>
+
+<section class="section">
+    <div class="grid grid--4">
+        <div class="metric metric--ok">
+            <span class="metric__label">{% trans 'Создано' %}</span>
+            <span class="metric__value">{{ run.records_created|spaced }}</span>
+        </div>
+        <div class="metric metric--accent">
+            <span class="metric__label">{% trans 'Обновлено' %}</span>
+            <span class="metric__value">{{ run.records_updated|spaced }}</span>
+        </div>
+        <div class="metric">
+            <span class="metric__label">{% trans 'Без изменений' %}</span>
+            <span class="metric__value">{{ run.records_unchanged|spaced }}</span>
+            <span class="metric__note">{% trans 'в источнике не менялись' %}</span>
+        </div>
+        <div class="metric metric--{% if run.records_errors %}warn{% else %}ok{% endif %}">
+            <span class="metric__label">{% trans 'Отклонено' %}</span>
+            <span class="metric__value">{{ run.records_errors|spaced }}</span>
+            <span class="metric__note">{{ run.error_rate|spaced:1 }} % от прошедших</span>
+        </div>
+    </div>
+</section>
+
+{% if run.records_removed or run.error_message %}
+    <section class="section">
+        <div class="card">
+            {% if run.records_removed %}
+                <p class="small">{% blocktrans with removed=run.records_removed|spaced %}Удалено записей при приведении реестра к составу источника: {{ removed }}{% endblocktrans %}</p>
+            {% endif %}
+            {% if run.error_message %}
+                <p class="eyebrow">{% trans 'Замечания' %}</p>
+                <p class="small muted">{{ run.error_message }}</p>
+            {% endif %}
+        </div>
+    </section>
+{% endif %}
+
+{% if by_check %}
+    <section class="section">
+        <div class="section__head">
+            <div>
+                <p class="eyebrow">{% trans 'Карантин' %}</p>
+                <h2>{% trans 'Отклонено по проверкам' %}</h2>
+            </div>
+            <a class="button button--ghost" href="{% url 'console:quarantine' %}">
+                {% trans 'Разобрать карантин' %}</a>
+        </div>
+
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr><th>{% trans 'Проверка' %}</th><th class="num">{% trans 'Записей' %}</th></tr>
+                </thead>
+                <tbody>
+                    {% for row in by_check %}
+                        <tr>
+                            <td class="mono small">{{ row.check_code }}</td>
+                            <td class="num">{{ row.count|spaced }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-wrap" style="margin-top:var(--sp-4)">
+            <table class="data">
+                <thead>
+                    <tr><th>{% trans 'Положение в источнике' %}</th><th>{% trans 'Ключ' %}</th>
+                        <th>{% trans 'Причина' %}</th><th>{% trans 'Разобрано' %}</th></tr>
+                </thead>
+                <tbody>
+                    {% for reject in rejects %}
+                        <tr>
+                            <td class="mono small">{{ reject.position|dash }}</td>
+                            <td class="small">{{ reject.record_key|dash|truncatechars:40 }}</td>
+                            <td class="small">
+                                {{ reject.message }}
+                                <div class="faint mono">{{ reject.check_code }}</div>
+                            </td>
+                            <td class="small">
+                                {% if reject.is_reviewed %}
+                                    {{ reject.reviewed_at|date:"d.m.Y" }}
+                                {% else %}
+                                    <span class="badge badge--warn">{% trans 'в очереди' %}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if rejects_total > 200 %}
+            <p class="small faint" style="margin-top:var(--sp-3)">
+                {% blocktrans with total=rejects_total|spaced %}Показаны первые 200 записей из {{ total }}.{% endblocktrans %}
+            </p>
+        {% endif %}
+    </section>
+{% endif %}
+
+<p><a class="button button--ghost" href="{% url 'console:etl' %}">{% trans '← К журналу загрузок' %}</a></p>
+{% endblock %}

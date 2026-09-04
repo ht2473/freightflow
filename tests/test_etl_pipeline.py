@@ -14,6 +14,7 @@ from collections.abc import Iterator
 import pytest
 from core.choices import EtlStatus, EtlTrigger, SourceType
 from core.models import CargoCategory, DataSource, EtlReject, EtlRun
+from django.utils import timezone
 from etl.pipeline import (
     Candidate,
     Context,
@@ -149,6 +150,24 @@ class TestQuarantine:
         reject = EtlReject.objects.get()
         assert reject.check_code == "range.hazard_class"
         assert json.loads(reject.payload)["hazard_class"] == 42
+
+    def test_repeat_rejection_does_not_lengthen_the_queue(self, db, records):
+        """Неисправленный источник не должен множить одну и ту же запись."""
+        records.append({"code": "empty", "name": ""})
+        run(CategoriesPipeline(records))
+        run(CategoriesPipeline(records))
+
+        assert EtlReject.objects.count() == 1
+        assert EtlRun.objects.order_by("-id").first().records_errors == 1
+
+    def test_reviewed_problem_returns_to_the_queue(self, db, records):
+        """Отметка «разобрано» не скрывает сохраняющийся дефект источника."""
+        records.append({"code": "empty", "name": ""})
+        run(CategoriesPipeline(records))
+        EtlReject.objects.update(reviewed_at=timezone.now())
+        run(CategoriesPipeline(records))
+
+        assert EtlReject.objects.filter(reviewed_at__isnull=True).count() == 1
 
     def test_quarantine_is_bounded(self, db, settings):
         """Неисправный источник не должен раздувать карантин без предела."""

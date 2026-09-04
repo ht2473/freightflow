@@ -18,10 +18,12 @@ from functools import wraps
 from accounts.models import AuditEvent, ExportJob, Role, UserProfile, profile_for
 from content.models import Article, ArticleCategory, FeedbackMessage
 from core import selectors
+from core.choices import EtlTrigger
 from core.models import (
     CargoCategory,
     DataSource,
     District,
+    EtlReject,
     EtlRun,
     InfrastructureObject,
     InfrastructureType,
@@ -36,10 +38,16 @@ from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.db import connection
 from django.db.models import Count, Q, Sum
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_POST
+from etl import dispatch, registry, schedule
+from etl.pipeline import PipelineError
+from etl.upload import COLUMNS, template_csv
+
+from .forms import FlowUploadForm, PipelineRunForm
 
 # Разделы панели: код, подпись, маршрут, краткое пояснение.
 CONSOLE_TABS: tuple[tuple[str, str, str, str], ...] = (
@@ -49,7 +57,8 @@ CONSOLE_TABS: tuple[tuple[str, str, str, str], ...] = (
     ("feedback", _("Обращения"), "console:feedback", _("Обратная связь и ответы")),
     ("content", _("Материалы"), "console:content", _("Аналитические публикации")),
     ("quality", _("Качество данных"), "console:quality", _("Полнота и целостность записей")),
-    ("etl", _("Загрузка данных"), "console:etl", _("Журнал и запуск процедур")),
+    ("etl", _("Загрузка данных"), "console:etl", _("Реестр источников, регламент, журнал")),
+    ("quarantine", _("Карантин"), "console:quarantine", _("Записи, не прошедшие проверки")),
     ("audit", _("Журнал аудита"), "console:audit", _("Действия всех пользователей")),
     ("system", _("Состояние среды"), "console:system", _("Параметры развёртывания")),
 )
@@ -426,6 +435,15 @@ def quality(request):
             "total": InfrastructureObject.objects.count(),
             "severity": "info",
         },
+        {
+            "title": _("Записи источников в карантине"),
+            "detail": _("Не прошли проверку на входе и не попали в реестры"),
+            "count": EtlReject.objects.filter(reviewed_at__isnull=True).count(),
+            "total": EtlRun.objects.aggregate(
+                total=Sum("records_loaded")
+            )["total"] or 0,
+            "severity": "warn",
+        },
     ]
     for check in checks:
         check["share"] = round(check["count"] / check["total"] * 100, 1) if check["total"] else 0.0
@@ -453,30 +471,293 @@ def quality(request):
 
 @admin_required
 def etl(request):
-    """Журнал процедур загрузки и запуск обновления."""
-    queryset = EtlRun.objects.select_related("source").order_by("-started_at")
+    """Реестр конвейеров, регламент и журнал загрузок."""
+    queryset = EtlRun.objects.select_related("source", "actor").order_by("-started_at")
 
     status = choice_param(request, "status", ["running", "success", "partial", "failed"])
     source_id = int_param(request, "source")
+    pipeline_name = request.GET.get("pipeline", "").strip()
     if status:
         queryset = queryset.filter(status=status)
     if source_id:
         queryset = queryset.filter(source_id=source_id)
+    if pipeline_name in registry.names():
+        queryset = queryset.filter(pipeline=pipeline_name)
 
     context = _console_context(
         request,
         title=_("Загрузка данных"),
         tab="etl",
         lead=_(
-            "Хронология обновления сведений из внешних источников. "
-            "Запуск процедуры вручную доступен для активных источников."
+            "Состав источников, регламент обновления и хронология загрузок. "
+            "Набор данных запускается отсюда; ход выполнения виден в журнале."
         ),
         page_obj=paginate(request, queryset, per_page=25),
         health=selectors.etl_health(limit=1),
         sources=DataSource.objects.all(),
-        filters={"status": status, "source": source_id},
+        pipelines=_pipeline_rows(),
+        run_form=PipelineRunForm(),
+        queue_configured=dispatch.queue_configured(),
+        quarantine_open=EtlReject.objects.filter(reviewed_at__isnull=True).count(),
+        filters={"status": status, "source": source_id, "pipeline": pipeline_name},
     )
     return render(request, "console/etl.html", context)
+
+
+def _pipeline_rows() -> list[dict]:
+    """Реестр конвейеров вместе с регламентом и итогом последней загрузки."""
+    latest = _latest_runs()
+    rows = []
+    for pipeline in registry.available():
+        rows.append({
+            "pipeline": pipeline,
+            "schedule": schedule.describe(pipeline) if pipeline.frequency else "",
+            "due": schedule.is_due(pipeline),
+            "last": latest.get(pipeline.name),
+            "checks": len(pipeline.checks),
+        })
+    return rows
+
+
+def _latest_runs() -> dict:
+    """Последняя загрузка каждого набора.
+
+    Выборка идёт по одному запросу на набор: их меньше десятка, а выражение
+    ``DISTINCT ON`` поддерживает не всякая СУБД.
+    """
+    result = {}
+    for name in registry.names():
+        entry = (
+            EtlRun.objects.filter(pipeline=name)
+            .order_by("-started_at")
+            .values("pipeline", "status", "started_at", "records_loaded",
+                    "records_unchanged", "records_errors")
+            .first()
+        )
+        if entry:
+            result[name] = entry
+    return result
+
+
+@require_POST
+@admin_required
+def etl_start(request):
+    """Начать загрузку набора данных."""
+    form = PipelineRunForm(request.POST)
+    if not form.is_valid():
+        for error in form.errors.values():
+            messages.error(request, error.as_text())
+        return redirect("console:etl")
+
+    name = form.cleaned_data["pipeline"]
+    try:
+        submission = dispatch.submit(
+            name,
+            trigger=EtlTrigger.CONSOLE,
+            actor=request.user,
+            refresh=form.cleaned_data["refresh"],
+            prune=form.cleaned_data["prune"],
+        )
+    except PipelineError as exc:
+        messages.error(request, _("Загрузка прервана: %(reason)s") % {"reason": exc})
+        request.audit_written = True
+        return redirect("console:etl")
+
+    if submission.deferred:
+        messages.success(
+            request,
+            _("Загрузка «%(title)s» передана исполнителю. Итог появится "
+              "в журнале по завершении.") % {"title": submission.pipeline.title},
+        )
+    else:
+        report = submission.report
+        messages.success(
+            request,
+            _("«%(title)s»: создано %(created)d, обновлено %(updated)d, "
+              "без изменений %(unchanged)d, отклонено %(rejected)d.")
+            % {
+                "title": submission.pipeline.title,
+                "created": report.created,
+                "updated": report.updated,
+                "unchanged": report.unchanged,
+                "rejected": report.rejected,
+            },
+        )
+    selectors.invalidate_caches()
+    request.audit_written = True
+    return redirect("console:etl")
+
+
+@admin_required
+def etl_run(request, pk: int):
+    """Карточка одной загрузки: счётчики и отклонённые записи."""
+    run = get_object_or_404(
+        EtlRun.objects.select_related("source", "actor"), pk=pk
+    )
+    rejects = run.rejects.select_related("reviewed_by").order_by("id")
+
+    context = _console_context(
+        request,
+        title=_("Загрузка № %(number)s") % {"number": run.pk},
+        tab="etl",
+        lead=_(
+            "Итог одного прохождения конвейера: сколько записей поступило, "
+            "что из них изменилось и что не прошло проверки."
+        ),
+        run=run,
+        rejects=rejects[:200],
+        rejects_total=rejects.count(),
+        by_check=(
+            run.rejects.values("check_code")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+        ),
+    )
+    return render(request, "console/etl_run.html", context)
+
+
+@admin_required
+def etl_upload(request):
+    """Загрузка ряда из файла, присланного пользователем."""
+    form = FlowUploadForm(request.POST or None, request.FILES or None)
+
+    if request.method == "POST" and form.is_valid():
+        uploaded = form.cleaned_data["file"]
+        try:
+            submission = dispatch.submit(
+                "upload.flows",
+                trigger=EtlTrigger.UPLOAD,
+                actor=request.user,
+                inline=True,
+                content=uploaded.read(),
+                filename=uploaded.name,
+            )
+        except PipelineError as exc:
+            messages.error(request, _("Выгрузка не принята: %(reason)s") % {"reason": exc})
+        else:
+            report = submission.report
+            messages.success(
+                request,
+                _("Принято строк: %(written)d, без изменений %(unchanged)d, "
+                  "отклонено %(rejected)d.")
+                % {
+                    "written": report.written,
+                    "unchanged": report.unchanged,
+                    "rejected": report.rejected,
+                },
+            )
+            request.audit_written = True
+            if report.run_id:
+                return redirect("console:etl_run", pk=report.run_id)
+            return redirect("console:etl")
+
+    context = _console_context(
+        request,
+        title=_("Выгрузка ряда"),
+        tab="etl",
+        lead=_(
+            "Ряд, присланный файлом, проходит тот же конвейер, что и данные "
+            "внешних служб: те же проверки, тот же журнал, тот же карантин."
+        ),
+        form=form,
+        columns=COLUMNS,
+    )
+    return render(request, "console/etl_upload.html", context)
+
+
+@admin_required
+def etl_template(request):
+    """Образец выгрузки для заполнения."""
+    response = HttpResponse(template_csv(), content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = 'attachment; filename="freightflow-flows.csv"'
+    return response
+
+
+# ---------------------------------------------------------------------------
+#  8. Карантин загрузки
+# ---------------------------------------------------------------------------
+
+
+@admin_required
+def quarantine(request):
+    """Записи источников, не прошедшие проверку качества.
+
+    Карантин — рабочее место, а не отчёт: по нему видно, что именно в источнике
+    подлежит исправлению. Разобранные записи отмечаются и уходят из очереди,
+    оставаясь доступными для сверки.
+    """
+    queryset = EtlReject.objects.select_related("run", "run__source", "reviewed_by")
+
+    check_code = request.GET.get("check", "").strip()
+    pipeline_name = request.GET.get("pipeline", "").strip()
+    state = choice_param(request, "state", ["open", "reviewed"]) or "open"
+
+    if check_code:
+        queryset = queryset.filter(check_code=check_code)
+    if pipeline_name in registry.names():
+        queryset = queryset.filter(run__pipeline=pipeline_name)
+    if state == "open":
+        queryset = queryset.filter(reviewed_at__isnull=True)
+    else:
+        queryset = queryset.filter(reviewed_at__isnull=False)
+
+    context = _console_context(
+        request,
+        title=_("Карантин загрузки"),
+        tab="quarantine",
+        lead=_(
+            "Записи, отклонённые проверками качества, вместе с причиной "
+            "и положением в источнике. Доля отклонений — показатель "
+            "состояния источника, а не работы системы."
+        ),
+        page_obj=paginate(request, queryset.order_by("-created_at", "id"), per_page=25),
+        by_check=(
+            EtlReject.objects.filter(reviewed_at__isnull=True)
+            .values("check_code")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+        ),
+        pipelines=registry.available(),
+        open_total=EtlReject.objects.filter(reviewed_at__isnull=True).count(),
+        reviewed_total=EtlReject.objects.filter(reviewed_at__isnull=False).count(),
+        filters={"check": check_code, "pipeline": pipeline_name, "state": state},
+    )
+    return render(request, "console/quarantine.html", context)
+
+
+@require_POST
+@admin_required
+def quarantine_action(request):
+    """Отметить записи карантина разобранными либо вернуть их в очередь."""
+    action = request.POST.get("action", "")
+    identifiers = [int(value) for value in request.POST.getlist("reject") if value.isdigit()]
+    scope = EtlReject.objects.filter(pk__in=identifiers)
+
+    if action == "review":
+        updated = scope.update(reviewed_at=timezone.now(), reviewed_by=request.user)
+        messages.success(
+            request, _("Отмечено разобранными: %(count)d") % {"count": updated}
+        )
+    elif action == "reopen":
+        updated = scope.update(reviewed_at=None, reviewed_by=None)
+        messages.success(
+            request, _("Возвращено в очередь: %(count)d") % {"count": updated}
+        )
+    elif action == "review_check":
+        code = request.POST.get("check", "")
+        updated = EtlReject.objects.filter(
+            check_code=code, reviewed_at__isnull=True
+        ).update(reviewed_at=timezone.now(), reviewed_by=request.user)
+        messages.success(
+            request,
+            _("Отмечено разобранными по проверке «%(code)s»: %(count)d")
+            % {"code": code, "count": updated},
+        )
+    else:
+        messages.error(request, _("Действие не распознано."))
+
+    request.audit_written = True
+    return redirect(request.POST.get("next") or "console:quarantine")
 
 
 @require_POST
@@ -493,7 +774,7 @@ def cache_flush(request):
 
 
 # ---------------------------------------------------------------------------
-#  8. Журнал аудита
+#  9. Журнал аудита
 # ---------------------------------------------------------------------------
 
 
@@ -531,7 +812,7 @@ def audit(request):
 
 
 # ---------------------------------------------------------------------------
-#  9. Состояние среды
+#  10. Состояние среды
 # ---------------------------------------------------------------------------
 
 

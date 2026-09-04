@@ -26,7 +26,7 @@ HEADER = "Период;Территория;Круг перевозчиков;Н
 
 def upload(text: str, name: str = "ряд.csv") -> Context:
     """Условия запуска с присланным содержимым."""
-    return Context(options={"content": text.encode("utf-8"), "name": name})
+    return Context(options={"content": text.encode("utf-8"), "filename": name})
 
 
 # ---------------------------------------------------------------------------

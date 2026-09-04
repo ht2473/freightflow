@@ -282,7 +282,7 @@ class FlowUploadPipeline(ModelPipeline):
     def extract(self, context: Context) -> Extract:
         payload = context.options.get("content")
         path = context.options.get("file")
-        title = context.options.get("name") or (Path(path).name if path else "выгрузка")
+        title = context.options.get("filename") or (Path(path).name if path else "выгрузка")
 
         if payload is None and not path:
             raise UploadError(

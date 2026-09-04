@@ -24,7 +24,8 @@ CABINET_ROUTES = [
 CONSOLE_ROUTES = [
     "console:dashboard", "console:users", "console:references",
     "console:feedback", "console:content", "console:quality",
-    "console:etl", "console:audit", "console:system",
+    "console:etl", "console:etl_upload", "console:quarantine",
+    "console:audit", "console:system",
 ]
 
 

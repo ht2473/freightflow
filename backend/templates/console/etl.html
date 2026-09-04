@@ -4,93 +4,225 @@
 {% block content %}
 {% include "partials/_tabs.html" %}
 
-<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Запусков всего' %}</span>
-        <span class="metric__value">{{ health.total_runs|spaced }}</span>
+<section class="section">
+    <div class="section__head">
+        <div>
+            <p class="eyebrow">{% trans 'Реестр источников' %}</p>
+            <h2>{% trans 'Наборы данных и регламент обновления' %}</h2>
+        </div>
+        <div class="row" style="gap:var(--sp-3)">
+            <a class="button button--ghost" href="{% url 'console:etl_upload' %}">
+                {% trans 'Загрузить файл' %}</a>
+            {% if quarantine_open %}
+                <a class="button button--ghost" href="{% url 'console:quarantine' %}">
+                    {% trans 'В карантине' %}: {{ quarantine_open|spaced }}</a>
+            {% endif %}
+        </div>
     </div>
-    <div class="metric metric--{% if health.failed_runs %}alert{% else %}ok{% endif %}">
-        <span class="metric__label">{% trans 'Доля успешных' %}</span>
-        <span class="metric__value">{{ health.success_rate|spaced:1 }}<small> %</small></span>
-        <span class="metric__note">сбоев: {{ health.failed_runs }}</span>
-    </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Загружено записей' %}</span>
-        <span class="metric__value">{{ health.total_loaded|spaced }}</span>
-    </div>
-    <div class="metric metric--{% if health.total_errors %}warn{% else %}ok{% endif %}">
-        <span class="metric__label">{% trans 'Отклонено записей' %}</span>
-        <span class="metric__value">{{ health.total_errors|spaced }}</span>
-    </div>
-</div>
 
-<form class="filters" method="get" data-autosubmit>
-    <div class="filters__grid">
-        <div class="field">
-            <label for="f-status">{% trans 'Итог' %}</label>
-            <select id="f-status" name="status">
-                <option value="">{% trans 'Любой' %}</option>
-                <option value="success" {% if filters.status == "success" %}selected{% endif %}>{% trans 'Успешно' %}</option>
-                <option value="partial" {% if filters.status == "partial" %}selected{% endif %}>{% trans 'С замечаниями' %}</option>
-                <option value="failed" {% if filters.status == "failed" %}selected{% endif %}>{% trans 'Ошибка' %}</option>
-                <option value="running" {% if filters.status == "running" %}selected{% endif %}>{% trans 'Выполняется' %}</option>
-            </select>
-        </div>
-        <div class="field">
-            <label for="f-source">{% trans 'Источник' %}</label>
-            <select id="f-source" name="source">
-                <option value="">{% trans 'Все источники' %}</option>
-                {% for source in sources %}
-                    <option value="{{ source.pk }}" {% if filters.source == source.pk %}selected{% endif %}>
-                        {{ source.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="row">
-            <a class="button button--ghost" href="{% url 'console:etl' %}">{% trans 'Сбросить' %}</a>
-        </div>
-    </div>
-</form>
-
-<div class="table-wrap">
-    <table class="data">
-        <thead>
-            <tr><th>{% trans 'Начало' %}</th><th>{% trans 'Окончание' %}</th><th>{% trans 'Источник' %}</th><th>{% trans 'Целевая таблица' %}</th>
-                <th class="num">{% trans 'Загружено' %}</th><th class="num">{% trans 'Ошибок' %}</th>
-                <th class="num">{% trans 'Доля ошибок' %}</th><th>{% trans 'Итог' %}</th></tr>
-        </thead>
-        <tbody>
-            {% for run in page_obj.object_list %}
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
                 <tr>
-                    <td class="mono small">{{ run.started_at|date:"d.m.Y H:i" }}</td>
-                    <td class="mono small faint">{{ run.finished_at|date:"H:i"|dash }}</td>
-                    <td class="small">{{ run.source.name|dash|truncatechars:28 }}</td>
-                    <td class="mono small">{{ run.target_table }}</td>
-                    <td class="num">{{ run.records_loaded|spaced }}</td>
-                    <td class="num">{{ run.records_errors|spaced }}</td>
-                    <td class="num">{{ run.error_rate|spaced:1 }} %</td>
-                    <td>
-                        <span class="badge badge--{% if run.status == 'success' %}ok{% elif run.status == 'failed' %}alert{% elif run.status == 'partial' %}warn{% endif %}">
-                            {{ run.get_status_display }}
-                        </span>
-                    </td>
+                    <th>{% trans 'Набор данных' %}</th>
+                    <th>{% trans 'Таблица' %}</th>
+                    <th>{% trans 'Проверок' %}</th>
+                    <th>{% trans 'Регламент' %}</th>
+                    <th>{% trans 'Последняя загрузка' %}</th>
                 </tr>
-            {% empty %}
-                <tr><td colspan="8" class="muted">{% trans 'Записи журнала отсутствуют.' %}</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-{% include "partials/_pagination.html" %}
+            </thead>
+            <tbody>
+                {% for row in pipelines %}
+                    <tr>
+                        <td>
+                            <strong>{{ row.pipeline.title }}</strong>
+                            <div class="small faint mono">{{ row.pipeline.name }}</div>
+                            <div class="small muted">{{ row.pipeline.description }}</div>
+                        </td>
+                        <td class="mono small">{{ row.pipeline.target_table }}</td>
+                        <td class="num">{{ row.checks }}</td>
+                        <td class="small">
+                            {% if row.schedule %}
+                                {{ row.schedule }}
+                                {% if row.due %}
+                                    <span class="badge badge--warn">{% trans 'срок подошёл' %}</span>
+                                {% endif %}
+                            {% elif row.pipeline.expects_upload %}
+                                <span class="faint">{% trans 'по присланному файлу' %}</span>
+                            {% else %}
+                                <span class="faint">{% trans 'по требованию' %}</span>
+                            {% endif %}
+                        </td>
+                        <td class="small">
+                            {% if row.last %}
+                                <a href="{% url 'console:etl' %}?pipeline={{ row.pipeline.name|urlencode }}">
+                                    {{ row.last.started_at|date:"d.m.Y H:i" }}</a>
+                                <div class="faint">
+                                    {% blocktrans with loaded=row.last.records_loaded|spaced same=row.last.records_unchanged|spaced errors=row.last.records_errors|spaced %}записано {{ loaded }} · без изменений {{ same }} · отклонено {{ errors }}{% endblocktrans %}
+                                </div>
+                            {% else %}
+                                <span class="faint">{% trans 'не выполнялась' %}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
 
-<div class="card" style="margin-top:var(--sp-5)">
-    <h3 style="margin-bottom:var(--sp-3)">{% trans 'Запуск загрузки' %}</h3>
-    <p class="small muted" style="margin-bottom:var(--sp-4)">{% trans 'Регламентная загрузка выполняется по расписанию на стороне сервера. Загрузка набора данных вручную выполняется командой:' %}</p>
-    <div class="code-block">python manage.py etl --all --prune</div>
-    <form method="post" action="{% url 'console:cache_flush' %}" style="margin-top:var(--sp-4)">
-        {% csrf_token %}
-        <input type="hidden" name="next" value="{% url 'console:etl' %}">
-        <button class="button" type="submit">{% trans 'Сбросить кеш сводок' %}</button>
+<section class="section">
+    <div class="card">
+        <h3 style="margin-bottom:var(--sp-3)">{% trans 'Запуск загрузки' %}</h3>
+        {% if queue_configured %}
+            <p class="small muted" style="margin-bottom:var(--sp-4)">{% trans 'Задача передаётся исполнителю: страница отвечает сразу, итог появляется в журнале по завершении.' %}</p>
+        {% else %}
+            <p class="small muted" style="margin-bottom:var(--sp-4)">{% trans 'Очередь задач не настроена, поэтому загрузка выполняется в этом же процессе: страница ответит после её завершения, а обращение к внешней службе может занять минуты. Регламентное обновление в таком контуре ведёт системный таймер.' %}</p>
+        {% endif %}
+
+        <form method="post" action="{% url 'console:etl_start' %}">
+            {% csrf_token %}
+            <div class="filters__grid">
+                <div class="field">
+                    <label for="{{ run_form.pipeline.id_for_label }}">{{ run_form.pipeline.label }}</label>
+                    {{ run_form.pipeline }}
+                </div>
+                <div class="field">
+                    <label class="row" style="gap:var(--sp-2)">
+                        {{ run_form.refresh }} {{ run_form.refresh.label }}</label>
+                    <p class="small faint">{{ run_form.refresh.help_text }}</p>
+                </div>
+                <div class="field">
+                    <label class="row" style="gap:var(--sp-2)">
+                        {{ run_form.prune }} {{ run_form.prune.label }}</label>
+                    <p class="small faint">{{ run_form.prune.help_text }}</p>
+                </div>
+                <div class="row">
+                    <button class="button" type="submit">{% trans 'Запустить' %}</button>
+                </div>
+            </div>
+        </form>
+
+        <p class="small muted" style="margin-top:var(--sp-4)">{% trans 'Те же наборы загружаются из командной строки:' %}</p>
+        <div class="code-block">python manage.py etl --all --prune</div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="section__head">
+        <div>
+            <p class="eyebrow">{% trans 'Журнал' %}</p>
+            <h2>{% trans 'Хронология загрузок' %}</h2>
+        </div>
+    </div>
+
+    <div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+        <div class="metric metric--accent">
+            <span class="metric__label">{% trans 'Запусков всего' %}</span>
+            <span class="metric__value">{{ health.total_runs|spaced }}</span>
+        </div>
+        <div class="metric metric--{% if health.failed_runs %}alert{% else %}ok{% endif %}">
+            <span class="metric__label">{% trans 'Доля успешных' %}</span>
+            <span class="metric__value">{{ health.success_rate|spaced:1 }}<small> %</small></span>
+            <span class="metric__note">сбоев: {{ health.failed_runs }}</span>
+        </div>
+        <div class="metric">
+            <span class="metric__label">{% trans 'Записано' %}</span>
+            <span class="metric__value">{{ health.total_loaded|spaced }}</span>
+        </div>
+        <div class="metric metric--{% if health.total_errors %}warn{% else %}ok{% endif %}">
+            <span class="metric__label">{% trans 'Отклонено записей' %}</span>
+            <span class="metric__value">{{ health.total_errors|spaced }}</span>
+        </div>
+    </div>
+
+    <form class="filters" method="get" data-autosubmit>
+        <div class="filters__grid">
+            <div class="field">
+                <label for="f-status">{% trans 'Итог' %}</label>
+                <select id="f-status" name="status">
+                    <option value="">{% trans 'Любой' %}</option>
+                    <option value="success" {% if filters.status == "success" %}selected{% endif %}>{% trans 'Успешно' %}</option>
+                    <option value="partial" {% if filters.status == "partial" %}selected{% endif %}>{% trans 'С замечаниями' %}</option>
+                    <option value="failed" {% if filters.status == "failed" %}selected{% endif %}>{% trans 'Ошибка' %}</option>
+                    <option value="running" {% if filters.status == "running" %}selected{% endif %}>{% trans 'Выполняется' %}</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="f-pipeline">{% trans 'Набор данных' %}</label>
+                <select id="f-pipeline" name="pipeline">
+                    <option value="">{% trans 'Все наборы' %}</option>
+                    {% for row in pipelines %}
+                        <option value="{{ row.pipeline.name }}" {% if filters.pipeline == row.pipeline.name %}selected{% endif %}>
+                            {{ row.pipeline.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label for="f-source">{% trans 'Источник' %}</label>
+                <select id="f-source" name="source">
+                    <option value="">{% trans 'Все источники' %}</option>
+                    {% for source in sources %}
+                        <option value="{{ source.pk }}" {% if filters.source == source.pk %}selected{% endif %}>
+                            {{ source.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="row">
+                <a class="button button--ghost" href="{% url 'console:etl' %}">{% trans 'Сбросить' %}</a>
+            </div>
+        </div>
     </form>
-</div>
+
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+                <tr><th>{% trans 'Начало' %}</th><th>{% trans 'Набор' %}</th><th>{% trans 'Начало загрузки' %}</th>
+                    <th class="num">{% trans 'Создано' %}</th><th class="num">{% trans 'Обновлено' %}</th>
+                    <th class="num">{% trans 'Без изменений' %}</th><th class="num">{% trans 'Отклонено' %}</th>
+                    <th>{% trans 'Итог' %}</th></tr>
+            </thead>
+            <tbody>
+                {% for run in page_obj.object_list %}
+                    <tr>
+                        <td class="mono small">
+                            <a href="{% url 'console:etl_run' run.pk %}">{{ run.started_at|date:"d.m.Y H:i" }}</a>
+                        </td>
+                        <td class="small">
+                            {{ run.target_label }}
+                            <div class="faint mono">{{ run.pipeline|dash }}</div>
+                        </td>
+                        <td class="small">
+                            {{ run.get_trigger_display }}
+                            {% if run.actor %}<div class="faint">{{ run.actor.username }}</div>{% endif %}
+                        </td>
+                        <td class="num">{{ run.records_created|spaced }}</td>
+                        <td class="num">{{ run.records_updated|spaced }}</td>
+                        <td class="num faint">{{ run.records_unchanged|spaced }}</td>
+                        <td class="num">{{ run.records_errors|spaced }}</td>
+                        <td>
+                            <span class="badge badge--{% if run.status == 'success' %}ok{% elif run.status == 'failed' %}alert{% elif run.status == 'partial' %}warn{% endif %}">
+                                {{ run.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="8" class="muted">{% trans 'Записи журнала отсутствуют.' %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include "partials/_pagination.html" %}
+</section>
+
+<section class="section">
+    <div class="card">
+        <h3 style="margin-bottom:var(--sp-3)">{% trans 'Обслуживание' %}</h3>
+        <form method="post" action="{% url 'console:cache_flush' %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{% url 'console:etl' %}">
+            <button class="button button--ghost" type="submit">{% trans 'Сбросить кеш сводок' %}</button>
+        </form>
+    </div>
+</section>
 {% endblock %}

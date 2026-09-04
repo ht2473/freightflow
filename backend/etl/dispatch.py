@@ -51,16 +51,21 @@ def queue_configured() -> bool:
 
 
 def submit(name: str, *, trigger: str = EtlTrigger.CONSOLE, actor: Any = None,
-           **options) -> Submission:
+           inline: bool = False, **options) -> Submission:
     """Начать загрузку набора данных.
 
     Возвращает описание того, как загрузка была начата. Исключения конвейера
     при выполнении на месте не подавляются: администратору важно увидеть
     причину отказа сразу, а не разыскивать её в журнале.
+
+    Ключ ``inline`` требует выполнения на месте независимо от очереди. Он нужен
+    загрузке присланного файла: содержимое передаётся вместе с запросом,
+    через очередь не проходит, а разбор таблицы занимает доли секунды —
+    ждать его уместно.
     """
     pipeline = registry.get(name)
 
-    if queue_configured():
+    if queue_configured() and not inline:
         from .tasks import run_pipeline
 
         result = run_pipeline.delay(

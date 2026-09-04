@@ -515,24 +515,33 @@ def _journal(entry: EtlRun, report: RunReport, context: Context) -> None:
     entry.save()
 
     if report.rejects and not context.dry_run:
-        EtlReject.objects.bulk_create(
-            [
-                EtlReject(
-                    run=entry,
-                    position=item.position,
-                    record_key=item.key,
-                    check_code=item.code,
-                    message=item.message,
-                    payload=item.payload,
-                )
-                for item in report.rejects
-            ]
+        # Запись, уже стоящая в очереди по той же проверке, повторно
+        # не откладывается: регламентная загрузка идёт по расписанию, и
+        # неисправленный источник за месяц удлинил бы очередь тридцатью
+        # копиями одного и того же. Полное число отклонений при этом
+        # сохраняется в журнале каждого запуска.
+        queued = set(
+            EtlReject.objects.filter(
+                run__pipeline=entry.pipeline, reviewed_at__isnull=True
+            ).values_list("check_code", "record_key")
         )
-        if report.rejected > len(report.rejects):
-            logger.info(
-                "Карантин: отложено %d записей из %d отклонённых",
-                len(report.rejects), report.rejected,
+        fresh = [
+            EtlReject(
+                run=entry,
+                position=item.position,
+                record_key=item.key,
+                check_code=item.code,
+                message=item.message,
+                payload=item.payload,
             )
+            for item in report.rejects
+            if (item.code, item.key) not in queued
+        ]
+        EtlReject.objects.bulk_create(fresh)
+        logger.info(
+            "Карантин: отложено %d записей из %d отклонённых",
+            len(fresh), report.rejected,
+        )
 
 
 def quarantine_limit() -> int:

@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% include "partials/_tabs.html" %}
+
+<section class="section">
+    <div class="grid grid--3" style="margin-bottom:var(--sp-5)">
+        <div class="metric metric--{% if open_total %}warn{% else %}ok{% endif %}">
+            <span class="metric__label">{% trans 'В очереди на разбор' %}</span>
+            <span class="metric__value">{{ open_total|spaced }}</span>
+        </div>
+        <div class="metric">
+            <span class="metric__label">{% trans 'Разобрано' %}</span>
+            <span class="metric__value">{{ reviewed_total|spaced }}</span>
+        </div>
+        <div class="metric metric--accent">
+            <span class="metric__label">{% trans 'Проверок сработало' %}</span>
+            <span class="metric__value">{{ by_check|length }}</span>
+            <span class="metric__note">{% trans 'различных причин отклонения' %}</span>
+        </div>
+    </div>
+</section>
+
+{% if by_check %}
+    <section class="section">
+        <div class="section__head">
+            <div>
+                <p class="eyebrow">{% trans 'Причины' %}</p>
+                <h2>{% trans 'Что именно не проходит проверку' %}</h2>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr><th>{% trans 'Проверка' %}</th><th class="num">{% trans 'Записей' %}</th>
+                        <th>{% trans 'Действие' %}</th></tr>
+                </thead>
+                <tbody>
+                    {% for row in by_check %}
+                        <tr>
+                            <td class="mono small">
+                                <a href="?check={{ row.check_code|urlencode }}">{{ row.check_code }}</a>
+                            </td>
+                            <td class="num">{{ row.count|spaced }}</td>
+                            <td>
+                                <form method="post" action="{% url 'console:quarantine_action' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="review_check">
+                                    <input type="hidden" name="check" value="{{ row.check_code }}">
+                                    <button class="button button--ghost button--sm" type="submit">
+                                        {% trans 'Отметить разобранными' %}</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+{% endif %}
+
+<section class="section">
+    <form class="filters" method="get" data-autosubmit>
+        <div class="filters__grid">
+            <div class="field">
+                <label for="f-state">{% trans 'Состояние' %}</label>
+                <select id="f-state" name="state">
+                    <option value="open" {% if filters.state == "open" %}selected{% endif %}>{% trans 'В очереди' %}</option>
+                    <option value="reviewed" {% if filters.state == "reviewed" %}selected{% endif %}>{% trans 'Разобранные' %}</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="f-pipeline">{% trans 'Набор данных' %}</label>
+                <select id="f-pipeline" name="pipeline">
+                    <option value="">{% trans 'Все наборы' %}</option>
+                    {% for pipeline in pipelines %}
+                        <option value="{{ pipeline.name }}" {% if filters.pipeline == pipeline.name %}selected{% endif %}>
+                            {{ pipeline.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label for="f-check">{% trans 'Проверка' %}</label>
+                <input id="f-check" name="check" value="{{ filters.check }}" placeholder="required.geom">
+            </div>
+            <div class="row">
+                <a class="button button--ghost" href="{% url 'console:quarantine' %}">{% trans 'Сбросить' %}</a>
+            </div>
+        </div>
+    </form>
+
+    <form method="post" action="{% url 'console:quarantine_action' %}">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>{% trans 'Отложено' %}</th>
+                        <th>{% trans 'Набор' %}</th>
+                        <th>{% trans 'Положение' %}</th>
+                        <th>{% trans 'Причина' %}</th>
+                        <th>{% trans 'Исходная запись' %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reject in page_obj.object_list %}
+                        <tr>
+                            <td><input type="checkbox" name="reject" value="{{ reject.pk }}"
+                                       aria-label="{% trans 'Выбрать запись' %}"></td>
+                            <td class="mono small">
+                                <a href="{% url 'console:etl_run' reject.run_id %}">
+                                    {{ reject.created_at|date:"d.m.Y H:i" }}</a>
+                            </td>
+                            <td class="small">{{ reject.run.pipeline|dash }}</td>
+                            <td class="mono small">
+                                {{ reject.position|dash }}
+                                {% if reject.record_key %}
+                                    <div class="faint">{{ reject.record_key|truncatechars:36 }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="small">
+                                {{ reject.message }}
+                                <div class="faint mono">{{ reject.check_code }}</div>
+                            </td>
+                            <td class="small mono faint">{{ reject.payload|truncatechars:120 }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="6" class="muted">{% trans 'Записей нет: все поступившие сведения прошли проверки.' %}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page_obj.object_list %}
+            <div class="row" style="gap:var(--sp-3); margin-top:var(--sp-4)">
+                {% if filters.state == "reviewed" %}
+                    <button class="button button--ghost" type="submit" name="action" value="reopen">
+                        {% trans 'Вернуть в очередь' %}</button>
+                {% else %}
+                    <button class="button" type="submit" name="action" value="review">
+                        {% trans 'Отметить разобранными' %}</button>
+                {% endif %}
+            </div>
+        {% endif %}
+    </form>
+    {% include "partials/_pagination.html" %}
+</section>
+
+<section class="section">
+    <div class="card">
+        <h3 style="margin-bottom:var(--sp-3)">{% trans 'Что означает карантин' %}</h3>
+        <div class="prose">
+            <p class="small muted">{% trans 'Сюда попадает запись источника, не прошедшая проверку качества: без обязательного значения, с величиной вне допустимых пределов, с неразобранным числом или периодом. В реестр такая запись не записывается, но и не пропадает — сохраняются причина, положение в источнике и исходное содержимое.' %}</p>
+            <p class="small muted">{% trans 'Доля отклонений характеризует состояние источника, а не работу системы. Исправление выполняется на стороне поставщика сведений: правкой разметки, уточнением выгрузки, повторной присылкой файла. Отметка «разобрано» означает, что причина рассмотрена, — сама запись при этом остаётся доступной для сверки.' %}</p>
+            <p class="small muted">{% trans 'Элементы выгрузки, не относящиеся к предметной области, в карантин не попадают: их отсев — свойство запроса к источнику, а не дефект данных. Их доля видна в сводке загрузки.' %}</p>
+        </div>
+    </div>
+</section>
+{% endblock %}

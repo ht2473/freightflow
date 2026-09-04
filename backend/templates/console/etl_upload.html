@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% include "partials/_tabs.html" %}
+
+<section class="section">
+    <div class="card">
+        <h3 style="margin-bottom:var(--sp-3)">{% trans 'Файл выгрузки' %}</h3>
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <p class="field__error">{{ form.non_field_errors|striptags }}</p>
+            {% endif %}
+            <div class="field">
+                <label for="{{ form.file.id_for_label }}">{{ form.file.label }}</label>
+                {{ form.file }}
+                <p class="small faint">{{ form.file.help_text }}</p>
+                {% if form.file.errors %}
+                    <p class="field__error">{{ form.file.errors|striptags }}</p>
+                {% endif %}
+            </div>
+            <div class="row" style="gap:var(--sp-3); margin-top:var(--sp-4)">
+                <button class="button" type="submit">{% trans 'Загрузить' %}</button>
+                <a class="button button--ghost" href="{% url 'console:etl_template' %}">
+                    {% trans 'Скачать образец' %}</a>
+                <a class="button button--ghost" href="{% url 'console:etl' %}">{% trans 'Отмена' %}</a>
+            </div>
+        </form>
+    </div>
+</section>
+
+<section class="section">
+    <div class="section__head">
+        <div>
+            <p class="eyebrow">{% trans 'Состав выгрузки' %}</p>
+            <h2>{% trans 'Ожидаемые колонки' %}</h2>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+                <tr><th>{% trans 'Колонка' %}</th><th>{% trans 'Обязательна' %}</th>
+                    <th>{% trans 'Что содержит' %}</th><th>{% trans 'Другие написания' %}</th></tr>
+            </thead>
+            <tbody>
+                {% for column in columns %}
+                    <tr>
+                        <td><strong>{{ column.title }}</strong></td>
+                        <td>{% if column.required %}<span class="badge badge--warn">{% trans 'да' %}</span>{% else %}<span class="faint">{% trans 'нет' %}</span>{% endif %}</td>
+                        <td class="small">{{ column.hint }}</td>
+                        <td class="small faint mono">{{ column.aliases|join:", " }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="section">
+    <div class="card">
+        <h3 style="margin-bottom:var(--sp-3)">{% trans 'Как разбирается файл' %}</h3>
+        <div class="prose">
+            <p class="small muted">{% trans 'Принимаются файлы с разделителями (точка с запятой, запятая, табуляция) в кодировке UTF-8 либо Windows-1251 и книги Excel. Подписи колонок сопоставляются без учёта регистра, буквы «ё» и лишних пробелов.' %}</p>
+            <p class="small muted">{% trans 'Гранулярность периода определяется по самой записи: «2024» — год, «2024-07» — месяц, «01.07.2024» — сутки. В числах допускаются запятая в дробной части и пробелы между разрядами; прочерк означает отсутствие наблюдения и нулём не заменяется.' %}</p>
+            <p class="small muted">{% trans 'Строки проходят те же проверки, что и данные внешних служб. Не прошедшие откладываются в карантин с номером строки в присланном файле — по нему видно, что именно исправить. Повторная присылка того же ряда обновляет записи, а не удваивает их.' %}</p>
+        </div>
+    </div>
+</section>
+{% endblock %}
