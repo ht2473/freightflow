@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% load ff i18n static %}
+
+{% block head %}
+{% if minimap %}
+<link rel="stylesheet" href="{% static 'vendor/maplibre/maplibre-gl.css' %}">
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="grid grid--sidebar">
+    <div class="stack">
+        <article class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Условия въезда' %}</h3>
+            <dl class="facts">
+                <div>
+                    <dt>{% trans 'Пропуск требуется при РММ от' %}</dt>
+                    <dd>{{ zone.permit_required_from_tons|spaced:1 }} т</dd>
+                </div>
+                <div>
+                    <dt>{% trans 'Наименьший экологический класс' %}</dt>
+                    <dd>{% if zone.min_ecological_class %}Евро-{{ zone.min_ecological_class }}{% else %}{% trans 'не установлен' %}{% endif %}</dd>
+                </div>
+                <div>
+                    <dt>{% trans 'Сезонное ограничение при РММ от' %}</dt>
+                    <dd>{% if zone.seasonal_limit_tons %}{{ zone.seasonal_limit_tons|spaced:1 }} т{% else %}{% trans 'не установлено' %}{% endif %}</dd>
+                </div>
+                <div>
+                    <dt>{% trans 'Ответственность за нарушение' %}</dt>
+                    <dd>{{ zone.fine_rubles|spaced }} ₽</dd>
+                </div>
+                <div><dt>{% trans 'Уровень вложенности' %}</dt><dd>{{ zone.level }}</dd></div>
+                <div><dt>{% trans 'Нормативное основание' %}</dt><dd>{{ zone.legal_basis|dash }}</dd></div>
+            </dl>
+            {% if zone.description %}
+                <p class="small muted" style="margin-top:var(--sp-3)">{{ zone.description }}</p>
+            {% endif %}
+        </article>
+
+        <article class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Граница зоны' %}</h3>
+            <dl class="facts">
+                <div><dt>{% trans 'Площадь' %}</dt><dd>{{ zone.area_sq_km|spaced:1 }} км²</dd></div>
+                <div><dt>{% trans 'Периметр' %}</dt><dd>{{ zone.perimeter_km|spaced:1 }} км</dd></div>
+                <div>
+                    <dt>{% trans 'Магистраль-граница' %}</dt>
+                    <dd>
+                        {% if zone.boundary_road %}
+                            <a href="{{ zone.boundary_road.get_absolute_url }}">{{ zone.boundary_road.name }}</a>
+                        {% else %}—{% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt>{% trans 'Происхождение границы' %}</dt>
+                    <dd>{{ zone.get_geometry_origin_display|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt>{% trans 'Сведения источника от' %}</dt>
+                    <dd>{{ zone.source_updated_at|date:"d.m.Y"|default:"—" }}</dd>
+                </div>
+            </dl>
+            <p class="small faint" style="margin-top:var(--sp-3)">
+                {% trans 'Постановление задаёт границу через кольцевую магистраль, поэтому контур зоны собран из геометрии кольца; совпадение проверено сверкой периметра с протяжённостью магистрали.' %}
+            </p>
+        </article>
+
+        {% if minimap %}
+            <article class="card card--flush">
+                <div class="card__head"><h3>{% trans 'Граница на карте' %}</h3></div>
+                <div class="map-canvas map-canvas--mini" id="minimap" style="height:420px"></div>
+            </article>
+        {% endif %}
+
+        {% if inside %}
+            <article class="card card--flush">
+                <div class="card__head">
+                    <div>
+                        <p class="eyebrow">{% blocktrans with count=inside_count %}Объектов внутри зоны: {{ count }}{% endblocktrans %}</p>
+                        <h3>{% trans 'Инфраструктура в границах зоны' %}</h3>
+                    </div>
+                    <a class="small" href="{% url 'core:object_list' %}">{% trans 'Весь реестр →' %}</a>
+                </div>
+                <div class="table-wrap" style="border:none">
+                    <table class="data">
+                        <thead>
+                            <tr><th>{% trans 'Объект' %}</th><th>{% trans 'Тип' %}</th><th>{% trans 'Округ' %}</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for item in inside %}
+                                <tr data-href="{{ item.get_absolute_url }}">
+                                    <td><span class="table-title">{{ item.name }}</span></td>
+                                    <td class="small muted">{{ item.type.name }}</td>
+                                    <td class="small">{{ item.district.short_name }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if inside_count > inside|length %}
+                    <p class="small faint" style="padding:var(--sp-3)">
+                        {% blocktrans with shown=inside|length count=inside_count %}Показано {{ shown }} из {{ count }} объектов.{% endblocktrans %}
+                    </p>
+                {% endif %}
+            </article>
+        {% endif %}
+    </div>
+
+    <aside class="stack">
+        <div class="card card--accent">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Проверить своё транспортное средство' %}</h3>
+            <p class="small muted" style="margin-bottom:var(--sp-3)">{% trans 'Расчёт назовёт требуемый пропуск и действующие ограничения для заданных массы, экологического класса и дня поездки.' %}</p>
+            <a class="button button--primary button--block"
+               href="{% url 'core:permit_check' %}">{% trans 'Условия допуска' %}</a>
+        </div>
+
+        {% if outer %}
+            <div class="card">
+                <h3 style="margin-bottom:var(--sp-3)">{% trans 'Объемлющие зоны' %}</h3>
+                <p class="small muted" style="margin-bottom:var(--sp-3)">{% trans 'Пропуск в эту зону действует и в них.' %}</p>
+                <div class="stack stack--tight small">
+                    {% for item in outer %}
+                        <a href="{% url 'core:zone_detail' item.pk %}" style="color:inherit">
+                            <span class="table-title">{{ item.short_name }}</span>
+                            <span class="table-sub">{% trans 'пропуск с' %} {{ item.permit_required_from_tons|spaced:1 }} т</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if inner %}
+            <div class="card">
+                <h3 style="margin-bottom:var(--sp-3)">{% trans 'Вложенные зоны' %}</h3>
+                <p class="small muted" style="margin-bottom:var(--sp-3)">{% trans 'Для въезда в них требуется собственный пропуск.' %}</p>
+                <div class="stack stack--tight small">
+                    {% for item in inner %}
+                        <a href="{% url 'core:zone_detail' item.pk %}" style="color:inherit">
+                            <span class="table-title">{{ item.short_name }}</span>
+                            <span class="table-sub">{% trans 'пропуск с' %} {{ item.permit_required_from_tons|spaced:1 }} т</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Показать на карте' %}</h3>
+            <a class="button button--block"
+               href="{% url 'core:map' %}?layer=zones">{% trans 'Слой зон ограничения' %}</a>
+        </div>
+    </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if minimap %}
+{{ minimap|json_script:"minimap-settings" }}
+<script src="{% static 'vendor/maplibre/maplibre-gl.js' %}" defer></script>
+<script src="{% static 'js/ff-basemap.js' %}" defer></script>
+{% endif %}
+{% endblock %}

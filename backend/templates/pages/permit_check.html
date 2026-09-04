@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% load ff i18n static %}
+
+{% block head %}
+{% if minimap %}
+<link rel="stylesheet" href="{% static 'vendor/maplibre/maplibre-gl.css' %}">
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="grid grid--sidebar">
+    <div class="stack">
+        <form method="get" class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Транспортное средство и точка назначения' %}</h3>
+
+            <div class="grid grid--3">
+                <div class="field">
+                    <label for="f-mass">{% trans 'Разрешённая максимальная масса, т' %}</label>
+                    <input id="f-mass" type="text" inputmode="decimal" name="mass"
+                           value="{{ form.mass }}">
+                </div>
+                <div class="field">
+                    <label for="f-eco">{% trans 'Экологический класс' %}</label>
+                    <select id="f-eco" name="eco">
+                        {% for value, label in ecological_classes %}
+                            <option value="{{ value }}"
+                                    {% if form.ecological_class|stringformat:"s" == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="f-date">{% trans 'День поездки' %}</label>
+                    <input id="f-date" type="date" name="date" value="{{ form.moment|date:'Y-m-d' }}">
+                </div>
+            </div>
+
+            <div class="field" style="margin-top:var(--sp-3)">
+                <label for="f-object">{% trans 'Объект реестра' %}</label>
+                <select id="f-object" name="object">
+                    <option value="">{% trans 'указать координатой' %}</option>
+                    {% for item in candidates %}
+                        <option value="{{ item.pk }}"
+                                {% if form.object_id == item.pk %}selected{% endif %}>{{ item.name }} · {{ item.district.short_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="grid grid--2" style="margin-top:var(--sp-3)">
+                <div class="field">
+                    <label for="f-lat">{% trans 'Широта' %}</label>
+                    <input id="f-lat" type="text" inputmode="decimal" name="lat"
+                           value="{{ form.lat|default_if_none:'' }}" placeholder="55.7522">
+                </div>
+                <div class="field">
+                    <label for="f-lon">{% trans 'Долгота' %}</label>
+                    <input id="f-lon" type="text" inputmode="decimal" name="lon"
+                           value="{{ form.lon|default_if_none:'' }}" placeholder="37.6156">
+                </div>
+            </div>
+
+            <button class="button button--primary" style="margin-top:var(--sp-4)"
+                    type="submit">{% trans 'Определить условия' %}</button>
+            <p class="small faint" style="margin-top:var(--sp-3)">
+                {% trans 'Выбранный объект реестра задаёт точку сам: координаты в этом случае заполнять не нужно.' %}
+            </p>
+        </form>
+
+        {% if verdict %}
+            <article class="card card--accent">
+                <p class="eyebrow">{% trans 'Заключение' %}</p>
+                <h2 style="margin:var(--sp-2) 0 var(--sp-3)">{{ verdict.summary }}</h2>
+
+                {% if target %}
+                    <p class="small muted">
+                        {% trans 'Точка назначения:' %}
+                        <a href="{{ target.get_absolute_url }}">{{ target.name }}</a>,
+                        {{ target.type.name }}, {{ target.district.name }} округ
+                    </p>
+                {% else %}
+                    <p class="small muted">
+                        {% trans 'Точка назначения:' %} {{ form.lat|spaced:5 }}, {{ form.lon|spaced:5 }}
+                    </p>
+                {% endif %}
+
+                <dl class="facts" style="margin-top:var(--sp-4)">
+                    <div>
+                        <dt>{% trans 'Зон достигается' %}</dt>
+                        <dd>{{ verdict.zones|length }}</dd>
+                    </div>
+                    <div>
+                        <dt>{% trans 'Требуемый пропуск' %}</dt>
+                        <dd>
+                            {% if verdict.required_permit %}
+                                <a href="{% url 'core:zone_detail' verdict.required_permit.pk %}">{{ verdict.required_permit.short_name }}</a>
+                            {% else %}
+                                {% trans 'не требуется' %}
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>{% trans 'Ответственность за въезд без пропуска' %}</dt>
+                        <dd>{% if verdict.fine_rubles %}{{ verdict.fine_rubles|spaced }} ₽{% else %}—{% endif %}</dd>
+                    </div>
+                </dl>
+
+                {% if verdict.prohibitions %}
+                    <div class="stack stack--tight" style="margin-top:var(--sp-4)">
+                        {% for item in verdict.prohibitions %}
+                            <p class="small"><span class="badge badge--alert">{% trans 'запрет' %}</span> {{ item }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% if verdict.notes %}
+                    <div class="stack stack--tight" style="margin-top:var(--sp-3)">
+                        {% for item in verdict.notes %}
+                            <p class="small muted">{{ item }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </article>
+
+            {% if verdict.zones %}
+                <article class="card card--flush">
+                    <div class="card__head">
+                        <div>
+                            <p class="eyebrow">{% trans 'Разбор' %}</p>
+                            <h3>{% trans 'Зоны, в которые попадает точка' %}</h3>
+                        </div>
+                    </div>
+                    <div class="table-wrap" style="border:none">
+                        <table class="data">
+                            <thead>
+                                <tr><th>{% trans 'Зона' %}</th><th class="num">{% trans 'Пропуск от, т' %}</th>
+                                    <th class="num">{% trans 'Экокласс не ниже' %}</th>
+                                    <th class="num">{% trans 'Сезонное ограничение от, т' %}</th>
+                                    <th class="num">{% trans 'Штраф, ₽' %}</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for zone in verdict.zones %}
+                                    <tr data-href="{% url 'core:zone_detail' zone.pk %}">
+                                        <td><span class="table-title">{{ zone.short_name }}</span>
+                                            <span class="table-sub">{{ zone.name }}</span></td>
+                                        <td class="num">{{ zone.permit_required_from_tons|spaced:1 }}</td>
+                                        <td class="num">{{ zone.min_ecological_class|dash }}</td>
+                                        <td class="num">{{ zone.seasonal_limit_tons|dash }}</td>
+                                        <td class="num">{{ zone.fine_rubles|spaced }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+            {% endif %}
+
+            {% if minimap %}
+                <article class="card card--flush">
+                    <div class="card__head"><h3>{% trans 'Точка назначения на карте' %}</h3></div>
+                    <div class="map-canvas map-canvas--mini" id="minimap" style="height:320px"></div>
+                </article>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <aside class="stack">
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Что учитывает расчёт' %}</h3>
+            <div class="stack stack--tight small muted">
+                <p>{% trans 'Зоны вложены: пропуск во внутреннюю зону действует и во всех внешних, поэтому требуется пропуск самой внутренней из достигаемых.' %}</p>
+                <p>{% trans 'Ограничение по разрешённой максимальной массе действует круглосуточно.' %}</p>
+                <p>{% trans 'Въезд запрещён транспорту ниже установленного экологического класса, и пропуск такого запрета не снимает.' %}</p>
+                <p>{% trans 'С 1 мая по 1 октября по пятницам, выходным и предпраздничным дням действует дополнительное ограничение по массе.' %}</p>
+            </div>
+            <p class="small" style="margin-top:var(--sp-3)">
+                {% if seasonal_today %}
+                    <span class="badge badge--warn">{% trans 'сезонное ограничение действует в выбранный день' %}</span>
+                {% else %}
+                    <span class="badge badge--ok">{% trans 'сезонное ограничение в выбранный день не действует' %}</span>
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Зоны ограничения' %}</h3>
+            <div class="stack stack--tight small">
+                {% for zone in zones %}
+                    <a href="{% url 'core:zone_detail' zone.pk %}" style="color:inherit">
+                        <span class="table-title">{{ zone.short_name }}</span>
+                        <span class="table-sub">{% trans 'пропуск с' %} {{ zone.permit_required_from_tons|spaced:1 }} т</span>
+                    </a>
+                {% endfor %}
+            </div>
+            <a class="button button--block" style="margin-top:var(--sp-3)"
+               href="{% url 'core:zone_list' %}">{% trans 'Реестр зон' %}</a>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Проезд по маршруту' %}</h3>
+            <p class="small muted">{% trans 'Условия проезда определяются по всему пути, а не по его концам: маршрут между двумя точками вне зон может пройти через центр. Маршрут строится на карте.' %}</p>
+            <a class="button button--block" style="margin-top:var(--sp-3)"
+               href="{% url 'core:map' %}">{% trans 'Открыть карту' %}</a>
+        </div>
+    </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if minimap %}
+{{ minimap|json_script:"minimap-settings" }}
+<script src="{% static 'vendor/maplibre/maplibre-gl.js' %}" defer></script>
+<script src="{% static 'js/ff-basemap.js' %}" defer></script>
+{% endif %}
+{% endblock %}

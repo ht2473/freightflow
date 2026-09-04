@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+<div class="stack">
+    {% for zone in zones %}
+        <article class="card">
+            <div class="row row--between" style="align-items:flex-start">
+                <div>
+                    <p class="eyebrow">{% blocktrans with level=zone.level %}Уровень вложенности {{ level }}{% endblocktrans %}</p>
+                    <h2 style="margin:var(--sp-2) 0">
+                        <a href="{% url 'core:zone_detail' zone.pk %}">{{ zone.name }}</a>
+                    </h2>
+                    <p class="small muted">{{ zone.description }}</p>
+                </div>
+                <div class="right">
+                    <span class="badge badge--plain">{{ zone.short_name }}</span>
+                    {% if zone.boundary_road %}
+                        <p class="small faint" style="margin-top:var(--sp-2)">
+                            {% trans 'Граница:' %}
+                            <a href="{{ zone.boundary_road.get_absolute_url }}">{{ zone.boundary_road.name }}</a>
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="grid grid--4" style="margin-top:var(--sp-4)">
+                <div>
+                    <p class="eyebrow">{% trans 'Пропуск требуется от' %}</p>
+                    <p class="figure">{{ zone.permit_required_from_tons|spaced:1 }} <small>т</small></p>
+                </div>
+                <div>
+                    <p class="eyebrow">{% trans 'Экологический класс' %}</p>
+                    <p class="figure">
+                        {% if zone.min_ecological_class %}{% trans 'Евро-' %}{{ zone.min_ecological_class }}{% else %}—{% endif %}
+                    </p>
+                </div>
+                <div>
+                    <p class="eyebrow">{% trans 'Сезонное ограничение' %}</p>
+                    <p class="figure">
+                        {% if zone.seasonal_limit_tons %}{{ zone.seasonal_limit_tons|spaced:1 }} <small>т</small>{% else %}—{% endif %}
+                    </p>
+                </div>
+                <div>
+                    <p class="eyebrow">{% trans 'Штраф' %}</p>
+                    <p class="figure">{{ zone.fine_rubles|spaced }} <small>₽</small></p>
+                </div>
+            </div>
+
+            <dl class="facts" style="margin-top:var(--sp-4)">
+                <div><dt>{% trans 'Площадь' %}</dt><dd>{{ zone.area_sq_km|spaced:1 }} км²</dd></div>
+                <div><dt>{% trans 'Периметр' %}</dt><dd>{{ zone.perimeter_km|spaced:1 }} км</dd></div>
+                <div>
+                    <dt>{% trans 'Объектов реестра внутри' %}</dt>
+                    <dd>{{ inside|lookup:zone.pk }} {% trans 'из' %} {{ objects_total }}</dd>
+                </div>
+                <div><dt>{% trans 'Основание' %}</dt><dd class="small">{{ zone.legal_basis|dash }}</dd></div>
+            </dl>
+
+            <div class="row" style="margin-top:var(--sp-4)">
+                <a class="button button--sm"
+                   href="{% url 'core:zone_detail' zone.pk %}">{% trans 'Карточка зоны' %}</a>
+                <a class="button button--sm button--ghost"
+                   href="{% url 'core:permit_check' %}">{% trans 'Проверить допуск' %}</a>
+            </div>
+        </article>
+    {% empty %}
+        {% include "partials/_empty.html" with empty_title="Зоны не загружены" empty_text="Границы зон выводятся из геометрии колец при загрузке данных." %}
+    {% endfor %}
+</div>
+
+<article class="card" style="margin-top:var(--sp-5)">
+    <h3 style="margin-bottom:var(--sp-3)">{% trans 'Как читать таблицу условий' %}</h3>
+    <div class="stack stack--tight small muted">
+        <p>{% trans 'Зоны вложены одна в другую: Садовое кольцо внутри Третьего транспортного, оно — внутри МКАД. Пропуск, выданный во внутреннюю зону, действует и во всех внешних.' %}</p>
+        <p>{% trans 'Границы зон постановление задаёт через кольцевые магистрали, поэтому геометрия зоны выводится из геометрии кольца, а не размечается отдельно. Совпадение проверяется сверкой периметра с протяжённостью магистрали.' %}</p>
+        <p>{% trans 'Вне грузового каркаса действует собственный порог разрешённой максимальной массы; перечень улиц каркаса ведётся отдельно и улиц районного значения не содержит.' %}</p>
+    </div>
+</article>
+{% endblock %}

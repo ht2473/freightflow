@@ -26,6 +26,10 @@ urlpatterns = [
     path("districts/", views.district_list, name="district_list"),
     path("districts/<int:pk>/", views.district_detail, name="district_detail"),
     path("types/", views.type_list, name="type_list"),
+    # Допуск грузового транспорта.
+    path("permits/", views.permit_check, name="permit_check"),
+    path("zones/", views.zone_list, name="zone_list"),
+    path("zones/<int:pk>/", views.zone_detail, name="zone_detail"),
     # Дорожная сеть.
     path("roads/", views.road_list, name="road_list"),
     path("roads/<int:pk>/", views.road_detail, name="road_detail"),

@@ -4,6 +4,7 @@
 пространство имён, чтобы маршруты объявлялись компактно и единообразно.
 """
 
+from .access import permit_check, zone_detail, zone_list
 from .mapview import map_page, nearby_objects
 from .monitoring import flow_overview, incident_detail, incident_list, traffic
 from .pages import about, api_docs, health, help_page, home, methodology, sitemap_page
@@ -43,6 +44,7 @@ __all__ = [
     "nearby_objects",
     "object_detail",
     "object_list",
+    "permit_check",
     "road_detail",
     "isochrones",
     "road_list",
@@ -57,4 +59,6 @@ __all__ = [
     "traffic",
     "type_list",
     "vector_tile",
+    "zone_detail",
+    "zone_list",
 ]
