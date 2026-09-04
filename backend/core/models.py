@@ -836,9 +836,7 @@ class TrafficIncidentQuerySet(models.QuerySet):
         return self.filter(affects_cargo=True)
 
     def with_refs(self) -> TrafficIncidentQuerySet:
-        return self.select_related("road", "road__district", "source").defer(
-            "road__district__geom"
-        )
+        return self.select_related("road", "district", "source").defer("district__geom")
 
 
 class TrafficIncident(models.Model):
@@ -860,6 +858,20 @@ class TrafficIncident(models.Model):
         null=True,
         blank=True,
         verbose_name=_("Участок"),
+    )
+    district = models.ForeignKey(
+        District,
+        on_delete=models.SET_NULL,
+        db_column="district_id",
+        related_name="incidents",
+        null=True,
+        blank=True,
+        verbose_name=_("Округ"),
+        help_text=_(
+            "Округ, в границы которого попадает координата события. "
+            "Определяется по координате, а не по участку: событие "
+            "размечается и там, где магистрали в реестре нет"
+        ),
     )
     description = models.TextField(_("Описание"), blank=True, default="")
     geom = PointField(_("Координаты"), null=True, blank=True)

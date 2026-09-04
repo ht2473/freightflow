@@ -192,7 +192,7 @@ class DistrictsPipeline(OverpassPipeline):
 # ---------------------------------------------------------------------------
 
 
-def _district_index() -> list[tuple[District, Geometry]]:
+def district_index() -> list[tuple[District, Geometry]]:
     """Округа с границами — для отнесения объекта по координатам."""
     return [
         (district, district.geom)
@@ -201,7 +201,7 @@ def _district_index() -> list[tuple[District, Geometry]]:
     ]
 
 
-def _locate_district(index: list[tuple[District, Geometry]],
+def locate_district(index: list[tuple[District, Geometry]],
                      point: Geometry) -> District | None:
     """Определить округ, в котором лежит точка."""
     lon, lat = point.coordinates
@@ -291,7 +291,7 @@ class InfrastructurePipeline(OverpassPipeline):
                 report: RunReport) -> Iterator[Candidate]:
         from .geometry import extract as extract_geometry
 
-        districts = _district_index()
+        districts = district_index()
         if not districts:
             raise RuntimeError(
                 "Не заполнены границы округов: отнести объекты к территориям "
@@ -330,7 +330,7 @@ class InfrastructurePipeline(OverpassPipeline):
                 position=f"{key[0]}/{key[1]}",
                 values={
                     "type": facility_type,
-                    "district": _locate_district(districts, geometry.point),
+                    "district": locate_district(districts, geometry.point),
                     "name": _display_name(tags, facility_type),
                     "address": build_address(tags),
                     "operating_hours": build_opening_hours(tags),
@@ -414,6 +414,8 @@ __all__ = [
     "DistrictsPipeline",
     "InfrastructurePipeline",
     "OverpassPipeline",
+    "district_index",
     "ensure_source",
     "ensure_types",
+    "locate_district",
 ]

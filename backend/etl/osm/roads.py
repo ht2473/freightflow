@@ -30,7 +30,7 @@ from geo.geometry import Geometry
 from ..pipeline import Candidate, Context, Extract, RunReport
 from ..quality import Check, fits, required, within
 from . import queries
-from .loaders import OverpassPipeline
+from .loaders import OverpassPipeline, district_index
 
 logger = logging.getLogger("freightflow.etl")
 
@@ -185,7 +185,7 @@ class RoadNetworkPipeline(OverpassPipeline):
     def prepare(self, extract: Extract, context: Context,
                 report: RunReport) -> Iterator[Candidate]:
         source = self.ensure_source()
-        districts = _district_index()
+        districts = district_index()
         groups = _group_ways(extract.records, report)
 
         for key, ways in groups.items():
@@ -233,13 +233,6 @@ def _group_ways(elements: list[dict], report: RunReport) -> dict[str, list[dict]
             continue
         groups[key].append(element)
     return groups
-
-
-def _district_index() -> list[tuple[District, Geometry]]:
-    return [
-        (district, district.geom)
-        for district in District.objects.with_geometry().exclude(geom__isnull=True)
-    ]
 
 
 def _build_road(key: str, ways: list[dict], districts, source,

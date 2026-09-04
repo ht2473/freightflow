@@ -92,4 +92,4 @@ class TestRelatedQuerySets:
         from core.models import TrafficIncident
 
         incident = TrafficIncident.objects.with_refs().first()
-        assert "geom" in deferred_fields(incident.road.district)
+        assert "geom" in deferred_fields(incident.district)

@@ -204,8 +204,7 @@ def incidents_dataset(params) -> Dataset:
             Column("Оценка", lambda i: i.severity_state[0], width=18),
             Column("Участок", lambda i: i.road.name if i.road_id else "", width=36),
             Column("Округ",
-                   lambda i: i.road.district.short_name
-                   if i.road_id and i.road.district_id else "", width=10),
+                   lambda i: i.district.short_name if i.district_id else "", width=10),
             Column("Зарегистрирован", lambda i: i.reported_at, width=20),
             Column("Устранён", lambda i: i.resolved_at, width=20),
             Column("Длительность, ч",

@@ -110,8 +110,8 @@
                         <span class="table-sub">{{ incident.description|truncatechars:70|dash }}</span>
                     </td>
                     <td class="small">{{ incident.road.name|dash }}</td>
-                    <td>{% if incident.road.district %}
-                        <span class="badge badge--plain">{{ incident.road.district.short_name }}</span>
+                    <td>{% if incident.district %}
+                        <span class="badge badge--plain">{{ incident.district.short_name }}</span>
                         {% else %}—{% endif %}</td>
                     <td><span class="badge badge--{{ incident.severity|severity_tone }}">
                         {{ incident.severity_state.0 }}</span></td>

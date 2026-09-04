@@ -157,6 +157,9 @@ class TrafficIncidentSerializer(serializers.ModelSerializer):
 
     incident_type_label = serializers.CharField(source="get_incident_type_display", read_only=True)
     road_name = serializers.CharField(source="road.name", read_only=True, default=None)
+    district_name = serializers.CharField(
+        source="district.short_name", read_only=True, default=None
+    )
     geometry = GeometryField(source="geom", read_only=True)
     is_open = serializers.BooleanField(read_only=True)
     duration_hours = serializers.FloatField(read_only=True)
@@ -166,6 +169,7 @@ class TrafficIncidentSerializer(serializers.ModelSerializer):
         fields = (
             "id", "incident_type", "incident_type_label", "severity", "reported_at",
             "resolved_at", "is_open", "duration_hours", "road", "road_name",
+            "district", "district_name",
             "description", "affects_cargo", "geometry",
         )
 

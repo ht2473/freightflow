@@ -48,6 +48,20 @@ def magistral(db):
     )
 
 
+@pytest.fixture
+def bounded_district(db):
+    """Округ с границами: квадрат вокруг координаты по умолчанию."""
+    from core.models import District
+    from geo import Geometry
+
+    return District.objects.create(
+        name="Центральный", short_name="ЦАО",
+        geom=Geometry("MULTIPOLYGON", [[[
+            [37.60, 55.73], [37.65, 55.73], [37.65, 55.77], [37.60, 55.77], [37.60, 55.73],
+        ]]]),
+    )
+
+
 class TestSelection:
     """В реестр попадают только участки автомобильной сети."""
 
@@ -99,6 +113,25 @@ class TestClassification:
     def test_origin_is_measured(self, db):
         run(StubRoadworks([way(1)]))
         assert TrafficIncident.objects.get().origin == DataOrigin.MEASURED
+
+
+class TestTerritory:
+    """Событие относится к округу по своей координате."""
+
+    def test_point_inside_boundary_locates_district(self, bounded_district):
+        run(StubRoadworks([way(1, lon=37.62, lat=55.75)]))
+        assert TrafficIncident.objects.get().district == bounded_district
+
+    def test_point_outside_boundary_stays_unlocated(self, bounded_district):
+        run(StubRoadworks([way(1, lon=37.90, lat=55.90)]))
+        assert TrafficIncident.objects.get().district is None
+
+    def test_district_does_not_depend_on_road_registry(self, bounded_district):
+        """Работы на улице вне реестра магистралей всё равно попадают в округ."""
+        run(StubRoadworks([way(1, name="Улица без реестра", lon=37.62, lat=55.75)]))
+        event = TrafficIncident.objects.get()
+        assert event.road is None
+        assert event.district == bounded_district
 
 
 class TestTime:

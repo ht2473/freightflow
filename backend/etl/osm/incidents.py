@@ -34,7 +34,7 @@ from geo.geometry import Geometry
 
 from ..pipeline import Candidate, Context, Extract, RunReport
 from ..quality import Check, required, within
-from .loaders import OverpassPipeline
+from .loaders import OverpassPipeline, district_index, locate_district
 from .roads import normalize_road_name
 
 logger = logging.getLogger("freightflow.etl")
@@ -140,6 +140,10 @@ class RoadworksPipeline(OverpassPipeline):
             normalize_road_name(road.name).lower(): road
             for road in RoadSegment.objects.all()
         }
+        # Округ определяется по координате события, а не по участку: реестр
+        # магистралей содержит только сеть городского значения, и работы
+        # на районной улице иначе остались бы вне территориального разреза.
+        districts = district_index()
 
         for element in extract.records:
             tags = element.get("tags") or {}
@@ -167,6 +171,7 @@ class RoadworksPipeline(OverpassPipeline):
                     "incident_type": IncidentType.ROADWORKS,
                     "severity": _severity(construction_class),
                     "road": road,
+                    "district": locate_district(districts, point) if point else None,
                     "description": _description(tags, construction_class),
                     "geom": point,
                     "affects_cargo": (
@@ -221,10 +226,12 @@ class RoadworksPipeline(OverpassPipeline):
         stale_before = timezone.now() - STALE_AFTER
         stale = events.filter(reported_at__lt=stale_before).count()
         linked = events.exclude(road__isnull=True).count()
+        located = events.exclude(district__isnull=True).count()
         cargo = events.filter(affects_cargo=True).count()
 
         report.detail(f"затрагивают грузовое движение: {cargo} из {total}")
         report.detail(f"сопоставлено с реестром магистралей: {linked} из {total}")
+        report.detail(f"отнесено к округу: {located} из {total}")
         if stale:
             report.detail(
                 f"разметка старше трёх лет у {stale} записей: работы могли "

@@ -93,7 +93,7 @@ def incident_list(request):
     elif state == "closed":
         queryset = queryset.filter(resolved_at__isnull=False)
     if district_id:
-        queryset = queryset.filter(road__district_id=district_id)
+        queryset = queryset.filter(district_id=district_id)
     if severity:
         queryset = queryset.filter(severity__gte=severity)
     if cargo_only:
@@ -129,8 +129,8 @@ def incident_list(request):
 def incident_detail(request, pk: int):
     """Карточка дорожного инцидента."""
     incident = get_object_or_404(
-        TrafficIncident.objects.select_related("road", "road__district", "source").defer(
-            "road__district__geom"
+        TrafficIncident.objects.select_related("road", "district", "source").defer(
+            "district__geom"
         ),
         pk=pk,
     )

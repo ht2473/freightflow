@@ -266,6 +266,7 @@ CREATE TABLE IF NOT EXISTS traffic_incidents (
     incident_type VARCHAR(32) NOT NULL,
     severity      SMALLINT    NOT NULL DEFAULT 1,
     road_id       INTEGER REFERENCES road_segments (id) ON DELETE SET NULL,
+    district_id   INTEGER REFERENCES districts (id) ON DELETE SET NULL,
     description   TEXT,
     geom          geometry(Point, 4326),
     affects_cargo BOOLEAN     NOT NULL DEFAULT FALSE,
@@ -283,6 +284,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_incident_external_key
     ON traffic_incidents (source_id, external_key) WHERE external_key <> '';
 
 COMMENT ON TABLE  traffic_incidents IS 'Инциденты на улично-дорожной сети';
+COMMENT ON COLUMN traffic_incidents.district_id IS 'Округ, в границы которого попадает координата события';
 COMMENT ON COLUMN traffic_incidents.affects_cargo IS 'Признак влияния инцидента на движение грузового транспорта';
 COMMENT ON COLUMN traffic_incidents.external_key IS 'Ключ сопоставления с записью источника при повторной загрузке';
 

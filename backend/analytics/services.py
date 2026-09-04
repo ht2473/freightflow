@@ -179,16 +179,21 @@ def load_index() -> list[dict]:
 
 
 def _incidents_by_district() -> dict[int, int]:
-    """Число зарегистрированных инцидентов в разрезе округов."""
+    """Число зарегистрированных событий в разрезе округов.
+
+    Событие относится к округу по своей координате. Привязка к участку для
+    этого не годится: реестр магистралей содержит сеть городского значения,
+    и работы на районной улице выпали бы из территориального разреза.
+    """
     from core.models import TrafficIncident
     from django.db.models import Count
 
     rows = (
-        TrafficIncident.objects.filter(road__district__isnull=False)
-        .values("road__district_id")
+        TrafficIncident.objects.filter(district__isnull=False)
+        .values("district_id")
         .annotate(count=Count("id"))
     )
-    return {row["road__district_id"]: row["count"] for row in rows}
+    return {row["district_id"]: row["count"] for row in rows}
 
 
 def index_summary() -> dict:

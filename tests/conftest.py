@@ -162,7 +162,7 @@ def conditions(db, roads, data_source):
 
 
 @pytest.fixture
-def incidents(db, roads, data_source):
+def incidents(db, roads, districts, data_source):
     """Четыре дорожных события разной серьёзности."""
     from core.models import TrafficIncident
     from geo import Geometry
@@ -181,6 +181,7 @@ def incidents(db, roads, data_source):
             incident_type=kind,
             severity=severity,
             road=roads[road_idx],
+            district=roads[road_idx].district,
             description=f"Тестовое событие {index + 1}",
             geom=Geometry.point(37.60 + index * 0.01, 55.75),
             affects_cargo=cargo,

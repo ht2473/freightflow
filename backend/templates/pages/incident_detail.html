@@ -43,7 +43,7 @@
                         <a href="{{ incident.road.get_absolute_url }}">{{ incident.road.name }}</a>
                         {% else %}не указан{% endif %}</dd></div>
                 <div><dt>{% trans 'Округ' %}</dt>
-                    <dd>{{ incident.road.district.name|default:"—" }}</dd></div>
+                    <dd>{{ incident.district.name|default:"—" }}</dd></div>
                 {% if incident.geom %}
                     <div><dt>{% trans 'Координаты' %}</dt>
                         <dd>{{ incident.geom.lat|spaced:5 }}, {{ incident.geom.lon|spaced:5 }}</dd></div>
