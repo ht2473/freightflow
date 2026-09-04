@@ -9,10 +9,12 @@ from core.choices import PeriodType
 from core.models import District
 from core.views.base import int_param, page_context
 from django.core.serializers.json import DjangoJSONEncoder
+from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils.translation import gettext_lazy as _
+from django.views.decorators.http import require_GET
 
-from . import services
+from . import services, spatial
 
 
 def _float_param(request, name: str, default: float = 0.0) -> float:
@@ -61,6 +63,51 @@ def sensitivity(request):
         components=services.COMPONENTS,
     )
     return render(request, "pages/analytics_sensitivity.html", context)
+
+
+def _radius_param(request) -> float:
+    """Радиус обслуживания из запроса, ограниченный набором допустимых."""
+    try:
+        value = float(request.GET.get("radius", spatial.DEFAULT_RADIUS_KM))
+    except (TypeError, ValueError):
+        return spatial.DEFAULT_RADIUS_KM
+    return value if value in spatial.RADIUS_OPTIONS else spatial.DEFAULT_RADIUS_KM
+
+
+def spatial_analysis(request):
+    """Пространственный разрез: картограмма и обеспеченность территории."""
+    metric = request.GET.get("metric", "score")
+    if metric not in spatial.CHOROPLETH_METRICS:
+        metric = "score"
+    radius = _radius_param(request)
+
+    values, unit = spatial.metric_values(metric)
+    context = page_context(
+        request,
+        title=_("Пространственный анализ"),
+        lead=_(
+            "Распределение логистической инфраструктуры по территории: "
+            "картограмма показателей округов и обеспеченность города "
+            "объектами в пределах заданного радиуса."
+        ),
+        active="spatial",
+        crumbs=[(_("Аналитика"), "analytics:index"), (_("Пространственный анализ"),)],
+        chart=spatial.choropleth(values),
+        metric=metric,
+        metric_title=spatial.CHOROPLETH_METRICS[metric],
+        metric_unit=unit,
+        metrics=spatial.CHOROPLETH_METRICS,
+        coverage=spatial.coverage(radius),
+        radius=radius,
+        radius_options=spatial.RADIUS_OPTIONS,
+    )
+    return render(request, "pages/analytics_spatial.html", context)
+
+
+@require_GET
+def layer_accessibility(request) -> JsonResponse:
+    """Слой доступности для карты: сетка с расстоянием до ближайшего объекта."""
+    return JsonResponse(spatial.accessibility_layer(_radius_param(request)))
 
 
 def typology(request):

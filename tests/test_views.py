@@ -19,7 +19,8 @@ PUBLIC_PAGES = [
     "core:source_list", "core:etl_log", "core:methodology", "core:api_docs",
     "core:help", "core:about", "core:sitemap",
     "analytics:index", "analytics:sensitivity", "analytics:typology",
-    "analytics:forecast", "analytics:compare", "analytics:scenario",
+    "analytics:spatial", "analytics:forecast", "analytics:compare",
+    "analytics:scenario",
     "content:article_list", "content:feedback",
 ]
 

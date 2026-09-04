@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% load ff i18n l10n %}
+
+{% block content %}
+<form class="filters" method="get" data-autosubmit>
+    <div class="filters__grid">
+        <div class="field">
+            <label for="f-metric">{% trans 'Показатель картограммы' %}</label>
+            <select id="f-metric" name="metric">
+                {% for code, title in metrics.items %}
+                    <option value="{{ code }}" {% if code == metric %}selected{% endif %}>
+                        {{ title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field">
+            <label for="f-radius">{% trans 'Радиус обслуживания' %}</label>
+            <select id="f-radius" name="radius">
+                {% for option in radius_options %}
+                    <option value="{{ option|stringformat:'g' }}"
+                            {% if option == radius %}selected{% endif %}>
+                        {{ option|spaced:0 }} км</option>
+                {% endfor %}
+            </select>
+            <p class="field__hint">{% trans 'по прямой от центра ячейки сетки' %}</p>
+        </div>
+    </div>
+</form>
+
+<section class="section">
+    <div class="grid grid--sidebar">
+        <article class="card card--flush">
+            <div class="card__head">
+                <div>
+                    <p class="eyebrow">{% trans 'Картограмма' %}</p>
+                    <h3>{{ metric_title }}</h3>
+                </div>
+                <p class="small faint">{{ metric_unit }}</p>
+            </div>
+            <div class="card__body">
+                {% if chart.available %}
+                    {% comment %}
+                        Числа в разметке проходят через локализацию: при русском
+                        языке 748.7 выводится как 748,7, и разбор атрибута SVG
+                        на этом заканчивается.
+                    {% endcomment %}
+                    {% localize off %}
+                    <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}"
+                         role="img" preserveAspectRatio="xMidYMid meet"
+                         style="width:100%;height:min(64vh,560px)"
+                         aria-label="{% trans 'Картограмма округов по выбранному показателю' %}">
+                        {% for shape in chart.shapes %}
+                            <g>
+                                {% for ring in shape.rings %}
+                                    <polygon points="{{ ring }}" fill="{{ shape.fill }}"
+                                             stroke="var(--bg)" stroke-width="2"
+                                             stroke-linejoin="round"></polygon>
+                                {% endfor %}
+                                <title>{{ shape.district.name }} — {{ shape.value|spaced:1 }} {{ metric_unit }}</title>
+                            </g>
+                        {% endfor %}
+                        {% for shape in chart.shapes %}
+                            <text x="{{ shape.label.0 }}" y="{{ shape.label.1 }}"
+                                  text-anchor="middle" font-size="20" fill="#e6edf3"
+                                  style="paint-order:stroke;stroke:#0e1216;stroke-width:4px">
+                                {{ shape.district.short_name }}
+                            </text>
+                        {% endfor %}
+                    </svg>
+                    {% endlocalize %}
+
+                    <div class="row row--between small faint" style="margin-top:var(--sp-3)">
+                        <span>{{ chart.low|spaced:1 }}</span>
+                        <span class="row" style="gap:0">
+                            {% for colour in chart.scale %}
+                                <i style="display:block;width:28px;height:10px;background:{{ colour }}"></i>
+                            {% endfor %}
+                        </span>
+                        <span>{{ chart.high|spaced:1 }}</span>
+                    </div>
+                {% else %}
+                    <p class="muted">{% trans 'Границы округов не загружены.' %}</p>
+                {% endif %}
+            </div>
+        </article>
+
+        <aside class="prose">
+            <h3>{% trans 'Что показано' %}</h3>
+            <p class="small muted">{% trans 'Округ закрашен по величине выбранного показателя: чем светлее, тем она выше. Шкала последовательная, а не семафорная — величина означает «больше или меньше», а не «хорошо или плохо».' %}</p>
+            <p class="small muted">{% trans 'Округ, у которого показатель не измерен, остаётся незакрашенным: цвет из шкалы означал бы, что величина известна.' %}</p>
+            <p class="small muted">{% trans 'Границы приведены к плоскости с поправкой на широту и упрощены: город занимает четверть градуса, и на таком протяжении искажение формы неразличимо.' %}</p>
+        </aside>
+    </div>
+</section>
+
+{% if coverage.available %}
+<section class="section">
+    <div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+        <div class="metric metric--{% if coverage.share >= 75 %}ok{% elif coverage.share >= 50 %}warn{% else %}alert{% endif %}">
+            <span class="metric__label">{% trans 'Территория в пределах радиуса' %}</span>
+            <span class="metric__value">{{ coverage.share|spaced:1 }}<small> %</small></span>
+            <span class="metric__note">
+                {{ coverage.radius_km|spaced:0 }} км {% trans 'до ближайшего объекта' %}
+            </span>
+        </div>
+        <div class="metric">
+            <span class="metric__label">{% trans 'Среднее расстояние' %}</span>
+            <span class="metric__value">{{ coverage.mean_distance|spaced:2 }}<small> км</small></span>
+            <span class="metric__note">{% trans 'по прямой, от центра ячейки' %}</span>
+        </div>
+        <div class="metric metric--alert">
+            <span class="metric__label">{% trans 'Вне радиуса' %}</span>
+            <span class="metric__value">{{ coverage.gap_area_sq_km|spaced:0 }}<small> км²</small></span>
+            <span class="metric__note">
+                {{ coverage.gap_count }} {{ coverage.gap_count|plural:"ячейка,ячейки,ячеек" }}
+                {% trans 'сетки' %}
+            </span>
+        </div>
+        <div class="metric">
+            <span class="metric__label">{% trans 'Разрешение сетки' %}</span>
+            <span class="metric__value">{{ coverage.step_km|spaced:0 }}<small> км</small></span>
+            <span class="metric__note">
+                {{ coverage.cells }} {{ coverage.cells|plural:"ячейка,ячейки,ячеек" }},
+                {{ coverage.area_sq_km|spaced:0 }} км²
+            </span>
+        </div>
+    </div>
+
+    <div class="section__head">
+        <div>
+            <p class="eyebrow">{% trans 'Зоны обслуживания' %}</p>
+            <h2>{% trans 'Обеспеченность округов' %}</h2>
+        </div>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>{% trans 'Округ' %}</th>
+                    <th class="num">{% trans 'Площадь, км²' %}</th>
+                    <th class="num">{% trans 'В пределах радиуса' %}</th>
+                    <th>{% trans 'Доля' %}</th>
+                    <th class="num">{% trans 'Среднее расстояние, км' %}</th>
+                    <th class="num">{% trans 'Наибольшее, км' %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in coverage.districts %}
+                    <tr data-href="{{ row.district.get_absolute_url }}">
+                        <td>
+                            <span class="table-title">{{ row.district.short_name }}</span>
+                            <span class="table-sub">{{ row.district.name }}</span>
+                        </td>
+                        <td class="num">{{ row.area_sq_km|spaced:0 }}</td>
+                        <td class="num">{{ row.share|spaced:1 }} %</td>
+                        <td style="min-width:140px">
+                            <div class="bar">
+                                <div class="bar__fill bar__fill--{% if row.share >= 75 %}ok{% elif row.share >= 50 %}warn{% else %}alert{% endif %}"
+                                     style="width:{{ row.share }}%"></div>
+                            </div>
+                        </td>
+                        <td class="num">{{ row.mean_distance|spaced:2 }}</td>
+                        <td class="num faint">{{ row.max_distance|spaced:2 }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="section">
+    <div class="grid grid--2">
+        <article class="card card--flush">
+            <div class="card__head">
+                <h3>{% trans 'Наиболее удалённые точки' %}</h3>
+            </div>
+            <div class="table-wrap" style="border:none">
+                <table class="data">
+                    <thead>
+                        <tr><th>{% trans 'Округ' %}</th><th class="num">{% trans 'Расстояние, км' %}</th>
+                            <th class="num">{% trans 'Координаты' %}</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for gap in coverage.gaps %}
+                            <tr>
+                                <td>{{ gap.district.short_name }}</td>
+                                <td class="num"><strong>{{ gap.distance_km|spaced:2 }}</strong></td>
+                                <td class="num mono small faint">
+                                    {{ gap.lat|spaced:4 }}, {{ gap.lon|spaced:4 }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Как считается обеспеченность' %}</h3>
+            <div class="prose">
+                <p class="small muted">{% trans 'Территория города покрывается сеткой с шагом два километра. Ячейка входит в расчёт, если её центр лежит в границах округа: прямоугольник габаритов захватывает и область за городом. Для центра каждой ячейки отыскивается расстояние до ближайшего объекта реестра.' %}</p>
+                <p class="small muted">{% trans 'Расстояние измеряется по прямой. Это верхняя оценка доступности: по улицам путь всегда длиннее, а насколько именно — зависит от связности сети. Величина названа так, как получена, и временем подъезда не является. Расчёт по графу дорог появится вместе с маршрутизатором.' %}</p>
+                <p class="small muted">{% trans 'Незакрытая радиусом площадь — не всегда недостаток размещения: значительная её часть приходится на лесопарковые и незастроенные территории присоединённых округов, где грузополучателей нет. Величина показывает, где искать, а не что делать.' %}</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}
