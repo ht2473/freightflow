@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS cargo_routes (
     distance_km     NUMERIC(10, 2),
     avg_duration_h  NUMERIC(8, 2),
     truck_count_day INTEGER,
-    geom            geometry(LineString, 4326),
+    geom            geometry(MultiLineString, 4326),
     source_id       INTEGER REFERENCES data_sources (id) ON DELETE SET NULL,
     CONSTRAINT route_type_allowed CHECK (route_type IN ('inbound', 'outbound', 'transit')),
     CONSTRAINT route_distance_positive CHECK (distance_km IS NULL OR distance_km > 0),

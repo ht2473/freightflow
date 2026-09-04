@@ -21,7 +21,6 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from geo import (
-    LineStringField,
     MultiLineStringField,
     MultiPolygonField,
     PointField,
@@ -541,7 +540,7 @@ class CargoRoute(models.Model):
         blank=True,
         validators=[MinValueValidator(0)],
     )
-    geom = LineStringField(_("Геометрия маршрута"), null=True, blank=True)
+    geom = MultiLineStringField(_("Геометрия коридора"), null=True, blank=True)
     source = models.ForeignKey(
         DataSource,
         on_delete=models.SET_NULL,

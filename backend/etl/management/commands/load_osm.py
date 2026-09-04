@@ -19,6 +19,7 @@ from django.utils import timezone
 
 from etl.client import OverpassClient, OverpassError
 from etl.osm import loaders
+from etl.osm.corridors import load_corridors
 from etl.osm.roads import load_road_network
 from etl.osm.zones import load_zones
 
@@ -28,6 +29,7 @@ DATASETS: dict[str, tuple[str, str]] = {
     "objects": ("load_infrastructure", "infrastructure_objects"),
     "roads": ("load_road_network", "road_segments"),
     "zones": ("load_zones", "restriction_zones"),
+    "corridors": ("load_corridors", "cargo_routes"),
 }
 
 
@@ -38,6 +40,7 @@ PROCEDURES = {
     "load_infrastructure": loaders.load_infrastructure,
     "load_road_network": load_road_network,
     "load_zones": load_zones,
+    "load_corridors": load_corridors,
 }
 
 
