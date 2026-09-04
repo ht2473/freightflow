@@ -149,6 +149,8 @@ CREATE TABLE IF NOT EXISTS road_segments (
     length_km       NUMERIC(8, 2),
     length_origin   VARCHAR(16),
     allows_hgv      BOOLEAN,
+    in_freight_frame   BOOLEAN,
+    freight_frame_kind VARCHAR(16) NOT NULL DEFAULT '',
     segment_count   INTEGER NOT NULL DEFAULT 0,
     source_updated_at TIMESTAMPTZ,
     speed_limit_kmh SMALLINT,
@@ -161,7 +163,10 @@ CREATE TABLE IF NOT EXISTS road_segments (
 );
 
 COMMENT ON TABLE infrastructure_objects IS 'Объекты логистической инфраструктуры (точечные)';
-COMMENT ON TABLE road_segments IS 'Участки улично-дорожной сети под мониторингом';
+COMMENT ON TABLE  road_segments IS 'Участки улично-дорожной сети под мониторингом';
+COMMENT ON COLUMN road_segments.allows_hgv IS 'Грузовое движение по разметке источника; NULL — сведений нет';
+COMMENT ON COLUMN road_segments.in_freight_frame IS 'Принадлежность грузовому каркасу; NULL — сведений нет';
+COMMENT ON COLUMN road_segments.length_origin IS 'Происхождение протяжённости: measured | derived | modelled';
 
 -- Грузовые маршруты и транспортные коридоры.
 -- route_type: inbound (ввоз в город) | outbound (вывоз) | transit (транзит).
@@ -227,8 +232,10 @@ COMMENT ON TABLE  freight_flow_stats IS 'Статистика грузопото
 COMMENT ON COLUMN freight_flow_stats.turnover_ton_km IS 'Грузооборот: произведение массы груза на расстояние перевозки';
 COMMENT ON COLUMN freight_flow_stats.external_key IS 'Ключ сопоставления с записью источника при повторной загрузке';
 
--- Замеры дорожной обстановки. congestion_level — балл загруженности по шкале
--- ЦОДД (0 — свободно, 10 — движение парализовано).
+-- Оценки дорожной обстановки. congestion_level — балл загруженности
+-- (0 — свободно, 10 — движение парализовано). Наблюдений загруженности
+-- в открытом доступе не существует, поэтому оценки получены расчётной
+-- моделью и помечены происхождением.
 CREATE TABLE IF NOT EXISTS traffic_conditions (
     id               SERIAL PRIMARY KEY,
     recorded_at      TIMESTAMPTZ NOT NULL,
@@ -238,12 +245,16 @@ CREATE TABLE IF NOT EXISTS traffic_conditions (
     travel_time_min  NUMERIC(8, 2),
     vehicle_density  INTEGER,
     incident_flag    BOOLEAN NOT NULL DEFAULT FALSE,
+    origin           VARCHAR(16),
+    model_explanation VARCHAR(300) NOT NULL DEFAULT '',
     source_id        INTEGER REFERENCES data_sources (id) ON DELETE SET NULL,
     CONSTRAINT traffic_congestion_range CHECK (congestion_level BETWEEN 0 AND 10),
     CONSTRAINT traffic_speed_positive CHECK (avg_speed_kmh IS NULL OR avg_speed_kmh >= 0)
 );
 
-COMMENT ON COLUMN traffic_conditions.congestion_level IS 'Балл загруженности 0–10 (шкала ЦОДД)';
+COMMENT ON COLUMN traffic_conditions.congestion_level IS 'Балл загруженности 0–10';
+COMMENT ON COLUMN traffic_conditions.origin IS 'Происхождение оценки: measured | derived | modelled';
+COMMENT ON COLUMN traffic_conditions.model_explanation IS 'Слагаемые расчётной оценки: из чего сложился балл';
 COMMENT ON COLUMN traffic_conditions.vehicle_density IS 'Плотность потока, ТС на километр полосы';
 
 -- Дорожные события: ДТП, ремонтные работы, ограничения, погодные явления.
