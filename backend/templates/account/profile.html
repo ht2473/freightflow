@@ -80,10 +80,10 @@
             <dl class="facts">
                 <div><dt>{% trans 'Выгрузка отчётов' %}</dt>
                     <dd>{% if profile.can_export %}разрешена{% else %}недоступна{% endif %}</dd></div>
-                <div><dt>{% trans 'Изменение данных' %}</dt>
-                    <dd>{% if profile.can_operate %}разрешено{% else %}недоступно{% endif %}</dd></div>
-                <div><dt>{% trans 'Панель администратора' %}</dt>
-                    <dd>{% if profile.can_administer %}открыта{% else %}закрыта{% endif %}</dd></div>
+                <div><dt>{% trans 'Работа с данными' %}</dt>
+                    <dd>{% if profile.can_operate %}разрешена{% else %}недоступна{% endif %}</dd></div>
+                <div><dt>{% trans 'Ведение системы' %}</dt>
+                    <dd>{% if profile.can_administer %}разрешено{% else %}недоступно{% endif %}</dd></div>
             </dl>
         </div>
 

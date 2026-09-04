@@ -5,17 +5,31 @@
 {% include "partials/_tabs.html" %}
 
 <div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Пользователей' %}</span>
-        <span class="metric__value">{{ users.total }}</span>
-        <span class="metric__note">{% blocktrans with active=users.active recent=users.recent %}активных {{ active }}, за неделю входили {{ recent }}{% endblocktrans %}</span>
-    </div>
-    <a class="metric metric--{% if feedback_new %}warn{% else %}ok{% endif %}"
-       href="{% url 'console:feedback' %}">
-        <span class="metric__label">{% trans 'Новых обращений' %}</span>
-        <span class="metric__value">{{ feedback_new }}</span>
-        <span class="metric__note">{% blocktrans with total=feedback_total %}всего в системе {{ total }}{% endblocktrans %}</span>
-    </a>
+    {% if can_administer %}
+        <div class="metric metric--accent">
+            <span class="metric__label">{% trans 'Пользователей' %}</span>
+            <span class="metric__value">{{ users.total }}</span>
+            <span class="metric__note">{% blocktrans with active=users.active recent=users.recent %}активных {{ active }}, за неделю входили {{ recent }}{% endblocktrans %}</span>
+        </div>
+        <a class="metric metric--{% if feedback_new %}warn{% else %}ok{% endif %}"
+           href="{% url 'console:feedback' %}">
+            <span class="metric__label">{% trans 'Новых обращений' %}</span>
+            <span class="metric__value">{{ feedback_new }}</span>
+            <span class="metric__note">{% blocktrans with total=feedback_total %}всего в системе {{ total }}{% endblocktrans %}</span>
+        </a>
+    {% else %}
+        <a class="metric metric--accent" href="{% url 'console:etl' %}">
+            <span class="metric__label">{% trans 'Записей в реестрах' %}</span>
+            <span class="metric__value">{{ records_total|spaced }}</span>
+            <span class="metric__note">{% blocktrans with loaded=etl.total_loaded %}загружено за всё время {{ loaded }}{% endblocktrans %}</span>
+        </a>
+        <a class="metric metric--{% if quarantine_open %}warn{% else %}ok{% endif %}"
+           href="{% url 'console:quarantine' %}">
+            <span class="metric__label">{% trans 'В карантине' %}</span>
+            <span class="metric__value">{{ quarantine_open }}</span>
+            <span class="metric__note">{% trans 'записей ожидают разбора' %}</span>
+        </a>
+    {% endif %}
     <a class="metric metric--{% if incidents_open %}alert{% else %}ok{% endif %}"
        href="{% url 'core:incident_list' %}?state=open">
         <span class="metric__label">{% trans 'Открытых инцидентов' %}</span>
@@ -70,6 +84,7 @@
             </div>
         </article>
 
+        {% if can_administer %}
         <article class="card card--flush">
             <div class="card__head">
                 <div>
@@ -96,9 +111,11 @@
                 </table>
             </div>
         </article>
+        {% endif %}
     </div>
 
     <aside class="stack">
+        {% if can_administer %}
         <div class="card">
             <h3 style="margin-bottom:var(--sp-3)">{% trans 'Пользователи по ролям' %}</h3>
             <div class="stack stack--tight">
@@ -117,12 +134,15 @@
             <a class="button button--block" style="margin-top:var(--sp-4)"
                href="{% url 'console:users' %}">{% trans 'Управление доступом' %}</a>
         </div>
+        {% endif %}
 
         <div class="card">
-            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Содержание портала' %}</h3>
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Состояние данных' %}</h3>
             <dl class="facts">
-                <div><dt>{% trans 'Опубликовано материалов' %}</dt><dd>{{ articles_published }}</dd></div>
-                <div><dt>{% trans 'Выгрузок за неделю' %}</dt><dd>{{ exports_week }}</dd></div>
+                {% if can_administer %}
+                    <div><dt>{% trans 'Опубликовано материалов' %}</dt><dd>{{ articles_published }}</dd></div>
+                    <div><dt>{% trans 'Выгрузок за неделю' %}</dt><dd>{{ exports_week }}</dd></div>
+                {% endif %}
                 <div><dt>{% trans 'Загружено записей' %}</dt><dd>{{ etl.total_loaded|spaced }}</dd></div>
                 <div><dt>{% trans 'Отклонено записей' %}</dt><dd>{{ etl.total_errors|spaced }}</dd></div>
             </dl>

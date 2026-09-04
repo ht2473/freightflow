@@ -135,12 +135,20 @@
             </div>
         {% endif %}
 
-        {% if profile.can_administer %}
+        {% if profile.can_operate %}
             <div class="card card--accent">
-                <h3 style="margin-bottom:var(--sp-3)">{% trans 'Панель администратора' %}</h3>
-                <p class="small muted" style="margin-bottom:var(--sp-3)">{% trans 'Управление пользователями, справочниками и контроль качества данных.' %}</p>
+                <h3 style="margin-bottom:var(--sp-3)">
+                    {% if profile.can_administer %}{% trans 'Панель администратора' %}{% else %}{% trans 'Работа с данными' %}{% endif %}
+                </h3>
+                <p class="small muted" style="margin-bottom:var(--sp-3)">
+                    {% if profile.can_administer %}
+                        {% trans 'Учётные записи, справочники, содержание разделов и состояние данных.' %}
+                    {% else %}
+                        {% trans 'Загрузка данных, карантин записей и контроль полноты сведений.' %}
+                    {% endif %}
+                </p>
                 <a class="button button--primary button--block"
-                   href="{% url 'console:dashboard' %}">{% trans 'Открыть панель' %}</a>
+                   href="{% url 'console:dashboard' %}">{% trans 'Открыть раздел' %}</a>
             </div>
         {% endif %}
     </aside>

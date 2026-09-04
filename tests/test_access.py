@@ -20,13 +20,20 @@ CABINET_ROUTES = [
     "accounts:api_access",
 ]
 
-# Разделы панели администратора.
-CONSOLE_ROUTES = [
-    "console:dashboard", "console:users", "console:references",
-    "console:feedback", "console:content", "console:quality",
-    "console:etl", "console:etl_upload", "console:quarantine",
-    "console:audit", "console:system",
+# Разделы панели, посвящённые работе с данными: доступны диспетчеру.
+OPERATOR_ROUTES = [
+    "console:dashboard", "console:quality", "console:etl",
+    "console:etl_upload", "console:quarantine",
 ]
+
+# Разделы ведения системы: только для администратора.
+ADMIN_ROUTES = [
+    "console:users", "console:references", "console:feedback",
+    "console:content", "console:audit", "console:system",
+]
+
+# Панель целиком.
+CONSOLE_ROUTES = OPERATOR_ROUTES + ADMIN_ROUTES
 
 
 class TestAnonymousAccess:
@@ -63,19 +70,48 @@ class TestRolePermissions:
         assert client.get(reverse("accounts:overview")).status_code == 200
 
     def test_viewer_denied_console(self, client, users):
-        """Наблюдателю панель администратора закрыта."""
+        """Наблюдателю панель управления закрыта."""
         client.force_login(users["viewer"])
         assert client.get(reverse("console:dashboard")).status_code == 403
 
     def test_analyst_denied_console(self, client, users):
-        """Аналитику панель администратора также закрыта."""
+        """Аналитику панель управления закрыта: он работает с готовыми данными."""
         client.force_login(users["analyst"])
         assert client.get(reverse("console:dashboard")).status_code == 403
 
-    def test_operator_denied_console(self, client, users):
-        """Диспетчеру панель администратора закрыта."""
+    @pytest.mark.parametrize("route", OPERATOR_ROUTES)
+    def test_operator_reaches_data_sections(self, client, users, full_dataset, route):
+        """Диспетчеру открыты разделы работы с данными."""
         client.force_login(users["operator"])
-        assert client.get(reverse("console:dashboard")).status_code == 403
+        assert client.get(reverse(route)).status_code == 200
+
+    @pytest.mark.parametrize("route", ADMIN_ROUTES)
+    def test_operator_denied_administration(self, client, users, full_dataset, route):
+        """Разделы ведения системы диспетчеру закрыты."""
+        client.force_login(users["operator"])
+        assert client.get(reverse(route)).status_code == 403
+
+    def test_operator_sees_only_own_sections(self, client, users, full_dataset):
+        """Перечень вкладок панели совпадает с тем, что диспетчеру доступно."""
+        client.force_login(users["operator"])
+        response = client.get(reverse("console:dashboard"))
+        codes = {row[0] for row in response.context["tabs"]}
+        assert codes == {"dashboard", "etl", "quarantine", "quality"}
+
+    def test_operator_can_review_quarantine(self, client, users, full_dataset):
+        """Диспетчер разбирает карантин, а не только смотрит на него."""
+        from core.models import EtlReject, EtlRun
+
+        run = EtlRun.objects.create(pipeline="test", target_table="t")
+        reject = EtlReject.objects.create(
+            run=run, check_code="required.name", message="нет наименования"
+        )
+        client.force_login(users["operator"])
+        client.post(
+            reverse("console:quarantine_action"), {"action": "review", "reject": reject.pk}
+        )
+        reject.refresh_from_db()
+        assert reject.reviewed_by == users["operator"]
 
     @pytest.mark.parametrize("route", CONSOLE_ROUTES)
     def test_admin_reaches_console(self, client, users, full_dataset, route):

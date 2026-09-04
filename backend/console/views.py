@@ -50,45 +50,83 @@ from etl.upload import COLUMNS, template_csv
 
 from .forms import FlowUploadForm, PipelineRunForm
 
-# Разделы панели: код, подпись, маршрут, краткое пояснение.
-CONSOLE_TABS: tuple[tuple[str, str, str, str], ...] = (
-    ("dashboard", _("Обзор системы"), "console:dashboard", _("Состояние и ключевые счётчики")),
-    ("users", _("Пользователи"), "console:users", _("Учётные записи и роли")),
-    ("references", _("Справочники"), "console:references", _("Округа, типы, категории, источники")),
-    ("feedback", _("Обращения"), "console:feedback", _("Обратная связь и ответы")),
-    ("content", _("Материалы"), "console:content", _("Аналитические публикации")),
-    ("quality", _("Качество данных"), "console:quality", _("Полнота и целостность записей")),
-    ("etl", _("Загрузка данных"), "console:etl", _("Реестр источников, регламент, журнал")),
-    ("quarantine", _("Карантин"), "console:quarantine", _("Записи, не прошедшие проверки")),
-    ("audit", _("Журнал аудита"), "console:audit", _("Действия всех пользователей")),
-    ("system", _("Состояние среды"), "console:system", _("Параметры развёртывания")),
+# Разделы панели: код, подпись, маршрут, краткое пояснение, наименьшая роль.
+# Роль здесь — единственное место, где объявлено, кому раздел принадлежит:
+# по ней же строится перечень вкладок, поэтому показанное и доступное
+# разойтись не могут.
+CONSOLE_TABS: tuple[tuple[str, str, str, str, str], ...] = (
+    ("dashboard", _("Обзор системы"), "console:dashboard",
+     _("Состояние и ключевые счётчики"), Role.OPERATOR),
+    ("etl", _("Загрузка данных"), "console:etl",
+     _("Реестр источников, регламент, журнал"), Role.OPERATOR),
+    ("quarantine", _("Карантин"), "console:quarantine",
+     _("Записи, не прошедшие проверки"), Role.OPERATOR),
+    ("quality", _("Качество данных"), "console:quality",
+     _("Полнота и целостность записей"), Role.OPERATOR),
+    ("users", _("Пользователи"), "console:users",
+     _("Учётные записи и роли"), Role.ADMIN),
+    ("references", _("Справочники"), "console:references",
+     _("Округа, типы, категории, источники"), Role.ADMIN),
+    ("feedback", _("Обращения"), "console:feedback",
+     _("Обратная связь и ответы"), Role.ADMIN),
+    ("content", _("Материалы"), "console:content",
+     _("Аналитические публикации"), Role.ADMIN),
+    ("audit", _("Журнал аудита"), "console:audit",
+     _("Действия всех пользователей"), Role.ADMIN),
+    ("system", _("Состояние среды"), "console:system",
+     _("Параметры развёртывания"), Role.ADMIN),
 )
 
 
-def admin_required(view):
-    """Пропустить в панель только пользователей с ролью «Администратор»."""
+def role_required(minimum: str):
+    """Пропустить в раздел пользователя с ролью не ниже указанной."""
 
-    @wraps(view)
-    @login_required
-    def wrapper(request, *args, **kwargs):
-        profile = profile_for(request.user)
-        if not (request.user.is_superuser or (profile and profile.can_administer)):
-            raise PermissionDenied(_("Раздел доступен администраторам системы"))
-        return view(request, *args, **kwargs)
+    def decorate(view):
+        @wraps(view)
+        @login_required
+        def wrapper(request, *args, **kwargs):
+            profile = profile_for(request.user)
+            allowed = request.user.is_superuser or (profile and profile.has_role(minimum))
+            if not allowed:
+                raise PermissionDenied(
+                    _("Раздел доступен с роли «%(role)s»") % {"role": Role(minimum).label}
+                )
+            return view(request, *args, **kwargs)
 
-    return wrapper
+        return wrapper
+
+    return decorate
+
+
+#: Разделы ведения системы: учётные записи, справочники, содержание, журналы.
+admin_required = role_required(Role.ADMIN)
+
+#: Разделы работы с данными: загрузка, карантин, качество, верификация.
+#: Диспетчер отвечает за состояние сведений, а не за устройство системы.
+operator_required = role_required(Role.OPERATOR)
 
 
 def _console_context(request, *, title: str, tab: str, lead: str = "", **extra) -> dict:
-    """Общий контекст страниц панели администратора."""
+    """Общий контекст страниц панели.
+
+    Перечень вкладок собирается по роли: диспетчер видит разделы работы
+    с данными, администратор — их и разделы ведения системы.
+    """
+    profile = profile_for(request.user)
+    administers = bool(profile and profile.can_administer)
     return page_context(
         request,
         title=title,
         lead=lead,
         active="console",
-        crumbs=[(_("Панель администратора"), "console:dashboard"), (title,)],
-        tabs=CONSOLE_TABS,
+        crumbs=[
+            (_("Панель администратора") if administers else _("Работа с данными"),
+             "console:dashboard"),
+            (title,),
+        ],
+        tabs=[row for row in CONSOLE_TABS if profile and profile.has_role(row[4])],
         current_tab=tab,
+        can_administer=administers,
         pending_feedback=FeedbackMessage.objects.filter(
             status__in=[FeedbackMessage.Status.NEW, FeedbackMessage.Status.IN_WORK]
         ).count(),
@@ -101,7 +139,7 @@ def _console_context(request, *, title: str, tab: str, lead: str = "", **extra) 
 # ---------------------------------------------------------------------------
 
 
-@admin_required
+@operator_required
 def dashboard(request):
     """Сводная страница состояния системы."""
     week_ago = timezone.now() - timedelta(days=7)
@@ -118,6 +156,7 @@ def dashboard(request):
     for row in by_role:
         row["label"] = role_labels.get(row["role"], row["role"])
 
+    coverage = selectors.data_coverage()
     context = _console_context(
         request,
         title=_("Обзор системы"),
@@ -133,7 +172,9 @@ def dashboard(request):
         etl=selectors.etl_health(limit=5),
         recent_events=AuditEvent.objects.select_related("user")[:10],
         incidents_open=TrafficIncident.objects.open().count(),
-        coverage=selectors.data_coverage(),
+        coverage=coverage,
+        records_total=sum(row["count"] for row in coverage),
+        quarantine_open=EtlReject.objects.filter(reviewed_at__isnull=True).count(),
     )
     return render(request, "console/dashboard.html", context)
 
@@ -374,7 +415,7 @@ def content_action(request, pk: int):
 # ---------------------------------------------------------------------------
 
 
-@admin_required
+@operator_required
 def quality(request):
     """Контроль полноты и непротиворечивости данных.
 
@@ -471,7 +512,7 @@ def quality(request):
 # ---------------------------------------------------------------------------
 
 
-@admin_required
+@operator_required
 def etl(request):
     """Реестр конвейеров, регламент и журнал загрузок."""
     queryset = EtlRun.objects.select_related("source", "actor").order_by("-started_at")
@@ -542,7 +583,7 @@ def _latest_runs() -> dict:
 
 
 @require_POST
-@admin_required
+@operator_required
 def etl_start(request):
     """Начать загрузку набора данных."""
     form = PipelineRunForm(request.POST)
@@ -590,7 +631,7 @@ def etl_start(request):
     return redirect("console:etl")
 
 
-@admin_required
+@operator_required
 def etl_run(request, pk: int):
     """Карточка одной загрузки: счётчики и отклонённые записи."""
     run = get_object_or_404(
@@ -618,7 +659,7 @@ def etl_run(request, pk: int):
     return render(request, "console/etl_run.html", context)
 
 
-@admin_required
+@operator_required
 def etl_upload(request):
     """Загрузка ряда из файла, присланного пользователем."""
     form = FlowUploadForm(request.POST or None, request.FILES or None)
@@ -667,7 +708,7 @@ def etl_upload(request):
     return render(request, "console/etl_upload.html", context)
 
 
-@admin_required
+@operator_required
 def etl_template(request):
     """Образец выгрузки для заполнения."""
     response = HttpResponse(template_csv(), content_type="text/csv; charset=utf-8")
@@ -680,7 +721,7 @@ def etl_template(request):
 # ---------------------------------------------------------------------------
 
 
-@admin_required
+@operator_required
 def quarantine(request):
     """Записи источников, не прошедшие проверку качества.
 
@@ -728,7 +769,7 @@ def quarantine(request):
 
 
 @require_POST
-@admin_required
+@operator_required
 def quarantine_action(request):
     """Отметить записи карантина разобранными либо вернуть их в очередь."""
     action = request.POST.get("action", "")
@@ -763,7 +804,7 @@ def quarantine_action(request):
 
 
 @require_POST
-@admin_required
+@operator_required
 def cache_flush(request):
     """Сбросить кеш сводок и аналитических расчётов."""
     from analytics import services as analytics_services
