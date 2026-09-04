@@ -14,12 +14,13 @@ from __future__ import annotations
 from datetime import timedelta
 
 from content.models import Article, ArticleCategory, FeedbackMessage, StaticPage
-from core.models import District, InfrastructureObject
+from core.models import District, InfrastructureObject, TrafficIncident
 from django.contrib.auth.models import Group, User
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
+from accounts import notify
 from accounts.models import (
     ComparisonSet,
     Favorite,
@@ -262,25 +263,31 @@ class Command(BaseCommand):
             )
 
         if operator:
-            IncidentSubscription.objects.get_or_create(
+            subscription, _created = IncidentSubscription.objects.get_or_create(
                 user=operator,
                 district=districts[0] if districts else None,
                 defaults={"min_severity": 3, "cargo_only": True},
             )
-            Notification.objects.get_or_create(
-                user=operator,
-                title="Зарегистрирован инцидент 4 уровня",
-                defaults={
-                    "level": Notification.Level.ALERT,
-                    "body": "Ограничение движения на магистрали влияет на грузовые маршруты.",
-                    "url": "/incidents/",
-                },
-            )
+            self._deliver_pending(subscription)
 
         self.stdout.write(
             f"  Содержимое кабинетов: закладок {Favorite.objects.count()}, "
             f"сохранённых видов {SavedView.objects.count()}"
         )
+
+    def _deliver_pending(self, subscription) -> None:
+        """Показать в кабинете подписки то, что она уже отбирает.
+
+        Уведомление не сочиняется: оно составляется по событиям, которые
+        действительно есть в базе и подпадают под условия подписки. Пустая
+        база оставляет раздел пустым, и это верно — оповещать не о чем.
+        """
+        if Notification.objects.filter(user=subscription.user).exists():
+            return
+        events = TrafficIncident.objects.open().select_related("district", "road")[:200]
+        delivered = notify.incidents_loaded(list(events))
+        if delivered:
+            self.stdout.write(f"  Уведомления по подпискам: {delivered}")
 
 
 # ---------------------------------------------------------------------------

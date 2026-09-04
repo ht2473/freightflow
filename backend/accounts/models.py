@@ -479,11 +479,57 @@ class IncidentSubscription(models.Model):
         verbose_name_plural = _("Подписки на инциденты")
 
     def __str__(self) -> str:
-        scope = self.district.short_name if self.district else _("вся Москва")
-        return f"{scope} · от {self.min_severity} балла"
+        return f"{self.scope_label} · от {self.min_severity} балла"
+
+    @property
+    def scope_label(self) -> str:
+        """Словесное описание условий подписки."""
+        scope = self.district.short_name if self.district else _("Вся Москва")
+        if self.cargo_only:
+            return _("%(scope)s, события для грузового транспорта") % {"scope": scope}
+        return str(scope)
+
+    @property
+    def url(self) -> str:
+        """Перечень событий, отвечающих условиям подписки."""
+        params = [f"severity={self.min_severity}", "state=open"]
+        if self.district_id:
+            params.append(f"district={self.district_id}")
+        if self.cargo_only:
+            params.append("cargo=1")
+        return f"{reverse('core:incident_list')}?{'&'.join(params)}"
+
+    @property
+    def conditions(self) -> models.Q:
+        """Условия подписки выражением отбора для базы.
+
+        Здесь те же правила, что и в :meth:`matches`, но пригодные для
+        запроса: перечень событий подписки строится выборкой, а разбор
+        принесённой загрузкой пачки — перебором в памяти. Совпадение этих
+        двух прочтений проверяется набором тестов.
+        """
+        query = models.Q(severity__gte=self.min_severity)
+        if self.cargo_only:
+            query &= models.Q(affects_cargo=True)
+        if self.district_id:
+            query &= models.Q(district_id=self.district_id) | models.Q(
+                district__isnull=True, road__district_id=self.district_id
+            )
+        return query
+
+    def matching_incidents(self):
+        """Открытые события, отвечающие условиям подписки."""
+        from core.models import TrafficIncident
+
+        return TrafficIncident.objects.open().filter(self.conditions)
 
     def matches(self, incident) -> bool:
-        """Проверить, подпадает ли инцидент под условия подписки."""
+        """Проверить, подпадает ли инцидент под условия подписки.
+
+        Округ события определён по его координате; участок сети привлекается
+        как запасной признак — событие может относиться к магистрали, но
+        не иметь координаты, по которой округ находится.
+        """
         if not self.is_active or incident.severity < self.min_severity:
             return False
         if self.cargo_only and not incident.affects_cargo:
@@ -491,7 +537,8 @@ class IncidentSubscription(models.Model):
         # Подписка без указания округа действует на всю территорию города.
         if not self.district_id:
             return True
-        return getattr(incident.road, "district_id", None) == self.district_id
+        district_id = incident.district_id or getattr(incident.road, "district_id", None)
+        return district_id == self.district_id
 
 
 class Notification(models.Model):

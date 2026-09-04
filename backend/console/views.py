@@ -15,6 +15,7 @@ from __future__ import annotations
 from datetime import timedelta
 from functools import wraps
 
+from accounts import notify
 from accounts.models import AuditEvent, ExportJob, Role, UserProfile, profile_for
 from content.models import Article, ArticleCategory, FeedbackMessage
 from core import selectors
@@ -208,6 +209,7 @@ def user_action(request, pk: int):
                 summary=f"Роль пользователя {user.username} изменена на «{profile.get_role_display()}»",
                 request_id=getattr(request, "request_id", ""),
             )
+            notify.role_changed(user, role=new_role, actor=request.user)
             messages.success(request, f"Роль пользователя обновлена: {profile.get_role_display()}.")
     elif action == "block":
         user.is_active = False

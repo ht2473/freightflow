@@ -11,10 +11,12 @@
                 <table class="data">
                     <thead>
                         <tr><th>{% trans 'Территория' %}</th><th class="num">{% trans 'Порог серьёзности' %}</th>
-                            <th>{% trans 'Только грузовые' %}</th><th>{% trans 'Состояние' %}</th><th>{% trans 'Создана' %}</th><th></th></tr>
+                            <th>{% trans 'Только грузовые' %}</th><th class="num">{% trans 'Событий сейчас' %}</th>
+                            <th>{% trans 'Состояние' %}</th><th>{% trans 'Создана' %}</th><th></th></tr>
                     </thead>
                     <tbody>
-                        {% for item in items %}
+                        {% for row in items %}
+                            {% with item=row.subscription %}
                             <tr>
                                 <td>
                                     <span class="table-title">
@@ -23,6 +25,13 @@
                                 </td>
                                 <td class="num">{{ item.min_severity }} и выше</td>
                                 <td>{% if item.cargo_only %}да{% else %}нет{% endif %}</td>
+                                <td class="num">
+                                    {% if row.open_count %}
+                                        <a href="{{ item.url }}">{{ row.open_count }}</a>
+                                    {% else %}
+                                        <span class="faint">0</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     {% if item.is_active %}
                                         <span class="badge badge--ok">{% trans 'активна' %}</span>
@@ -40,6 +49,7 @@
                                     </form>
                                 </td>
                             </tr>
+                            {% endwith %}
                         {% endfor %}
                     </tbody>
                 </table>

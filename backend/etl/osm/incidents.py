@@ -27,6 +27,7 @@ import logging
 from collections.abc import Iterator
 from datetime import datetime, timedelta
 
+from accounts import notify
 from core.choices import DataOrigin, IncidentType, UpdateFrequency
 from core.models import RoadSegment, TrafficIncident
 from django.utils.dateparse import parse_datetime
@@ -237,6 +238,28 @@ class RoadworksPipeline(OverpassPipeline):
                 f"разметка старше трёх лет у {stale} записей: работы могли "
                 f"завершиться без снятия отметки"
             )
+
+        self.announce(report, context)
+
+    def announce(self, report: RunReport, context: Context) -> None:
+        """Оповестить подписчиков о событиях, появившихся в этой загрузке.
+
+        Оповещаются только новые записи. Повторное подтверждение источником
+        уже известных работ событием не является, и подписчик, получивший бы
+        одно и то же уведомление после каждой ежедневной загрузки, перестал
+        бы читать раздел целиком.
+        """
+        if context.dry_run or not report.created_keys:
+            return
+        fresh = (
+            TrafficIncident.objects.filter(
+                source=self.ensure_source(), external_key__in=report.created_keys
+            )
+            .select_related("district", "road")
+        )
+        delivered = notify.incidents_loaded(list(fresh))
+        if delivered:
+            report.detail(f"оповещено подписчиков: {delivered}")
 
 
 def _timestamp(raw: str | None) -> datetime | None:

@@ -38,6 +38,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any
 
+from accounts import notify
 from core import selectors
 from core.choices import EtlStatus, EtlTrigger
 from core.models import DataSource, EtlReject, EtlRun
@@ -169,6 +170,10 @@ class RunReport:
     notes: list[str] = field(default_factory=list)
     details: list[str] = field(default_factory=list)
     rejects: list[Reject] = field(default_factory=list)
+    #: Ключи записей, появившихся в этой загрузке. По ним конвейер, которому
+    #: это нужно, находит новые записи и отличает их от подтверждённых
+    #: источником повторно.
+    created_keys: list[str] = field(default_factory=list)
     by_check: Counter = field(default_factory=Counter)
     by_rule: Counter = field(default_factory=Counter)
     #: Промежуточные сведения одного запуска: приведение накапливает здесь то,
@@ -422,17 +427,34 @@ def run(pipeline: Pipeline, context: Context | None = None) -> RunReport:
         report.status = EtlStatus.FAILED
         report.note(str(exc))
         _journal(entry, report, context)
+        _announce(report, pipeline, context)
         logger.exception("Загрузка «%s» прервана", pipeline.title)
         raise PipelineError(str(exc)) from exc
 
     report.status = _status(report)
     _journal(entry, report, context)
+    _announce(report, pipeline, context)
     if report.created or report.updated or report.removed:
         # Сводки и тайлы карты собраны по прежнему составу данных: загрузка,
         # что-либо изменившая, делает их недействительными.
         selectors.invalidate_caches()
     logger.info("%s", report.summary())
     return report
+
+
+def _announce(report: RunReport, pipeline: Pipeline, context: Context) -> None:
+    """Сообщить о неблагополучном итоге загрузки тем, кто с ним работает.
+
+    Отказ и карантин — состояния, требующие вмешательства человека, и ждать,
+    пока кто-нибудь откроет журнал загрузок, они не должны. Пробный проход
+    ничего не меняет и потому никого не оповещает.
+    """
+    if context.dry_run:
+        return
+    if report.status == EtlStatus.FAILED:
+        notify.load_failed(report, source_title=pipeline.title)
+    elif report.rejected:
+        notify.quarantined(report, source_title=pipeline.title)
 
 
 def _execute(pipeline: Pipeline, context: Context, report: RunReport) -> None:
@@ -454,6 +476,7 @@ def _execute(pipeline: Pipeline, context: Context, report: RunReport) -> None:
             outcome = pipeline.write(candidate, context)
             if outcome is Outcome.CREATED:
                 report.created += 1
+                report.created_keys.append(candidate.key)
             elif outcome is Outcome.UPDATED:
                 report.updated += 1
             else:

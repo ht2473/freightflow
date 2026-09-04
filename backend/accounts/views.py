@@ -333,9 +333,15 @@ def subscriptions(request):
         tab="subscriptions",
         lead=_(
             "Оповещение о дорожных событиях в выбранном округе с заданным "
-            "порогом серьёзности."
+            "порогом серьёзности. Рядом с каждой подпиской — сколько событий "
+            "отвечает её условиям сейчас."
         ),
-        items=IncidentSubscription.objects.filter(user=request.user).select_related("district"),
+        items=[
+            {"subscription": item, "open_count": item.matching_incidents().count()}
+            for item in IncidentSubscription.objects.filter(
+                user=request.user
+            ).select_related("district")
+        ],
         form=form,
     )
     return render(request, "account/subscriptions.html", context)
@@ -362,11 +368,28 @@ def notifications(request):
         request,
         title=_("Уведомления"),
         tab="notifications",
-        lead=_("Сообщения системы о событиях, подпадающих под ваши подписки."),
+        lead=_(
+            "Сообщения о событиях системы: новые дорожные события по вашим "
+            "подпискам, состояние загрузки данных, изменение полномочий."
+        ),
         page_obj=paginate(request, queryset, per_page=20),
         only_unread=request.GET.get("unread") == "1",
     )
     return render(request, "account/notifications.html", context)
+
+
+@login_required
+def notification_open(request, pk: int):
+    """Перейти к тому, о чём сообщает уведомление.
+
+    Переход и есть признак прочтения: требовать отдельного действия «отметить
+    прочитанным» от человека, который уже открыл предмет сообщения, незачем.
+    """
+    item = get_object_or_404(Notification, pk=pk, user=request.user)
+    if not item.is_read:
+        item.is_read = True
+        item.save(update_fields=["is_read"])
+    return redirect(item.url or "accounts:notifications")
 
 
 @require_POST

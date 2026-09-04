@@ -35,13 +35,13 @@
                 </div>
                 {% if item.url %}
                     <a class="button button--sm" style="margin-top:var(--sp-3)"
-                       href="{{ item.url }}">{% trans 'Перейти' %}</a>
+                       href="{% url 'accounts:notification_open' item.pk %}">{% trans 'Перейти' %}</a>
                 {% endif %}
             </article>
         {% endfor %}
     </div>
     {% include "partials/_pagination.html" %}
 {% else %}
-    {% include "partials/_empty.html" with empty_title="Уведомлений нет" empty_text="Уведомления приходят по оформленным подпискам на дорожные события." empty_action_url="/account/subscriptions/" empty_action_title="Настроить подписки" %}
+    {% include "partials/_empty.html" with empty_title="Уведомлений нет" empty_text="Уведомления появляются, когда происходит то, что вас касается: загрузка приносит события по вашим подпискам, проверки откладывают записи в карантин, изменяются полномочия учётной записи." empty_action_url="/account/subscriptions/" empty_action_title="Настроить подписки" %}
 {% endif %}
 {% endblock %}

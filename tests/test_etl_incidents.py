@@ -229,3 +229,49 @@ class TestChecks:
 
     def test_report_is_a_run_report(self, db):
         assert isinstance(run(StubRoadworks([])), RunReport)
+
+
+class TestAnnouncement:
+    """Оповещение подписчиков по итогу загрузки."""
+
+    @pytest.fixture
+    def subscription(self, users):
+        """Подписка на серьёзные события грузового движения по всему городу."""
+        from accounts.models import IncidentSubscription, Role
+
+        return IncidentSubscription.objects.create(
+            user=users[Role.VIEWER], min_severity=3, cargo_only=True
+        )
+
+    def test_new_events_reach_subscriber(self, subscription):
+        """Загрузка, принёсшая подходящее событие, оповещает подписчика."""
+        from accounts.models import Notification
+
+        report = run(StubRoadworks([way(1, "trunk")]))
+        assert Notification.objects.filter(user=subscription.user).count() == 1
+        assert any("оповещено подписчиков" in line for line in report.details)
+
+    def test_repeat_load_does_not_repeat_notice(self, subscription):
+        """Повторное подтверждение источником события не порождает."""
+        from accounts.models import Notification
+
+        run(StubRoadworks([way(1, "trunk")]))
+        run(StubRoadworks([way(1, "trunk")]))
+        assert Notification.objects.filter(user=subscription.user).count() == 1
+
+    def test_dry_run_announces_nothing(self, subscription):
+        """Пробный проход не оповещает: он ничего не изменил."""
+        from accounts.models import Notification
+
+        run(StubRoadworks([way(1, "trunk")]), Context(dry_run=True))
+        assert not Notification.objects.exists()
+
+    def test_quarantine_reaches_operators(self, users):
+        """Отложенные проверками записи доходят до тех, кто ведёт карантин."""
+        from accounts.models import Notification, Role
+
+        element = way(1)
+        del element["center"]
+        run(StubRoadworks([element]))
+
+        assert Notification.objects.filter(user=users[Role.OPERATOR]).exists()
