@@ -157,6 +157,33 @@ def int_param(request, name: str, default: int | None = None) -> int | None:
         return default
 
 
+def working_area(request) -> tuple[int | None, bool]:
+    """Округ отбора с учётом рабочей области пользователя.
+
+    Рабочая область — округ, с которым человек работает изо дня в день.
+    Она применяется, когда параметр отбора в запросе **отсутствует**, то есть
+    при первом заходе в раздел. Стоит воспользоваться формой отбора — и
+    параметр появляется, пусть и пустым, а область уступает выбору:
+    настройка не должна незаметно урезать выборку, которую человек только
+    что задал сам.
+
+    Возвращает пару «идентификатор округа, округ рабочей области». Второе
+    значение заполнено только тогда, когда область действительно применена:
+    по нему страница и сообщает, что показывает не весь город.
+    """
+    if "district" in request.GET:
+        return int_param(request, "district"), None
+
+    profile = None
+    if getattr(request, "user", None) is not None:
+        from accounts.models import profile_for
+
+        profile = profile_for(request.user)
+    if profile is None or profile.default_district is None:
+        return None, None
+    return profile.default_district_id, profile.default_district
+
+
 def choice_param(request, name: str, allowed: Iterable[str], default: str = "") -> str:
     """Прочитать параметр, значение которого ограничено списком допустимых."""
     value = (request.GET.get(name) or "").strip()

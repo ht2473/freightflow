@@ -12,7 +12,14 @@ from django.utils.translation import gettext_lazy as _
 from .. import selectors
 from ..choices import FlowDirection, FlowScope, IncidentType, congestion_state
 from ..models import District, TrafficCondition, TrafficIncident
-from .base import choice_param, int_param, minimap_settings, page_context, paginate
+from .base import (
+    choice_param,
+    int_param,
+    minimap_settings,
+    page_context,
+    paginate,
+    working_area,
+)
 
 
 def traffic(request):
@@ -82,7 +89,7 @@ def incident_list(request):
 
     incident_type = choice_param(request, "type", IncidentType.values)
     state = choice_param(request, "state", ["open", "closed"])
-    district_id = int_param(request, "district")
+    district_id, area_district = working_area(request)
     severity = int_param(request, "severity")
     cargo_only = request.GET.get("cargo") == "1"
 
@@ -115,6 +122,7 @@ def incident_list(request):
         statistics=selectors.incident_statistics(days=30),
         incident_types=IncidentType.choices,
         districts=District.objects.all(),
+        area_district=area_district,
         filters={
             "type": incident_type,
             "state": state,

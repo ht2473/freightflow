@@ -33,6 +33,7 @@ from .base import (
     minimap_settings,
     page_context,
     paginate,
+    working_area,
 )
 
 # Разрешённые варианты сортировки реестра объектов: код → выражение ORM.
@@ -52,7 +53,7 @@ def object_list(request):
 
     # Условия отбора считываются из адресной строки — это делает любое
     # состояние реестра адресуемым и пригодным для сохранения в кабинете.
-    district_id = int_param(request, "district")
+    district_id, area_district = working_area(request)
     type_id = int_param(request, "type")
     source_id = int_param(request, "source")
     term = (request.GET.get("q") or "").strip()
@@ -85,6 +86,7 @@ def object_list(request):
         total_capacity=totals["capacity"] or 0,
         total_area=totals["area"] or 0,
         districts=District.objects.all(),
+        area_district=area_district,
         types=InfrastructureType.objects.all(),
         sources=DataSource.objects.filter(is_active=True),
         filters={
@@ -286,7 +288,7 @@ def road_list(request):
         "district__geom"
     )
 
-    district_id = int_param(request, "district")
+    district_id, area_district = working_area(request)
     road_class = choice_param(request, "class", RoadClass.values)
     term = (request.GET.get("q") or "").strip()
 
@@ -321,6 +323,7 @@ def road_list(request):
         total_count=queryset.count(),
         total_length=queryset.aggregate(total=Sum("length_km"))["total"] or 0,
         districts=District.objects.all(),
+        area_district=area_district,
         road_classes=RoadClass.choices,
         filters={
             "district": district_id,

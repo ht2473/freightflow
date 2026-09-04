@@ -53,8 +53,9 @@
                     {{ form.language }}
                 </div>
                 <div class="field">
-                    <label for="{{ form.default_district.id_for_label }}">{% trans 'Округ по умолчанию' %}</label>
+                    <label for="{{ form.default_district.id_for_label }}">{% trans 'Рабочая область' %}</label>
                     {{ form.default_district }}
+                    <span class="small faint">{% trans 'Реестры объектов, участков сети и дорожных событий открываются этим округом. Отбор, заданный в самом разделе, рабочую область замещает.' %}</span>
                 </div>
             </div>
             <label class="check" style="margin-top:var(--sp-4)">

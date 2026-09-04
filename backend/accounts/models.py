@@ -114,7 +114,12 @@ class UserProfile(models.Model):
         null=True,
         blank=True,
         related_name="+",
-        verbose_name=_("Округ по умолчанию"),
+        verbose_name=_("Рабочая область"),
+        help_text=_(
+            "Округ, которым разделы системы ограничиваются при первом "
+            "открытии. Заданный в самом разделе отбор рабочую область "
+            "замещает"
+        ),
     )
     notify_incidents = models.BooleanField(_("Уведомлять об инцидентах"), default=True)
 

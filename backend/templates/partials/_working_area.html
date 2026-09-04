@@ -1,0 +1,9 @@
+{% load i18n %}
+{# Сообщение о том, что раздел показывает рабочую область, а не весь город. #}
+{% if area_district %}
+    <p class="small muted" style="margin-bottom:var(--sp-4)">
+        {% blocktrans with district=area_district.name %}Показан {{ district }} округ — ваша рабочая область.{% endblocktrans %}
+        <a href="?district=">{% trans 'Показать весь город' %}</a> ·
+        <a href="{% url 'accounts:profile' %}">{% trans 'изменить область' %}</a>
+    </p>
+{% endif %}
