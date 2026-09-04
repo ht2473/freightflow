@@ -17,6 +17,8 @@ from django.db.models import QuerySet
 from django.urls import NoReverseMatch, reverse
 from django.utils.translation import gettext_lazy as _
 
+from ..tilelayers import CLIENT_MAX_ZOOM, MIN_ZOOM
+
 
 @dataclass(frozen=True)
 class Crumb:
@@ -38,6 +40,37 @@ class Crumb:
             return reverse(self.route, args=self.args)
         except NoReverseMatch:  # pragma: no cover — защита от опечатки в маршруте
             return ""
+
+
+def minimap_settings(geometry, zoom: int = 14) -> dict | None:
+    """Настройки карты на карточке записи.
+
+    Карточка показывает положение одной записи на той же подложке, что и
+    карта раздела, и теми же векторными тайлами. Точку карта центрирует,
+    ломаную — вписывает целиком: магистраль тянется через полгорода, и её
+    середина сама по себе ни о чём не говорит.
+
+    Числа собираются здесь и передаются через ``json_script``: подстановка
+    координат прямо в разметку проходит через локализацию и при русском
+    языке даёт десятичную запятую.
+    """
+    if geometry is None:
+        return None
+
+    min_lon, min_lat, max_lon, max_lat = geometry.bounds
+    settings_ = {
+        "tilejson": reverse("core:map_tilejson"),
+        "attribution": settings.MAP_ATTRIBUTION,
+        "geometry": geometry.geojson,
+        "center": [geometry.lon, geometry.lat],
+        "zoom": zoom,
+        "minZoom": MIN_ZOOM,
+        "maxZoom": CLIENT_MAX_ZOOM,
+        "bounds": None,
+    }
+    if geometry.geom_type != "POINT":
+        settings_["bounds"] = [[min_lon, min_lat], [max_lon, max_lat]]
+    return settings_
 
 
 def breadcrumbs(*items: Crumb | tuple) -> list[Crumb]:

@@ -273,3 +273,39 @@ class TestRoutingTools:
         offline_page.wait_for_timeout(1000)
 
         assert offline_page.locator(".maplibregl-popup").count() == 0
+
+class TestRecordMaps:
+    """Карты на карточках объекта, магистрали, коридора и события."""
+
+    def card_paths(self, full_dataset):
+        """Адреса карточек, у записей которых есть геометрия."""
+        from core.models import CargoRoute, InfrastructureObject, RoadSegment, TrafficIncident
+
+        return [
+            f"/objects/{InfrastructureObject.objects.exclude(geom__isnull=True).first().pk}/",
+            f"/roads/{RoadSegment.objects.exclude(geom__isnull=True).first().pk}/",
+            f"/routes/{CargoRoute.objects.exclude(geom__isnull=True).first().pk}/",
+            f"/incidents/{TrafficIncident.objects.exclude(geom__isnull=True).first().pk}/",
+        ]
+
+    def test_every_card_map_is_built(
+        self, live_server, offline_page, console_errors, full_dataset
+    ):
+        """Карта карточки строится и берёт данные с того же домена."""
+        for path in self.card_paths(full_dataset):
+            offline_page.goto(f"{live_server.url}{path}", wait_until="networkidle")
+            offline_page.wait_for_selector("#minimap[data-map-ready]", timeout=20_000)
+            assert offline_page.locator("#minimap canvas.maplibregl-canvas").count() == 1
+            assert console_errors == [], f"{path}: {console_errors}"
+
+    def test_record_without_geometry_has_no_map(
+        self, live_server, offline_page, console_errors, full_dataset
+    ):
+        """Запись без координат карту не показывает и ошибок не даёт."""
+        from core.models import InfrastructureObject
+
+        target = InfrastructureObject.objects.filter(geom__isnull=True).first()
+        offline_page.goto(f"{live_server.url}/objects/{target.pk}/", wait_until="networkidle")
+
+        assert offline_page.locator("#minimap").count() == 0
+        assert console_errors == [], console_errors

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load ff i18n %}
+{% load ff i18n static %}
 
 {% block content %}
 <div class="grid grid--4" style="margin-bottom:var(--sp-5)">
@@ -73,9 +73,7 @@
         {% if incident.geom %}
             <div class="card card--flush">
                 <div class="card__head"><h3>{% trans 'Место события' %}</h3></div>
-                <div id="incident-map" style="height:260px"
-                     data-lat="{{ incident.geom.lat|stringformat:'f' }}"
-                     data-lon="{{ incident.geom.lon|stringformat:'f' }}"></div>
+                <div class="map-canvas map-canvas--mini" id="minimap" style="height:260px"></div>
             </div>
         {% endif %}
 
@@ -101,18 +99,10 @@
 {% endblock %}
 
 {% block scripts %}
-{% if incident.geom %}
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-    var node = document.getElementById("incident-map");
-    if (!node || typeof L === "undefined") return;
-    var lat = parseFloat(node.dataset.lat), lon = parseFloat(node.dataset.lon);
-    var map = L.map(node, { scrollWheelZoom: false }).setView([lat, lon], 13);
-    L.tileLayer("{{ MAP_TILE_URL }}", { attribution: "{{ MAP_ATTRIBUTION }}" }).addTo(map);
-    L.circleMarker([lat, lon], {
-        radius: 10, color: "#e2504a", weight: 2, fillColor: "#e2504a", fillOpacity: 0.5
-    }).addTo(map);
-});
-</script>
+{% if minimap %}
+{{ minimap|json_script:"minimap-settings" }}
+<script src="{% static 'vendor/maplibre/maplibre-gl.js' %}" defer></script>
+<script src="{% static 'js/ff-basemap.js' %}" defer></script>
+<script src="{% static 'js/ff-minimap.js' %}" defer></script>
 {% endif %}
 {% endblock %}

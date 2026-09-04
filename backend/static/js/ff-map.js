@@ -16,7 +16,9 @@
     "use strict";
 
     var node = document.getElementById("map-canvas");
-    if (!node || typeof maplibregl === "undefined") return;
+    if (!node || typeof maplibregl === "undefined" || !window.ffBasemap) return;
+
+    var ffBasemap = window.ffBasemap;
 
     /* Настройки приходят отдельным элементом application/json, собранным на
        стороне сервера: подстановка чисел прямо в разметку проходит через
@@ -37,33 +39,7 @@
        Цвета оформления
        ---------------------------------------------------------------------- */
 
-    function themeColor(name, fallback) {
-        var value = getComputedStyle(document.documentElement)
-            .getPropertyValue(name)
-            .trim();
-        return value || fallback;
-    }
-
-    /** Прочитать палитру заново: при смене оформления значения меняются. */
-    function readPalette() {
-        return {
-            canvas: themeColor("--surface-sunken", "#eef1f4"),
-            land: themeColor("--surface", "#ffffff"),
-            ink: themeColor("--ink", "#1c2733"),
-            accent: themeColor("--accent", "#f2a03d"),
-            ok: themeColor("--tone-ok", "#3fbf6f"),
-            warn: themeColor("--tone-warn", "#f2a03d"),
-            alert: themeColor("--tone-alert", "#e2504a"),
-            crit: themeColor("--tone-crit", "#a32b26"),
-            muted: themeColor("--tone-muted", "#6b7885"),
-            route: themeColor("--series-2", "#4aa3d9"),
-            water: themeColor("--map-water", "#1d3a4d"),
-            green: themeColor("--map-green", "#1e3328"),
-            line: themeColor("--border", "#c8d0d8")
-        };
-    }
-
-    var palette = readPalette();
+    var palette = ffBasemap.palette();
 
     function toneMatch(colors) {
         return [
@@ -109,195 +85,161 @@
        ---------------------------------------------------------------------- */
 
     function buildStyle(colors) {
-        return {
-            version: 8,
-            sources: {
-                freightflow: {
-                    type: "vector",
-                    url: settings.urls.tilejson,
-                    attribution: settings.attribution
-                },
-                probe: {
-                    type: "geojson",
-                    data: { type: "FeatureCollection", features: [] }
-                },
-                isochrones: {
-                    type: "geojson",
-                    data: { type: "FeatureCollection", features: [] }
-                },
-                route: {
-                    type: "geojson",
-                    data: { type: "FeatureCollection", features: [] }
+        /* Подложка — вода, зелёные массивы, магистральная сеть и границы
+           округов — общая с картами карточек: определение одно, и карта
+           склада выглядит так же, как обзорная карта города. Здесь к ней
+           добавляются слои, которые существуют только в разделе. */
+        var style = ffBasemap.style(colors, {
+            tilejson: settings.urls.tilejson,
+            attribution: settings.attribution,
+            roadColor: toneMatch(colors)
+        });
+
+        style.sources.probe = {
+            type: "geojson",
+            data: { type: "FeatureCollection", features: [] }
+        };
+        style.sources.isochrones = {
+            type: "geojson",
+            data: { type: "FeatureCollection", features: [] }
+        };
+        style.sources.route = {
+            type: "geojson",
+            data: { type: "FeatureCollection", features: [] }
+        };
+
+        // Раскраска округов ложится на самый низ: вода и зелень читаются
+        // поверх неё, иначе показатель закрашивает рисунок города.
+        ffBasemap.insertBefore(style.layers, "green", {
+            id: "districts-fill",
+            type: "fill",
+            source: SOURCE,
+            "source-layer": "districts",
+            paint: { "fill-color": districtFill(colors), "fill-opacity": 0.42 }
+        });
+
+        // Каркас — подложка под самими магистралями: по этим улицам
+        // движение грузового транспорта разрешено, вне их действует порог
+        // разрешённой максимальной массы 2,5 т.
+        ffBasemap.insertBefore(style.layers, "roads", {
+            id: "freight-frame",
+            type: "line",
+            source: SOURCE,
+            "source-layer": "roads",
+            filter: ["==", ["get", "freight_frame"], true],
+            layout: { visibility: "none", "line-cap": "round", "line-join": "round" },
+            paint: {
+                "line-color": colors.ok,
+                "line-width": ["interpolate", ["linear"], ["zoom"], 7, 4, 12, 8, 16, 16],
+                "line-opacity": 0.45
+            }
+        });
+
+        style.layers = style.layers.concat([
+            {
+                id: "zones-outline",
+                type: "line",
+                source: SOURCE,
+                "source-layer": "zones",
+                layout: { visibility: "none" },
+                paint: {
+                    "line-color": colors.crit,
+                    "line-width": 2,
+                    "line-dasharray": [3, 2]
                 }
             },
-            layers: [
-                {
-                    id: "canvas",
-                    type: "background",
-                    paint: { "background-color": colors.canvas }
-                },
-                {
-                    id: "districts-fill",
-                    type: "fill",
-                    source: SOURCE,
-                    "source-layer": "districts",
-                    paint: { "fill-color": districtFill(colors), "fill-opacity": 0.42 }
-                },
-                {
-                    id: "green",
-                    type: "fill",
-                    source: SOURCE,
-                    "source-layer": "green",
-                    paint: { "fill-color": colors.green }
-                },
-                {
-                    id: "water",
-                    type: "fill",
-                    source: SOURCE,
-                    "source-layer": "water",
-                    paint: { "fill-color": colors.water }
-                },
-                {
-                    id: "districts-outline",
-                    type: "line",
-                    source: SOURCE,
-                    "source-layer": "districts",
-                    paint: {
-                        "line-color": colors.ink,
-                        "line-width": 1,
-                        "line-opacity": 0.35
-                    }
-                },
-                {
-                    id: "zones-outline",
-                    type: "line",
-                    source: SOURCE,
-                    "source-layer": "zones",
-                    layout: { visibility: "none" },
-                    paint: {
-                        "line-color": colors.crit,
-                        "line-width": 2,
-                        "line-dasharray": [3, 2]
-                    }
-                },
-                {
-                    id: "footprints",
-                    type: "fill",
-                    source: SOURCE,
-                    "source-layer": "footprints",
-                    minzoom: 14,
-                    paint: {
-                        "fill-color": colors.accent,
-                        "fill-opacity": 0.35,
-                        "fill-outline-color": colors.accent
-                    }
-                },
-                {
-                    id: "routes",
-                    type: "line",
-                    source: SOURCE,
-                    "source-layer": "routes",
-                    layout: { visibility: "none", "line-cap": "round" },
-                    paint: {
-                        "line-color": colors.route,
-                        "line-width": ["interpolate", ["linear"], ["zoom"], 7, 1.5, 14, 5],
-                        "line-dasharray": [2, 1]
-                    }
-                },
-                {
-                    // Подложка под магистралями каркаса: по этим улицам
-                    // движение грузового транспорта разрешено, вне их
-                    // действует порог разрешённой максимальной массы 2,5 т.
-                    id: "freight-frame",
-                    type: "line",
-                    source: SOURCE,
-                    "source-layer": "roads",
-                    filter: ["==", ["get", "freight_frame"], true],
-                    layout: { visibility: "none", "line-cap": "round", "line-join": "round" },
-                    paint: {
-                        "line-color": colors.ok,
-                        "line-width": ["interpolate", ["linear"], ["zoom"], 7, 4, 12, 8, 16, 16],
-                        "line-opacity": 0.45
-                    }
-                },
-                {
-                    id: "roads",
-                    type: "line",
-                    source: SOURCE,
-                    "source-layer": "roads",
-                    layout: { "line-cap": "round", "line-join": "round" },
-                    paint: {
-                        "line-color": toneMatch(colors),
-                        "line-width": ["interpolate", ["linear"], ["zoom"], 7, 1, 12, 3, 16, 7]
-                    }
-                },
-                {
-                    id: "isochrones",
-                    type: "fill",
-                    source: "isochrones",
-                    paint: {
-                        // Чем меньше время хода, тем насыщеннее заливка:
-                        // ближняя зона доступности читается поверх дальней.
-                        "fill-color": colors.accent,
-                        "fill-opacity": [
-                            "interpolate", ["linear"], ["to-number", ["get", "minutes"]],
-                            5, 0.35, 30, 0.1
-                        ],
-                        "fill-outline-color": colors.accent
-                    }
-                },
-                {
-                    id: "objects",
-                    type: "circle",
-                    source: SOURCE,
-                    "source-layer": "objects",
-                    paint: {
-                        "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 2.5, 13, 5, 16, 8],
-                        "circle-color": colors.accent,
-                        "circle-opacity": 0.9,
-                        "circle-stroke-width": [
-                            "interpolate", ["linear"], ["zoom"], 9, 0.4, 13, 1
-                        ],
-                        "circle-stroke-color": colors.land
-                    }
-                },
-                {
-                    id: "incidents",
-                    type: "circle",
-                    source: SOURCE,
-                    "source-layer": "incidents",
-                    layout: { visibility: "none" },
-                    paint: {
-                        "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 3, 16, 9],
-                        "circle-color": toneMatch(colors),
-                        "circle-stroke-width": 1,
-                        "circle-stroke-color": colors.land
-                    }
-                },
-                {
-                    id: "route-line",
-                    type: "line",
-                    source: "route",
-                    layout: { "line-cap": "round", "line-join": "round" },
-                    paint: {
-                        "line-color": colors.ink,
-                        "line-width": ["interpolate", ["linear"], ["zoom"], 9, 3, 16, 8],
-                        "line-opacity": 0.85
-                    }
-                },
-                {
-                    id: "probe-results",
-                    type: "circle",
-                    source: "probe",
-                    paint: {
-                        "circle-radius": 7,
-                        "circle-color": "rgba(0,0,0,0)",
-                        "circle-stroke-width": 2,
-                        "circle-stroke-color": colors.ink
-                    }
+            {
+                id: "footprints",
+                type: "fill",
+                source: SOURCE,
+                "source-layer": "footprints",
+                minzoom: 14,
+                paint: {
+                    "fill-color": colors.accent,
+                    "fill-opacity": 0.35,
+                    "fill-outline-color": colors.accent
                 }
-            ]
-        };
+            },
+            {
+                id: "routes",
+                type: "line",
+                source: SOURCE,
+                "source-layer": "routes",
+                layout: { visibility: "none", "line-cap": "round" },
+                paint: {
+                    "line-color": colors.route,
+                    "line-width": ["interpolate", ["linear"], ["zoom"], 7, 1.5, 14, 5],
+                    "line-dasharray": [2, 1]
+                }
+            },
+            {
+                id: "isochrones",
+                type: "fill",
+                source: "isochrones",
+                paint: {
+                    // Чем меньше время хода, тем насыщеннее заливка:
+                    // ближняя зона доступности читается поверх дальней.
+                    "fill-color": colors.accent,
+                    "fill-opacity": [
+                        "interpolate", ["linear"], ["to-number", ["get", "minutes"]],
+                        5, 0.35, 30, 0.1
+                    ],
+                    "fill-outline-color": colors.accent
+                }
+            },
+            {
+                id: "objects",
+                type: "circle",
+                source: SOURCE,
+                "source-layer": "objects",
+                paint: {
+                    "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 2.5, 13, 5, 16, 8],
+                    "circle-color": colors.accent,
+                    "circle-opacity": 0.9,
+                    "circle-stroke-width": [
+                        "interpolate", ["linear"], ["zoom"], 9, 0.4, 13, 1
+                    ],
+                    "circle-stroke-color": colors.land
+                }
+            },
+            {
+                id: "incidents",
+                type: "circle",
+                source: SOURCE,
+                "source-layer": "incidents",
+                layout: { visibility: "none" },
+                paint: {
+                    "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 3, 16, 9],
+                    "circle-color": toneMatch(colors),
+                    "circle-stroke-width": 1,
+                    "circle-stroke-color": colors.land
+                }
+            },
+            {
+                id: "route-line",
+                type: "line",
+                source: "route",
+                layout: { "line-cap": "round", "line-join": "round" },
+                paint: {
+                    "line-color": colors.ink,
+                    "line-width": ["interpolate", ["linear"], ["zoom"], 9, 3, 16, 8],
+                    "line-opacity": 0.85
+                }
+            },
+            {
+                id: "probe-results",
+                type: "circle",
+                source: "probe",
+                paint: {
+                    "circle-radius": 7,
+                    "circle-color": "rgba(0,0,0,0)",
+                    "circle-stroke-width": 2,
+                    "circle-stroke-color": colors.ink
+                }
+            }
+        ]);
+
+        return style;
     }
 
     /* ----------------------------------------------------------------------
@@ -801,7 +743,7 @@
     /* Стиль собирается заново теми же цветами, что и остальной интерфейс.
        Тайлы при этом не запрашиваются повторно — они уже получены. */
     function applyTheme() {
-        palette = readPalette();
+        palette = ffBasemap.palette();
         map.setStyle(buildStyle(palette));
         map.once("styledata", function () {
             applyToggles();

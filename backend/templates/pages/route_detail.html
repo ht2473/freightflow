@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load ff i18n %}
+{% load ff i18n static %}
 
 {% block content %}
 <div class="grid grid--4" style="margin-bottom:var(--sp-5)">
@@ -28,8 +28,7 @@
         {% if route.geom %}
             <article class="card card--flush">
                 <div class="card__head"><h3>{% trans 'Трасса маршрута' %}</h3></div>
-                {{ route.geom.geojson|json_script:"route-line" }}
-                <div id="route-map" style="height:400px"></div>
+                <div class="map-canvas map-canvas--mini" id="minimap" style="height:400px"></div>
             </article>
         {% endif %}
 
@@ -108,20 +107,10 @@
 {% endblock %}
 
 {% block scripts %}
-{% if route.geom %}
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-    var node = document.getElementById("route-map");
-    if (!node || typeof L === "undefined") return;
-    var source = document.getElementById("route-line");
-    if (!source) return;
-    var geometry = JSON.parse(source.textContent);
-    var map = L.map(node, { scrollWheelZoom: false });
-    L.tileLayer("{{ MAP_TILE_URL }}", { attribution: "{{ MAP_ATTRIBUTION }}" }).addTo(map);
-    var line = L.geoJSON({ type: "Feature", geometry: geometry, properties: {} },
-        { style: { color: "#4aa3d9", weight: 4, opacity: 0.9, dashArray: "8 6" } }).addTo(map);
-    map.fitBounds(line.getBounds(), { padding: [30, 30] });
-});
-</script>
+{% if minimap %}
+{{ minimap|json_script:"minimap-settings" }}
+<script src="{% static 'vendor/maplibre/maplibre-gl.js' %}" defer></script>
+<script src="{% static 'js/ff-basemap.js' %}" defer></script>
+<script src="{% static 'js/ff-minimap.js' %}" defer></script>
 {% endif %}
 {% endblock %}

@@ -26,7 +26,14 @@ from ..models import (
     RoadSegment,
     TrafficCondition,
 )
-from .base import apply_sort, choice_param, int_param, page_context, paginate
+from .base import (
+    apply_sort,
+    choice_param,
+    int_param,
+    minimap_settings,
+    page_context,
+    paginate,
+)
 
 # Разрешённые варианты сортировки реестра объектов: код → выражение ORM.
 OBJECT_SORTS = {
@@ -118,6 +125,7 @@ def object_detail(request, pk: int):
 
     context = page_context(
         request,
+        minimap=minimap_settings(obj.geom, zoom=14),
         title=obj.name,
         lead=obj.address or _("Адрес не указан в источнике данных"),
         active="objects",
@@ -344,6 +352,7 @@ def road_detail(request, pk: int):
 
     context = page_context(
         request,
+        minimap=minimap_settings(road.geom),
         title=road.name,
         lead=f"{road.get_road_class_display()} · {road.length_km or '—'} км",
         active="roads",
@@ -438,6 +447,7 @@ def route_detail(request, pk: int):
 
     context = page_context(
         request,
+        minimap=minimap_settings(route.geom),
         title=route.name,
         lead=f"{route.get_route_type_display()} · {route.distance_km or '—'} км",
         active="routes",

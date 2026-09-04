@@ -118,45 +118,59 @@ class TestMapSettings:
 
 
 class TestGeometryPayloads:
-    """Геометрия, передаваемая карточкам участков и маршрутов."""
+    """Настройки карты, передаваемые карточкам записей."""
 
     @pytest.mark.parametrize("language", LANGUAGES)
     def test_road_geometry_parses(self, client, roads, language):
-        """Трасса участка разбирается как GeoJSON на каждом языке."""
+        """Трасса магистрали разбирается как GeoJSON на каждом языке."""
         with translation.override(language):
             response = client.get(reverse("core:road_detail", args=[roads[0].pk]))
-        geometry = json_script_payload(response.content.decode(), "road-line")
-        assert geometry["type"] == "LineString"
-        assert len(geometry["coordinates"]) >= 2
+        payload = json_script_payload(response.content.decode(), "minimap-settings")
+
+        geometry = payload["geometry"]
+        assert geometry["type"] in ("LineString", "MultiLineString")
+        points = (
+            geometry["coordinates"]
+            if geometry["type"] == "LineString"
+            else geometry["coordinates"][0]
+        )
+        assert len(points) >= 2
         # Координата — пара чисел; при локализации она распалась бы на четыре.
-        for point in geometry["coordinates"]:
+        for point in points:
             assert len(point) == 2
             assert all(isinstance(value, (int, float)) for value in point)
 
     @pytest.mark.parametrize("language", LANGUAGES)
     def test_route_geometry_parses(self, client, routes, language):
-        """Трасса маршрута разбирается как GeoJSON на каждом языке."""
+        """Трасса коридора разбирается как GeoJSON на каждом языке."""
         with translation.override(language):
             response = client.get(reverse("core:route_detail", args=[routes[0].pk]))
-        geometry = json_script_payload(response.content.decode(), "route-line")
-        assert geometry["type"] == "LineString"
-        assert len(geometry["coordinates"]) >= 2
+        payload = json_script_payload(response.content.decode(), "minimap-settings")
+        assert payload["geometry"]["type"] in ("LineString", "MultiLineString")
+        # Ломаная вписывается целиком: у магистрали через полгорода
+        # середина сама по себе ни о чём не говорит.
+        assert payload["bounds"] is not None
 
     @pytest.mark.parametrize("language", LANGUAGES)
     def test_point_coordinates_are_unlocalized(self, client, objects, language):
-        """Координаты объекта выведены с десятичной точкой.
+        """Координаты объекта остаются числами на любом языке.
 
-        Карточка объекта передаёт широту и долготу отдельными атрибутами,
-        а клиент разбирает их через ``parseFloat``. Десятичная запятая
-        обрезала бы дробную часть и сместила бы отметку на карте.
+        Десятичная запятая превратила бы пару координат в четыре числа
+        и сместила бы отметку на карте.
         """
         with translation.override(language):
             response = client.get(reverse("core:object_detail", args=[objects[0].pk]))
-        content = response.content.decode()
+        payload = json_script_payload(response.content.decode(), "minimap-settings")
 
-        for attribute in ("data-lat", "data-lon"):
-            match = re.search(rf'{attribute}="([^"]+)"', content)
-            assert match, f"на карточке нет атрибута {attribute}"
-            value = match.group(1)
-            assert "," not in value, f"{attribute}={value!r} содержит десятичную запятую"
-            float(value)
+        centre = payload["center"]
+        assert len(centre) == 2
+        assert 36.5 < centre[0] < 38.5
+        assert 55.0 < centre[1] < 56.5
+        # Точку карта центрирует, а не вписывает: границы у неё вырождены.
+        assert payload["bounds"] is None
+
+    def test_record_without_geometry_has_no_map(self, client, objects):
+        """Запись без координат карты не получает."""
+        target = next(item for item in objects if item.geom is None)
+        content = client.get(reverse("core:object_detail", args=[target.pk])).content.decode()
+        assert 'id="minimap"' not in content

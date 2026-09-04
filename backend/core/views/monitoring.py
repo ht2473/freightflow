@@ -12,7 +12,7 @@ from django.utils.translation import gettext_lazy as _
 from .. import selectors
 from ..choices import FlowDirection, FlowScope, IncidentType, congestion_state
 from ..models import District, TrafficCondition, TrafficIncident
-from .base import choice_param, int_param, page_context, paginate
+from .base import choice_param, int_param, minimap_settings, page_context, paginate
 
 
 def traffic(request):
@@ -158,6 +158,7 @@ def incident_detail(request, pk: int):
 
     context = page_context(
         request,
+        minimap=minimap_settings(incident.geom, zoom=14),
         title=incident.get_incident_type_display(),
         lead=incident.description or _("Описание не предоставлено источником данных"),
         active="incidents",

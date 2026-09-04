@@ -18,13 +18,8 @@ from django.views.decorators.http import require_GET
 
 from .. import selectors
 from ..models import District, InfrastructureType, RoadSegment
-from ..tilelayers import MAX_ZOOM, MIN_ZOOM
+from ..tilelayers import CLIENT_MAX_ZOOM, MAX_ZOOM, MIN_ZOOM
 from .base import int_param, page_context
-
-#: Наибольший масштаб, до которого карта увеличивается. Тайлы собираются
-#: до шестнадцатого; дальше клиент растягивает последний, и это верно —
-#: подробнее исходных данных карта всё равно не станет.
-MAP_MAX_ZOOM = 18
 
 #: Запас вокруг города, за который карта не выпускает вид. Без него
 #: пользователь уводит карту в пустой океан и не понимает, куда вернуться.
@@ -97,7 +92,7 @@ def map_settings(metrics: list[dict]) -> dict:
         "center": [settings.MAP_DEFAULT_CENTER[0], settings.MAP_DEFAULT_CENTER[1]],
         "zoom": settings.MAP_DEFAULT_ZOOM,
         "minZoom": MIN_ZOOM,
-        "maxZoom": MAP_MAX_ZOOM,
+        "maxZoom": CLIENT_MAX_ZOOM,
         "sourceMaxZoom": MAX_ZOOM,
         "maxBounds": [
             [min_lon - BOUNDS_MARGIN, min_lat - BOUNDS_MARGIN],

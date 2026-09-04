@@ -1,5 +1,11 @@
 {% extends "base.html" %}
-{% load ff i18n %}
+{% load ff i18n static %}
+
+{% block head %}
+{% if minimap %}
+<link rel="stylesheet" href="{% static 'vendor/maplibre/maplibre-gl.css' %}">
+{% endif %}
+{% endblock %}
 
 {% block page_header %}
 <header class="page-header">
@@ -66,10 +72,7 @@
         {% if object.geom %}
             <article class="card card--flush">
                 <div class="card__head"><h3>{% trans 'Расположение' %}</h3></div>
-                <div id="object-map" style="height:340px"
-                     data-lat="{{ object.geom.lat|stringformat:'f' }}"
-                     data-lon="{{ object.geom.lon|stringformat:'f' }}"
-                     data-title="{{ object.name }}"></div>
+                <div class="map-canvas map-canvas--mini" id="minimap" style="height:340px"></div>
             </article>
         {% endif %}
 
@@ -142,19 +145,10 @@
 {% endblock %}
 
 {% block scripts %}
-{% if object.geom %}
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-    var node = document.getElementById("object-map");
-    if (!node || typeof L === "undefined") return;
-    var lat = parseFloat(node.dataset.lat);
-    var lon = parseFloat(node.dataset.lon);
-    var map = L.map(node, { scrollWheelZoom: false }).setView([lat, lon], 14);
-    L.tileLayer("{{ MAP_TILE_URL }}", { attribution: "{{ MAP_ATTRIBUTION }}" }).addTo(map);
-    L.circleMarker([lat, lon], {
-        radius: 9, color: "#f2a03d", weight: 2, fillColor: "#f2a03d", fillOpacity: 0.55
-    }).addTo(map).bindPopup(node.dataset.title);
-});
-</script>
+{% if minimap %}
+{{ minimap|json_script:"minimap-settings" }}
+<script src="{% static 'vendor/maplibre/maplibre-gl.js' %}" defer></script>
+<script src="{% static 'js/ff-basemap.js' %}" defer></script>
+<script src="{% static 'js/ff-minimap.js' %}" defer></script>
 {% endif %}
 {% endblock %}
