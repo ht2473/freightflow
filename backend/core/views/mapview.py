@@ -17,7 +17,7 @@ from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_GET
 
 from .. import selectors
-from ..models import District, InfrastructureType
+from ..models import District, InfrastructureType, RoadSegment
 from ..tilelayers import MAX_ZOOM, MIN_ZOOM
 from .base import int_param, page_context
 
@@ -156,6 +156,11 @@ def map_page(request):
         },
         truck_profiles=truck_profiles.choices(),
         default_profile=truck_profiles.DEFAULT_PROFILE,
+        # Охват каркаса объявляется рядом со слоем: перечень ведётся вручную
+        # и полным не является, а слой без этой оговорки читался бы как
+        # исчерпывающий.
+        frame_roads=RoadSegment.objects.filter(in_freight_frame=True).count(),
+        frame_total=RoadSegment.objects.count(),
         summary=selectors.dashboard_summary(),
         map_settings=map_settings(metrics),
     )

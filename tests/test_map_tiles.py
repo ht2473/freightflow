@@ -118,6 +118,21 @@ class TestVectorTile:
         assert layers["water"]["features"][0]["properties"]["name"] == "Река"
         assert layers["green"]["features"][0]["properties"]["name"] == "Парк"
 
+    def test_road_carries_freight_frame_flag(self, client, roads):
+        """Признак грузового каркаса приходит вместе с магистралью."""
+        roads[0].in_freight_frame = True
+        roads[0].save(update_fields=["in_freight_frame"])
+
+        features = read_tile(client.get(tile_url(12)).content)["roads"]["features"]
+        marked = {
+            feature["properties"]["name"]: feature["properties"].get("freight_frame")
+            for feature in features
+        }
+        assert marked[roads[0].name] is True
+        # Магистраль, о которой сведений нет, не объявляется исключённой:
+        # свойство отсутствует, а не равно «нет».
+        assert marked.get(roads[1].name) is None
+
     def test_zoom_outside_the_range_is_not_served(self, client):
         assert client.get(tile_url(4)).status_code == 404
         assert client.get(tile_url(17)).status_code == 404

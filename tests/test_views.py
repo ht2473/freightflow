@@ -169,6 +169,14 @@ class TestPagination:
 class TestMapLayers:
     """Инструменты карты, работающие поверх тайлов."""
 
+    def test_frame_coverage_is_stated(self, client, full_dataset):
+        """Охват грузового каркаса объявлен рядом со слоем."""
+        from core.models import RoadSegment
+
+        RoadSegment.objects.filter(name="МКАД").update(in_freight_frame=True)
+        content = client.get(reverse("core:map")).content.decode()
+        assert "Каркас отмечен у 1 магистрал" in content
+
     def test_nearby_search(self, client, full_dataset):
         """Поиск ближайших объектов возвращает расстояния."""
         payload = client.get(

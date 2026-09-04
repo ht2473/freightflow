@@ -40,9 +40,14 @@
                 <i style="background:var(--tone-warn)"></i>
             </label>
             <label class="layer-toggle">
+                <input type="checkbox" data-layer="frame">
+                <span>{% trans 'Грузовой каркас' %}</span>
+                <i style="background:var(--tone-ok)"></i>
+            </label>
+            <label class="layer-toggle">
                 <input type="checkbox" data-layer="districts" checked>
                 <span>{% trans 'Округа с показателями' %}</span>
-                <i style="background:var(--tone-ok)"></i>
+                <i style="background:linear-gradient(90deg,var(--surface),var(--tone-alert))"></i>
             </label>
             <label class="layer-toggle">
                 <input type="checkbox" data-layer="backdrop" checked>
@@ -64,6 +69,10 @@
                 <span>{% trans 'Грузовые коридоры' %}</span>
                 <i style="background:var(--series-2)"></i>
             </label>
+
+            <p class="small faint" style="padding:0 var(--sp-2)">
+                {% blocktrans with marked=frame_roads total=frame_total %}Каркас отмечен у {{ marked }} магистралей из {{ total }}: перечень ведётся вручную по публикации Департамента транспорта, улицы районного значения в него не внесены.{% endblocktrans %}
+            </p>
         </div>
 
         {# --- Условия отбора --------------------------------------------- #}

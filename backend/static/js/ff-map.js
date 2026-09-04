@@ -205,6 +205,22 @@
                     }
                 },
                 {
+                    // Подложка под магистралями каркаса: по этим улицам
+                    // движение грузового транспорта разрешено, вне их
+                    // действует порог разрешённой максимальной массы 2,5 т.
+                    id: "freight-frame",
+                    type: "line",
+                    source: SOURCE,
+                    "source-layer": "roads",
+                    filter: ["==", ["get", "freight_frame"], true],
+                    layout: { visibility: "none", "line-cap": "round", "line-join": "round" },
+                    paint: {
+                        "line-color": colors.ok,
+                        "line-width": ["interpolate", ["linear"], ["zoom"], 7, 4, 12, 8, 16, 16],
+                        "line-opacity": 0.45
+                    }
+                },
+                {
                     id: "roads",
                     type: "line",
                     source: SOURCE,
@@ -465,6 +481,7 @@
     var groups = {
         objects: ["objects", "footprints"],
         roads: ["roads"],
+        frame: ["freight-frame"],
         incidents: ["incidents"],
         routes: ["routes"],
         districts: ["districts-fill", "districts-outline"],
