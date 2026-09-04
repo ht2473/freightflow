@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+<form method="get" class="card" style="margin-bottom:var(--sp-5)">
+    <h3 style="margin-bottom:var(--sp-3)">{% trans 'Требования к площадке' %}</h3>
+    <div class="grid grid--4">
+        <div class="field">
+            <label for="f-mass">{% trans 'Масса транспортного средства, т' %}</label>
+            <input id="f-mass" type="text" inputmode="decimal" name="mass" value="{{ filters.mass }}">
+        </div>
+        <div class="field">
+            <label for="f-area">{% trans 'Площадь не менее, м²' %}</label>
+            <input id="f-area" type="text" inputmode="numeric" name="area" value="{{ filters.area }}">
+        </div>
+        <div class="field">
+            <label for="f-frame">{% trans 'До грузового каркаса не далее, км' %}</label>
+            <input id="f-frame" type="text" inputmode="decimal" name="frame" value="{{ filters.frame }}">
+        </div>
+        <div class="field">
+            <label for="f-district">{% trans 'Округ' %}</label>
+            <select id="f-district" name="district">
+                <option value="">{% trans 'любой' %}</option>
+                {% for item in districts %}
+                    <option value="{{ item.pk }}"
+                            {% if filters.district == item.pk %}selected{% endif %}>{{ item.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="field" style="margin-top:var(--sp-3);max-width:420px">
+        <label for="f-type">{% trans 'Тип объекта' %}</label>
+        <select id="f-type" name="type">
+            <option value="">{% trans 'любой' %}</option>
+            {% for item in types %}
+                <option value="{{ item.pk }}"
+                        {% if filters.type == item.pk %}selected{% endif %}>{{ item.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <h4 style="margin:var(--sp-5) 0 var(--sp-2)">{% trans 'Важность составляющих' %}</h4>
+    <p class="small muted" style="margin-bottom:var(--sp-3)">
+        {% trans 'Ноль исключает составляющую из оценки. Значения по умолчанию равные: обосновать иное соотношение нечем.' %}
+    </p>
+    <div class="grid grid--5">
+        {% for criterion in criteria %}
+            <div class="field">
+                <label for="w-{{ criterion.code }}">{{ criterion.title }}</label>
+                <select id="w-{{ criterion.code }}" name="w_{{ criterion.code }}">
+                    {% for value in "0123" %}
+                        <option value="{{ value }}"
+                                {% if requirements.weights|lookup:criterion.code|floatformat:0 == value %}selected{% endif %}>{{ value }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        {% endfor %}
+    </div>
+
+    <button class="button button--primary" style="margin-top:var(--sp-4)"
+            type="submit">{% trans 'Подобрать' %}</button>
+</form>
+
+<section class="section">
+    <div class="section__head">
+        <div>
+            <p class="eyebrow">
+                {% blocktrans with matched=result.matched considered=result.considered %}Требованиям отвечают {{ matched }} площадок из {{ considered }} рассмотренных{% endblocktrans %}
+            </p>
+            <h2>{% trans 'Площадки в порядке сопоставления' %}</h2>
+        </div>
+    </div>
+
+    {% if result.candidates %}
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th>{% trans 'Площадка' %}</th>
+                        <th class="num">{% trans 'Оценка' %}</th>
+                        <th class="num">{% trans 'Площадь, м²' %}</th>
+                        <th class="num">{% trans 'До каркаса, км' %}</th>
+                        <th class="num">{% trans 'До коридора, км' %}</th>
+                        <th>{% trans 'Пропуск' %}</th>
+                        <th class="num">{% trans 'Нагрузка округа' %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in result.candidates %}
+                        <tr data-href="{{ item.obj.get_absolute_url }}">
+                            <td>
+                                <span class="table-title">{{ item.obj.name }}</span>
+                                <span class="table-sub">{{ item.obj.type.name }} · {{ item.obj.district.short_name }}</span>
+                            </td>
+                            <td class="num"><strong>{{ item.total|spaced:1 }}</strong></td>
+                            <td class="num">{{ item.values.area|spaced }}</td>
+                            <td class="num">{{ item.values.frame|spaced:2 }}</td>
+                            <td class="num">{{ item.values.corridor|spaced:1 }}</td>
+                            <td>
+                                {% if item.permit_zone %}
+                                    <a href="{% url 'core:zone_detail' item.permit_zone.pk %}"
+                                       class="badge badge--warn">{{ item.permit_zone.short_name }}</a>
+                                {% else %}
+                                    <span class="badge badge--ok">{% trans 'не требуется' %}</span>
+                                {% endif %}
+                            </td>
+                            <td class="num">{{ item.values.load|dash }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if result.matched > result.candidates|length %}
+            <p class="small faint" style="margin-top:var(--sp-3)">
+                {% blocktrans with shown=result.candidates|length matched=result.matched %}Показаны первые {{ shown }} площадок из {{ matched }}. Сузьте требования, чтобы увидеть остальные.{% endblocktrans %}
+            </p>
+        {% endif %}
+    {% else %}
+        {% include "partials/_empty.html" with empty_title="Площадок под эти требования нет" empty_text="Ослабьте требования: уменьшите нужную площадь либо допустите большее удаление от грузового каркаса." %}
+    {% endif %}
+</section>
+
+<section class="section">
+    <div class="section__head">
+        <div>
+            <p class="eyebrow">{% trans 'Порядок расчёта' %}</p>
+            <h2>{% trans 'Из чего складывается оценка' %}</h2>
+        </div>
+    </div>
+    <div class="grid grid--2">
+        {% for criterion in criteria %}
+            <article class="card">
+                <div class="row row--between">
+                    <h3 style="font-size:var(--fs-md)">{{ criterion.title }}</h3>
+                    <span class="badge badge--plain">
+                        {% if criterion.higher_is_better %}{% trans 'больше — лучше' %}{% else %}{% trans 'меньше — лучше' %}{% endif %}
+                    </span>
+                </div>
+                <p class="small muted" style="margin-top:var(--sp-2)">{{ criterion.note }}</p>
+                <p class="small faint" style="margin-top:var(--sp-2)">
+                    {% trans 'Единица измерения:' %} {{ criterion.unit }}.
+                    {% trans 'Вес в текущем расчёте:' %} {{ requirements.weights|lookup:criterion.code|floatformat:0 }}
+                </p>
+            </article>
+        {% endfor %}
+    </div>
+    <p class="small muted" style="margin-top:var(--sp-4)">
+        {% trans 'Составляющие приводятся к общей шкале нормированием «минимум — максимум» по самой выборке, поэтому оценка говорит, чем площадка лучше других найденных, а не какова она сама по себе. Составляющая, не измеренная ни у одной площадки, из расчёта исключается с перераспределением веса.' %}
+    </p>
+</section>
+{% endblock %}

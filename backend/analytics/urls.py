@@ -15,4 +15,5 @@ urlpatterns = [
     path("forecast/", views.forecast, name="forecast"),
     path("compare/", views.compare, name="compare"),
     path("scenario/", views.scenario, name="scenario"),
+    path("siting/", views.site_selection, name="siting"),
 ]

@@ -1533,7 +1533,7 @@ def _cached(key: str, builder):
 
 def invalidate() -> None:
     """Сбросить кеш аналитических расчётов после обновления данных."""
-    from . import spatial
+    from . import siting, spatial
 
     cache.delete("analytics:load_index")
     cache.delete("analytics:sensitivity")
@@ -1541,3 +1541,4 @@ def invalidate() -> None:
     for k in CLUSTER_RANGE:
         cache.delete(f"analytics:typology:{k}")
     spatial.invalidate()
+    siting.invalidate()

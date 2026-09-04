@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
+from decimal import Decimal, InvalidOperation
 
 from core import selectors
 from core.choices import PeriodType
-from core.models import District
+from core.models import District, InfrastructureType
 from core.views.base import int_param, page_context
 from django.core.serializers.json import DjangoJSONEncoder
 from django.http import JsonResponse
@@ -14,7 +15,7 @@ from django.shortcuts import render
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_GET
 
-from . import metrics, services, spatial
+from . import metrics, services, siting, spatial
 
 
 def _float_param(request, name: str, default: float = 0.0) -> float:
@@ -280,3 +281,90 @@ def scenario(request):
         filters=changes,
     )
     return render(request, "pages/analytics_scenario.html", context)
+
+
+def site_selection(request):
+    """Подбор площадки под требования перевозчика.
+
+    Требования читаются из строки запроса, поэтому подобранный набор
+    адресуем: ссылку можно сохранить в кабинете или передать коллеге,
+    и он получит тот же расчёт на текущих данных.
+    """
+    requirements = siting.Requirements(
+        mass_tons=_decimal_param(request, "mass", Decimal("3.5")),
+        min_area_sq_m=_positive_param(request, "area"),
+        district_id=int_param(request, "district"),
+        type_id=int_param(request, "type"),
+        max_frame_km=_positive_param(request, "frame"),
+        weights=_weights(request),
+    )
+    result = siting.select(requirements)
+
+    context = page_context(
+        request,
+        title=_("Подбор площадки"),
+        lead=_(
+            "Отбор площадок реестра под требования перевозчика и их "
+            "сопоставление по измеренным величинам: площади, удалению "
+            "от грузового каркаса и федеральных коридоров, разрешительной "
+            "нагрузке и нагрузке округа."
+        ),
+        active="siting",
+        crumbs=[(_("Инфраструктура"), "core:object_list"), (_("Подбор площадки"),)],
+        result=result,
+        requirements=requirements,
+        criteria=siting.CRITERIA,
+        districts=District.objects.all(),
+        types=InfrastructureType.objects.order_by("name"),
+        filters={
+            "mass": requirements.mass_tons,
+            "area": requirements.min_area_sq_m or "",
+            "district": requirements.district_id,
+            "type": requirements.type_id,
+            "frame": requirements.max_frame_km or "",
+        },
+    )
+    return render(request, "pages/siting.html", context)
+
+
+def _positive_param(request, name: str) -> float | None:
+    """Прочитать положительное требование; пустое значение снимает его."""
+    raw = (request.GET.get(name) or "").strip().replace(",", ".")
+    if not raw:
+        return None
+    try:
+        value = float(raw)
+    except ValueError:
+        return None
+    return value if value > 0 else None
+
+
+def _decimal_param(request, name: str, default: Decimal) -> Decimal:
+    """Прочитать десятичный параметр, приняв и запятую в дробной части."""
+    raw = (request.GET.get(name) or "").strip().replace(",", ".")
+    if not raw:
+        return default
+    try:
+        value = Decimal(raw)
+    except InvalidOperation:
+        return default
+    return value if value >= 0 else default
+
+
+def _weights(request) -> dict[str, float]:
+    """Прочитать веса составляющих сопоставления.
+
+    Вес задаётся целым числом от нуля до трёх: ноль исключает составляющую
+    из оценки, и это единственный способ сказать, что она не важна вовсе.
+    Дробные веса не принимаются — обосновать их точность нечем.
+    """
+    weights = dict(siting.DEFAULT_WEIGHTS)
+    for criterion in siting.CRITERIA:
+        raw = request.GET.get(f"w_{criterion.code}")
+        if raw is None:
+            continue
+        try:
+            weights[criterion.code] = float(max(0, min(int(raw), 3)))
+        except ValueError:
+            continue
+    return weights
