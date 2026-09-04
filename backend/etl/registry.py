@@ -36,6 +36,7 @@ def _load() -> dict[str, Pipeline]:
     from .osm.zones import RestrictionZonesPipeline
     from .reference import FreightFramePipeline
     from .rosstat import FreightStatisticsPipeline
+    from .upload import FlowUploadPipeline
 
     ordered: tuple[type[Pipeline], ...] = (
         DistrictsPipeline,
@@ -46,6 +47,7 @@ def _load() -> dict[str, Pipeline]:
         RoadworksPipeline,
         FreightFramePipeline,
         FreightStatisticsPipeline,
+        FlowUploadPipeline,
     )
     for pipeline_class in ordered:
         pipeline = pipeline_class()
