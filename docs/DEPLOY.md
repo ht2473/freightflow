@@ -106,16 +106,23 @@ sudo cp /etc/letsencrypt/live/freightflow.example.ru/*.pem ./deploy/certs/
 docker compose up -d --build
 ```
 
-Разворачиваются четыре службы: PostgreSQL с расширением PostGIS, приложение
-под gunicorn, Redis и обратный прокси nginx. Приложение самостоятельно
-применяет миграции и настраивает группы разрешений при первом запуске.
+Разворачиваются шесть служб: PostgreSQL с расширением PostGIS, приложение
+под gunicorn, Redis, исполнитель регламентных загрузок, планировщик и обратный
+прокси nginx. Приложение самостоятельно применяет миграции и настраивает
+группы разрешений при первом запуске.
 
 **Шаг 4. Загрузка данных.**
 
 ```bash
-docker compose exec app python backend/manage.py load_seed db/002_seed_data_scale400.sql --batch 2000
+docker compose exec app python backend/manage.py etl --all --prune
+docker compose exec app python backend/manage.py simulate_traffic --replace
 docker compose exec app python backend/manage.py district_centers
 ```
+
+Первая загрузка обращается к внешним службам и занимает до получаса: выгрузка
+магистральной сети по Москве идёт минутами, а ответы сохраняются на диск,
+поэтому повторные запуски проходят заметно быстрее. Дальнейшее обновление
+ведёт планировщик по регламенту, объявленному самими наборами данных.
 
 **Шаг 5. Создание учётной записи администратора.**
 
