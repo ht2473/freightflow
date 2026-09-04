@@ -78,10 +78,10 @@ class TestMapSettings:
         assert 36.5 < longitude < 38.5, longitude
 
     def test_source_addresses_present(self, client, full_dataset):
-        """Адреса источника тайлов и поиска по точке переданы клиенту."""
+        """Адреса источника тайлов и расчётов переданы клиенту."""
         response = client.get(reverse("core:map"))
         payload = json_script_payload(response.content.decode(), "map-settings")
-        assert set(payload["urls"]) == {"tilejson", "nearby"}
+        assert set(payload["urls"]) == {"tilejson", "nearby", "isochrones", "route"}
         for url in payload["urls"].values():
             assert url.startswith("/")
 

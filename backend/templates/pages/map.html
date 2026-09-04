@@ -117,6 +117,40 @@
         </div>
         {% endif %}
 
+        {# --- Доступность и маршрут по графу дорог ------------------------ #}
+        <div>
+            <h3>{% trans 'Доступность и маршрут' %}</h3>
+            {% if routing.configured %}
+            <div class="field">
+                <label for="m-profile">{% trans 'Транспортное средство' %}</label>
+                <select id="m-profile">
+                    {% for code, title in truck_profiles %}
+                        <option value="{{ code }}"
+                                {% if code == default_profile %}selected{% endif %}>{{ title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field" style="margin-top:var(--sp-3)">
+                <label for="m-minutes">{% trans 'Время хода, мин' %}</label>
+                <select id="m-minutes">
+                    <option value="5,15,30">5, 15, 30</option>
+                    <option value="10,20">10, 20</option>
+                    <option value="15">15</option>
+                </select>
+            </div>
+            <button class="button button--block" type="button" id="map-isochrone"
+                    style="margin-top:var(--sp-3)">{% trans 'Доступность от точки' %}</button>
+            <button class="button button--block" type="button" id="map-route"
+                    style="margin-top:var(--sp-2)">{% trans 'Маршрут между точками' %}</button>
+            <div id="routing-results" style="margin-top:var(--sp-3)"></div>
+            <p class="small faint" style="margin-top:var(--sp-2)">
+                {% trans 'Расчёт ведётся по графу дорог с учётом габаритов и массы: маршрут обходит участки, на которые такому транспорту въезд закрыт.' %}
+            </p>
+            {% else %}
+            <p class="small faint">{{ routing.message }}</p>
+            {% endif %}
+        </div>
+
         {# --- Инструмент «что рядом» -------------------------------------- #}
         <div>
             <h3>{% trans 'Что рядом с точкой' %}</h3>

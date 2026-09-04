@@ -216,3 +216,60 @@ class TestTheme:
 
         assert console_errors == [], console_errors
         assert offline_page.locator("#map-canvas canvas.maplibregl-canvas").count() == 1
+
+class TestRoutingTools:
+    """Инструменты расчёта по графу дорог.
+
+    Служба маршрутизации в проверке не разворачивается: проверяется, что
+    интерфейс сообщает о её отсутствии и об отказе, а не рисует маршрут,
+    полученный неизвестно откуда.
+    """
+
+    def test_tools_are_hidden_without_router(
+        self, live_server, offline_page, console_errors, full_dataset, settings
+    ):
+        """Без службы маршрутизации инструменты не показываются вовсе."""
+        settings.VALHALLA_URL = ""
+        offline_page.goto(f"{live_server.url}/map/", wait_until="networkidle")
+        offline_page.wait_for_selector("#map-canvas[data-map-ready]", timeout=20_000)
+
+        assert offline_page.locator("#map-isochrone").count() == 0
+        assert "по прямой" in offline_page.locator(".map-panel").inner_text()
+        assert console_errors == [], console_errors
+
+    def test_refusal_is_shown_in_the_panel(
+        self, live_server, offline_page, console_errors, full_dataset, settings
+    ):
+        """Отказ службы доходит до пользователя её же словами."""
+        # Адрес заведомо никуда не ведёт: расчёт обязан закончиться отказом,
+        # а не молчанием.
+        settings.VALHALLA_URL = "http://127.0.0.1:9"
+        offline_page.goto(f"{live_server.url}/map/", wait_until="networkidle")
+        offline_page.wait_for_selector("#map-canvas[data-map-ready]", timeout=20_000)
+
+        box = offline_page.locator("#map-canvas").bounding_box()
+        offline_page.click("#map-isochrone")
+        offline_page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+
+        results = offline_page.locator("#routing-results")
+        results.get_by_text("маршрутизации").wait_for(timeout=15_000)
+
+        # Отказ службы браузер отмечает в консоли сам; проверяется отсутствие
+        # ошибок сценария, то есть того, что отказ обработан, а не уронил
+        # клиентскую часть.
+        assert [item for item in console_errors if item.startswith("pageerror")] == []
+
+    def test_pointing_mode_suppresses_object_card(
+        self, live_server, offline_page, full_dataset, settings
+    ):
+        """В режиме указания точки карточка объекта не открывается."""
+        settings.VALHALLA_URL = "http://127.0.0.1:9"
+        offline_page.goto(f"{live_server.url}/map/", wait_until="networkidle")
+        offline_page.wait_for_selector("#map-canvas[data-map-ready]", timeout=20_000)
+
+        box = offline_page.locator("#map-canvas").bounding_box()
+        offline_page.click("#map-isochrone")
+        offline_page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        offline_page.wait_for_timeout(1000)
+
+        assert offline_page.locator(".maplibregl-popup").count() == 0

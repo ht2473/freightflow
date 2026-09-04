@@ -22,6 +22,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import date, time
 from decimal import Decimal
@@ -128,11 +129,46 @@ def zones_at(lon: float, lat: float,
     return [zone for zone in catalogue if zone.contains(lon, lat)]
 
 
+def zones_along(points: Sequence[Sequence[float]],
+                zones: list[RestrictionZone] | None = None) -> list[RestrictionZone]:
+    """Зоны ограничения, которые задевает маршрут, от внешней к внутренней.
+
+    Маршрут проверяется по вершинам ломаной. Зона, пройденная насквозь между
+    двумя далеко отстоящими вершинами, при таком способе не обнаружится,
+    поэтому шаг вершин маршрута существенен: маршрутизатор отдаёт их чаще,
+    чем меняется геометрия зон.
+    """
+    catalogue = zones if zones is not None else list(
+        RestrictionZone.objects.exclude(geom__isnull=True).order_by("level")
+    )
+    return [
+        zone
+        for zone in catalogue
+        if any(zone.contains(point[0], point[1]) for point in points)
+    ]
+
+
 def evaluate(vehicle: Vehicle, lon: float, lat: float,
              moment: date | None = None,
              zones: list[RestrictionZone] | None = None) -> Verdict:
     """Определить условия въезда транспортного средства в заданную точку."""
-    reached = zones_at(lon, lat, zones)
+    return _verdict(vehicle, zones_at(lon, lat, zones), moment)
+
+
+def evaluate_route(vehicle: Vehicle, points: Sequence[Sequence[float]],
+                   moment: date | None = None,
+                   zones: list[RestrictionZone] | None = None) -> Verdict:
+    """Определить условия проезда по маршруту.
+
+    Требования определяет самая внутренняя из зон, которые маршрут задевает:
+    пропуск нужен для въезда в неё, а действует он и во всех внешних.
+    """
+    return _verdict(vehicle, zones_along(points, zones), moment)
+
+
+def _verdict(vehicle: Vehicle, reached: list[RestrictionZone],
+             moment: date | None) -> Verdict:
+    """Заключение по набору достигнутых зон."""
     verdict = Verdict(zones=reached)
 
     if not reached:

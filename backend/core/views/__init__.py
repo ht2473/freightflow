@@ -22,6 +22,7 @@ from .registry import (
     source_list,
     type_list,
 )
+from .routing import isochrones, route, router_status
 from .tileview import tilejson, vector_tile
 
 __all__ = [
@@ -43,9 +44,12 @@ __all__ = [
     "object_detail",
     "object_list",
     "road_detail",
+    "isochrones",
     "road_list",
+    "route",
     "route_detail",
     "route_list",
+    "router_status",
     "sitemap_page",
     "source_detail",
     "source_list",

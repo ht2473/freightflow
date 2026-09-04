@@ -120,6 +120,14 @@
                 probe: {
                     type: "geojson",
                     data: { type: "FeatureCollection", features: [] }
+                },
+                isochrones: {
+                    type: "geojson",
+                    data: { type: "FeatureCollection", features: [] }
+                },
+                route: {
+                    type: "geojson",
+                    data: { type: "FeatureCollection", features: [] }
                 }
             },
             layers: [
@@ -208,6 +216,21 @@
                     }
                 },
                 {
+                    id: "isochrones",
+                    type: "fill",
+                    source: "isochrones",
+                    paint: {
+                        // Чем меньше время хода, тем насыщеннее заливка:
+                        // ближняя зона доступности читается поверх дальней.
+                        "fill-color": colors.accent,
+                        "fill-opacity": [
+                            "interpolate", ["linear"], ["to-number", ["get", "minutes"]],
+                            5, 0.35, 30, 0.1
+                        ],
+                        "fill-outline-color": colors.accent
+                    }
+                },
+                {
                     id: "objects",
                     type: "circle",
                     source: SOURCE,
@@ -233,6 +256,17 @@
                         "circle-color": toneMatch(colors),
                         "circle-stroke-width": 1,
                         "circle-stroke-color": colors.land
+                    }
+                },
+                {
+                    id: "route-line",
+                    type: "line",
+                    source: "route",
+                    layout: { "line-cap": "round", "line-join": "round" },
+                    paint: {
+                        "line-color": colors.ink,
+                        "line-width": ["interpolate", ["linear"], ["zoom"], 9, 3, 16, 8],
+                        "line-opacity": 0.85
                     }
                 },
                 {
@@ -399,8 +433,15 @@
 
     var popup = new maplibregl.Popup({ closeButton: true, maxWidth: "320px" });
 
+    /* Режим указания точки: пока он включён, щелчок по карте принадлежит
+       инструменту расчёта, а не карточке объекта. */
+    var pointer = null;
+
     Object.keys(cards).forEach(function (layer) {
         map.on("click", layer, function (event) {
+            // В режиме указания точки щелчок принадлежит инструменту:
+            // карточка объекта закрыла бы собой то место, куда целятся.
+            if (pointer) return;
             var feature = event.features && event.features[0];
             if (!feature) return;
             popup
@@ -498,20 +539,73 @@
     }
 
     /* ----------------------------------------------------------------------
-       Инструмент «что рядом с точкой»
+       Инструменты, работающие по указанной на карте точке
        ---------------------------------------------------------------------- */
+
+    /* Все три инструмента — «что рядом», доступность и маршрут — устроены
+       одинаково: кнопка переводит карту в режим указания, накопленные точки
+       передаются обработчику. Режимы взаимно исключают друг друга: иначе
+       один щелчок по карте запускал бы сразу несколько расчётов. */
+
+    function stopPointing() {
+        if (pointer && pointer.button) pointer.button.classList.remove("button--active");
+        pointer = null;
+        map.getCanvas().style.cursor = "";
+    }
+
+    function startPointing(button, needed, output, prompt, done) {
+        var running = pointer && pointer.button === button;
+        stopPointing();
+        if (running) return;
+
+        pointer = { button: button, needed: needed, points: [], done: done };
+        button.classList.add("button--active");
+        map.getCanvas().style.cursor = "crosshair";
+        if (output) output.innerHTML = "<p class='small faint'>" + prompt + "</p>";
+    }
+
+    map.on("click", function (event) {
+        if (!pointer) return;
+        pointer.points.push([event.lngLat.lng, event.lngLat.lat]);
+        if (pointer.points.length < pointer.needed) return;
+
+        var collected = pointer.points;
+        var handler = pointer.done;
+        stopPointing();
+        handler(collected);
+    });
+
+    /** Отметить точку на карте и вернуть созданный указатель. */
+    function marker(point, colour) {
+        return new maplibregl.Marker({ color: colour || palette.ink })
+            .setLngLat(point)
+            .addTo(map);
+    }
+
+    function clearMarkers(list) {
+        list.forEach(function (item) { item.remove(); });
+        return [];
+    }
+
+    /* Отказ показывается словами службы: «точка не привязана к дороге»
+       и «маршрутизатор не настроен» — разные обстоятельства, и подменять
+       их общим «не получилось» значит скрыть от пользователя причину. */
+    function explainFailure(output, response) {
+        return response.json().then(function (payload) {
+            output.innerHTML = "<p class='small faint'>"
+                + escapeHtml(payload.error || "Расчёт не выполнен") + "</p>";
+        }).catch(function () {
+            output.innerHTML = "<p class='small faint'>Расчёт не выполнен.</p>";
+        });
+    }
+
+    /* --- Что рядом с точкой ------------------------------------------------ */
 
     var probeButton = document.getElementById("map-probe");
     var probeResults = document.getElementById("probe-results");
-    var probeMarker = null;
-    var probing = false;
-
-    function probeSource() {
-        return map.getSource("probe");
-    }
+    var probeMarkers = [];
 
     function showProbe(payload) {
-        if (!probeResults) return;
         if (!payload.results.length) {
             probeResults.innerHTML = "<p class='small faint'>В радиусе "
                 + payload.radius_km + " км объектов нет.</p>";
@@ -525,7 +619,7 @@
                 + "</ol>";
         }
 
-        var source = probeSource();
+        var source = map.getSource("probe");
         if (source) {
             source.setData({
                 type: "FeatureCollection",
@@ -540,49 +634,148 @@
         }
     }
 
-    function probeAt(lngLat) {
+    function probeAt(points) {
         var radiusControl = document.getElementById("probe-radius");
         var radius = radiusControl ? radiusControl.value : 3;
         var address = settings.urls.nearby
-            + "?lon=" + lngLat.lng.toFixed(6)
-            + "&lat=" + lngLat.lat.toFixed(6)
+            + "?lon=" + points[0][0].toFixed(6)
+            + "&lat=" + points[0][1].toFixed(6)
             + "&radius=" + encodeURIComponent(radius);
 
-        if (probeMarker) probeMarker.remove();
-        probeMarker = new maplibregl.Marker({ color: palette.ink })
-            .setLngLat(lngLat)
-            .addTo(map);
+        probeMarkers = clearMarkers(probeMarkers);
+        probeMarkers.push(marker(points[0]));
+        probeResults.innerHTML = "<p class='small faint'>Идёт поиск…</p>";
 
-        if (probeResults) probeResults.innerHTML = "<p class='small faint'>Идёт поиск…</p>";
         fetch(address, { headers: { Accept: "application/json" } })
             .then(function (response) { return response.json(); })
             .then(showProbe)
             .catch(function () {
-                if (probeResults) {
-                    probeResults.innerHTML = "<p class='small faint'>Поиск не выполнен.</p>";
-                }
+                probeResults.innerHTML = "<p class='small faint'>Поиск не выполнен.</p>";
             });
     }
 
-    if (probeButton) {
+    if (probeButton && probeResults) {
         probeButton.addEventListener("click", function () {
-            probing = !probing;
-            probeButton.classList.toggle("button--active", probing);
-            map.getCanvas().style.cursor = probing ? "crosshair" : "";
-            if (probeResults && probing) {
-                probeResults.innerHTML =
-                    "<p class='small faint'>Укажите точку на карте.</p>";
-            }
+            startPointing(probeButton, 1, probeResults, "Укажите точку на карте.", probeAt);
         });
     }
 
-    map.on("click", function (event) {
-        if (!probing) return;
-        probing = false;
-        if (probeButton) probeButton.classList.remove("button--active");
-        map.getCanvas().style.cursor = "";
-        probeAt(event.lngLat);
-    });
+    /* --- Доступность и маршрут по графу дорог ------------------------------ */
+
+    var isochroneButton = document.getElementById("map-isochrone");
+    var routeButton = document.getElementById("map-route");
+    var routingResults = document.getElementById("routing-results");
+    var routingMarkers = [];
+
+    function controlValue(id) {
+        var control = document.getElementById(id);
+        return control ? control.value : "";
+    }
+
+    function showIsochrones(payload) {
+        var source = map.getSource("isochrones");
+        if (source) source.setData(payload);
+
+        var rows = payload.features.map(function (feature) {
+            var properties = feature.properties;
+            return row(properties.minutes + " мин",
+                       number(properties.area_sq_km, 1) + " км²");
+        }).join("");
+
+        routingResults.innerHTML = "<p class='small faint'>"
+            + escapeHtml(payload.profile.title) + "</p>" + rows
+            + "<p class='small faint' style='margin-top:var(--sp-2)'>"
+            + "Площадь территории, достижимой по дорогам за указанное время.</p>";
+    }
+
+    function requestIsochrones(points) {
+        routingMarkers = clearMarkers(routingMarkers);
+        routingMarkers.push(marker(points[0], palette.accent));
+        routingResults.innerHTML = "<p class='small faint'>Расчёт по графу дорог…</p>";
+
+        var address = settings.urls.isochrones
+            + "?point=" + points[0][0].toFixed(6) + "," + points[0][1].toFixed(6)
+            + "&profile=" + encodeURIComponent(controlValue("m-profile"))
+            + "&minutes=" + encodeURIComponent(controlValue("m-minutes"));
+
+        fetch(address, { headers: { Accept: "application/json" } })
+            .then(function (response) {
+                if (!response.ok) return explainFailure(routingResults, response);
+                return response.json().then(showIsochrones);
+            })
+            .catch(function () {
+                routingResults.innerHTML = "<p class='small faint'>Расчёт не выполнен.</p>";
+            });
+    }
+
+    function showRoute(payload) {
+        var source = map.getSource("route");
+        if (source) {
+            source.setData({
+                type: "Feature",
+                geometry: payload.geometry,
+                properties: {}
+            });
+        }
+
+        var rows = [
+            row("Протяжённость", number(payload.distance_km, 1) + " км"),
+            row("Время в пути", number(payload.duration_min, 0) + " мин"),
+            row("Зоны ограничения",
+                payload.zones.length ? payload.zones.join(", ") : "не задеты"),
+            row("Пропуск", payload.permit || "не требуется"),
+            row("Штраф за нарушение",
+                payload.fine_rubles ? number(payload.fine_rubles) + " ₽" : null)
+        ].join("");
+
+        var warnings = (payload.prohibitions || []).map(function (item) {
+            return "<p class='small' style='color:var(--tone-alert)'>"
+                + escapeHtml(item) + "</p>";
+        }).join("");
+
+        routingResults.innerHTML = "<p class='small'>" + escapeHtml(payload.summary) + "</p>"
+            + rows + warnings;
+    }
+
+    function requestRoute(points) {
+        routingMarkers = clearMarkers(routingMarkers);
+        points.forEach(function (point, index) {
+            routingMarkers.push(marker(point, index ? palette.alert : palette.ok));
+        });
+        routingResults.innerHTML = "<p class='small faint'>Прокладка маршрута…</p>";
+
+        var address = settings.urls.route
+            + "?from=" + points[0][0].toFixed(6) + "," + points[0][1].toFixed(6)
+            + "&to=" + points[1][0].toFixed(6) + "," + points[1][1].toFixed(6)
+            + "&profile=" + encodeURIComponent(controlValue("m-profile"));
+
+        fetch(address, { headers: { Accept: "application/json" } })
+            .then(function (response) {
+                if (!response.ok) return explainFailure(routingResults, response);
+                return response.json().then(showRoute);
+            })
+            .catch(function () {
+                routingResults.innerHTML = "<p class='small faint'>Расчёт не выполнен.</p>";
+            });
+    }
+
+    if (isochroneButton && routingResults) {
+        isochroneButton.addEventListener("click", function () {
+            startPointing(
+                isochroneButton, 1, routingResults,
+                "Укажите точку, от которой считать доступность.", requestIsochrones
+            );
+        });
+    }
+
+    if (routeButton && routingResults) {
+        routeButton.addEventListener("click", function () {
+            startPointing(
+                routeButton, 2, routingResults,
+                "Укажите начало и конец маршрута.", requestRoute
+            );
+        });
+    }
 
     /* ----------------------------------------------------------------------
        Смена оформления

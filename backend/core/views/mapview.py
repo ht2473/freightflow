@@ -118,6 +118,8 @@ def map_settings(metrics: list[dict]) -> dict:
         "urls": {
             "tilejson": reverse("core:map_tilejson"),
             "nearby": reverse("core:layer_nearby"),
+            "isochrones": reverse("core:routing_isochrones"),
+            "route": reverse("core:routing_route"),
         },
     }
 
@@ -125,6 +127,8 @@ def map_settings(metrics: list[dict]) -> dict:
 def map_page(request):
     """Страница интерактивной карты логистической инфраструктуры."""
     from analytics.services import load_index
+    from routing import client as router
+    from routing import profiles as truck_profiles
 
     metrics = choropleth_metrics(selectors.district_profiles(), load_index())
     context = page_context(
@@ -139,6 +143,19 @@ def map_page(request):
         districts=District.objects.all(),
         types=InfrastructureType.objects.all(),
         metrics=metrics,
+        # Состояние службы маршрутизации определяется по настройке, а не
+        # обращением к ней: страница не должна ждать ответа службы, чтобы
+        # показать карту. Отказ самой службы виден при первом же расчёте.
+        routing={
+            "configured": router.is_configured(),
+            "message": (
+                "Расчёт по графу дорог требует службы маршрутизации. "
+                "Пока она не настроена, расстояния показываются по прямой "
+                "и названы прямыми."
+            ),
+        },
+        truck_profiles=truck_profiles.choices(),
+        default_profile=truck_profiles.DEFAULT_PROFILE,
         summary=selectors.dashboard_summary(),
         map_settings=map_settings(metrics),
     )

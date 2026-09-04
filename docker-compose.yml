@@ -85,6 +85,25 @@ services:
       - cache_data:/data
     networks: [backend]
 
+  # Маршрутизатор на графе дорог OpenStreetMap: изохроны доступности и
+  # маршруты с учётом габаритов и массы транспортного средства. Тайлы графа
+  # собираются при первом запуске из выгрузки в data/routing/custom_files.
+  # Служба доступна только изнутри контура: наружу её порт не выводится.
+  router:
+    image: ghcr.io/gis-ops/docker-valhalla/valhalla:latest
+    container_name: freightflow-router
+    restart: unless-stopped
+    environment:
+      serve_tiles: "True"
+      build_admins: "True"
+      build_time_zones: "True"
+      build_elevation: "False"
+      force_rebuild: "False"
+      server_threads: "${FF_ROUTER_THREADS:-2}"
+    volumes:
+      - ./data/routing/custom_files:/custom_files
+    networks: [backend]
+
   proxy:
     image: nginx:1.27-alpine
     container_name: freightflow-proxy

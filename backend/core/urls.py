@@ -46,4 +46,8 @@ urlpatterns = [
     path("tiles/tiles.json", views.tilejson, name="map_tilejson"),
     path("tiles/<int:z>/<int:x>/<int:y>.pbf", views.vector_tile, name="map_tile"),
     path("layers/nearby/", views.nearby_objects, name="layer_nearby"),
+    # Расчёты по графу дорог.
+    path("routing/isochrones/", views.isochrones, name="routing_isochrones"),
+    path("routing/route/", views.route, name="routing_route"),
+    path("routing/status/", views.router_status, name="routing_status"),
 ]

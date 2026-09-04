@@ -70,5 +70,29 @@ services:
       timeout: 3s
       retries: 10
 
+  # Маршрутизатор на графе дорог OpenStreetMap. Тайлы графа собираются при
+  # первом запуске из выгрузки, положенной в data/routing/custom_files;
+  # сборка по городской выгрузке занимает несколько минут, дальнейшие
+  # запуски используют готовые тайлы. Выгрузка и тайлы в репозиторий
+  # не входят — способ их получения описан в data/README.md.
+  router:
+    image: ghcr.io/gis-ops/docker-valhalla/valhalla:latest
+    container_name: freightflow-dev-router
+    restart: unless-stopped
+    environment:
+      serve_tiles: "True"
+      # Административные границы нужны для правил проезда, привязанных
+      # к стране; данные о высотах — нет: расход грузовика от уклона
+      # система не считает, а сборка высот требует отдельной выгрузки.
+      build_admins: "True"
+      build_time_zones: "True"
+      build_elevation: "False"
+      force_rebuild: "False"
+      server_threads: "2"
+    ports:
+      - "${FF_DEV_ROUTER_PORT:-8002}:8002"
+    volumes:
+      - ./data/routing/custom_files:/custom_files
+
 volumes:
   dev_db_data:

@@ -28,6 +28,11 @@ staticfiles/
 data/osm/*.json.gz
 data/osm/*.part
 
+# Выгрузка OpenStreetMap и собранные по ней тайлы графа дорог. Выгрузка
+# весит около ста мегабайт, тайлы графа — больше; и то и другое
+# восстанавливается по data/README.md одной командой.
+data/routing/
+
 # Служебное
 .coverage
 htmlcov/
