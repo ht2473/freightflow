@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from core import selectors
+from core.choices import VerificationState
 from core.models import (
     CargoRoute,
     FreightFlowStat,
@@ -88,6 +89,7 @@ def objects_dataset(params) -> Dataset:
             Column("Долгота", lambda o: round(o.geom.lon, 6) if o.geom else None,
                    width=12, numeric=True),
             Column("Источник данных", lambda o: o.source.name if o.source_id else "", width=30),
+            Column("Осмотр записи", lambda o: o.get_verification_display(), width=20),
         ],
         rows=rows,
         summary=[
@@ -97,6 +99,8 @@ def objects_dataset(params) -> Dataset:
             ("Суммарная площадь, м²", _total(rows, "area_sq_m")),
             ("С измеренной площадью", sum(1 for row in rows if row.area_sq_m is not None)),
             ("С указанными координатами", sum(1 for row in rows if row.geom)),
+            ("Подтверждено осмотром",
+             sum(1 for row in rows if row.verification == VerificationState.CONFIRMED)),
         ],
     )
 

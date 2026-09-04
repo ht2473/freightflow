@@ -39,6 +39,9 @@ ACTION_LABELS: dict[str, str] = {
     "console:content_action": _("Публикация материала"),
     "console:feedback_detail": _("Обработка обращения"),
     "console:cache_flush": _("Сброс кеша сводок"),
+    "console:verification_action": _("Осмотр записи реестра"),
+    "console:quarantine_action": _("Разбор карантина"),
+    "console:etl_start": _("Запуск загрузки данных"),
 }
 
 

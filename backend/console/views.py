@@ -19,7 +19,7 @@ from accounts import notify
 from accounts.models import AuditEvent, ExportJob, Role, UserProfile, profile_for
 from content.models import Article, ArticleCategory, FeedbackMessage
 from core import selectors
-from core.choices import EtlTrigger
+from core.choices import EtlTrigger, VerificationState
 from core.models import (
     CargoCategory,
     DataSource,
@@ -38,7 +38,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.db import connection
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, F, Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -61,6 +61,8 @@ CONSOLE_TABS: tuple[tuple[str, str, str, str, str], ...] = (
      _("Реестр источников, регламент, журнал"), Role.OPERATOR),
     ("quarantine", _("Карантин"), "console:quarantine",
      _("Записи, не прошедшие проверки"), Role.OPERATOR),
+    ("verification", _("Осмотр реестра"), "console:verification",
+     _("Подтверждение записей человеком"), Role.OPERATOR),
     ("quality", _("Качество данных"), "console:quality",
      _("Полнота и целостность записей"), Role.OPERATOR),
     ("users", _("Пользователи"), "console:users",
@@ -440,6 +442,15 @@ def quality(request):
             "severity": "warn",
         },
         {
+            "title": _("Записи реестра без осмотра"),
+            "detail": _("Соответствие действительности человеком не подтверждено"),
+            "count": InfrastructureObject.objects.filter(
+                verification=VerificationState.NONE
+            ).count(),
+            "total": InfrastructureObject.objects.count(),
+            "severity": "info",
+        },
+        {
             "title": _("Объекты без адреса"),
             "detail": _("Затрудняет идентификацию объекта пользователем"),
             "count": InfrastructureObject.objects.filter(
@@ -816,8 +827,145 @@ def cache_flush(request):
     return redirect(request.POST.get("next") or "console:dashboard")
 
 
+
 # ---------------------------------------------------------------------------
-#  9. Журнал аудита
+#  9. Осмотр записей реестра
+# ---------------------------------------------------------------------------
+
+
+@operator_required
+def verification(request):
+    """Очередь записей реестра, ожидающих осмотра.
+
+    Очередь начинается с записей, о которых источник сообщает меньше всего:
+    объект без наименования и адреса опознать на местности труднее, и именно
+    он больше других нуждается в подтверждении человеком. Осмотр не правит
+    сведения источника — он говорит, соответствуют ли они действительности.
+    """
+    queryset = InfrastructureObject.objects.select_related(
+        "type", "district", "verified_by"
+    ).defer("footprint", "district__geom")
+
+    state = choice_param(
+        request, "state", ["pending", "confirmed", "disputed", "stale"]
+    ) or "pending"
+    district_id = int_param(request, "district")
+    type_id = int_param(request, "type")
+    term = (request.GET.get("q") or "").strip()
+
+    if state == "pending":
+        queryset = queryset.filter(verification=VerificationState.NONE)
+    elif state == "stale":
+        # Осмотр относится к тому состоянию записи, которое человек видел;
+        # выгрузка, пришедшая позже, могла принести другое.
+        queryset = queryset.exclude(verification=VerificationState.NONE).filter(
+            source_updated_at__gt=F("verified_at")
+        )
+    else:
+        queryset = queryset.filter(verification=state)
+
+    queryset = queryset.in_district(district_id).of_type(type_id).search(term)
+
+    context = _console_context(
+        request,
+        title=_("Осмотр реестра"),
+        tab="verification",
+        lead=_(
+            "Подтверждение записей реестра человеком. Осмотр отвечает на "
+            "вопрос, соответствует ли запись действительности; сведения "
+            "источника при этом не меняются — разметка правится в разметке."
+        ),
+        page_obj=paginate(request, queryset.order_by(*VERIFICATION_ORDER), per_page=20),
+        total_count=queryset.count(),
+        summary=verification_summary(),
+        districts=District.objects.all(),
+        types=InfrastructureType.objects.order_by("name"),
+        filters={"state": state, "district": district_id, "type": type_id, "q": term},
+    )
+    return render(request, "console/verification.html", context)
+
+
+#: Порядок очереди: сначала записи без наименования и адреса — их труднее
+#: опознать на местности, и подтверждение им нужнее прочих.
+VERIFICATION_ORDER: tuple[str, ...] = ("name", "address", "id")
+
+
+def verification_summary() -> dict:
+    """Счётчики состояний осмотра по реестру целиком."""
+    counts = dict(
+        InfrastructureObject.objects.values_list("verification")
+        .annotate(count=Count("id"))
+        .values_list("verification", "count")
+    )
+    total = sum(counts.values())
+    confirmed = counts.get(VerificationState.CONFIRMED, 0)
+    disputed = counts.get(VerificationState.DISPUTED, 0)
+    return {
+        "total": total,
+        "confirmed": confirmed,
+        "disputed": disputed,
+        "pending": total - confirmed - disputed,
+        "stale": InfrastructureObject.objects.exclude(
+            verification=VerificationState.NONE
+        ).filter(source_updated_at__gt=F("verified_at")).count(),
+    }
+
+
+@require_POST
+@operator_required
+def verification_action(request, pk: int):
+    """Записать итог осмотра одной записи реестра."""
+    obj = get_object_or_404(InfrastructureObject, pk=pk)
+    decision = request.POST.get("decision", "")
+    note = (request.POST.get("note") or "").strip()[:300]
+
+    if decision == VerificationState.CONFIRMED:
+        obj.verification = VerificationState.CONFIRMED
+        obj.verification_note = note
+        obj.verified_at = timezone.now()
+        obj.verified_by = request.user
+        messages.success(request, _("Запись подтверждена: %(name)s") % {"name": obj.name})
+    elif decision == VerificationState.DISPUTED:
+        if not note:
+            messages.error(request, _("Укажите, что именно расходится с действительностью."))
+            return redirect(request.POST.get("next") or "console:verification")
+        obj.verification = VerificationState.DISPUTED
+        obj.verification_note = note
+        obj.verified_at = timezone.now()
+        obj.verified_by = request.user
+        messages.warning(
+            request, _("Запись отмечена как требующая уточнения: %(name)s") % {"name": obj.name}
+        )
+    elif decision == "reset":
+        obj.verification = VerificationState.NONE
+        obj.verification_note = ""
+        obj.verified_at = None
+        obj.verified_by = None
+        messages.info(request, _("Отметка осмотра снята: %(name)s") % {"name": obj.name})
+    else:
+        messages.error(request, _("Действие не распознано."))
+        return redirect(request.POST.get("next") or "console:verification")
+
+    obj.save(
+        update_fields=[
+            "verification", "verification_note", "verified_at", "verified_by", "updated_at"
+        ]
+    )
+    AuditEvent.objects.create(
+        user=request.user,
+        action=AuditEvent.Action.UPDATE,
+        entity="infrastructure_object",
+        entity_id=str(obj.pk),
+        summary=f"Осмотр записи «{obj.name}»: {obj.get_verification_display()}",
+        path=request.path,
+        request_id=getattr(request, "request_id", ""),
+    )
+    request.audit_written = True
+    return redirect(request.POST.get("next") or "console:verification")
+
+
+# ---------------------------------------------------------------------------
+#  10. Журнал аудита
 # ---------------------------------------------------------------------------
 
 
@@ -855,7 +1003,7 @@ def audit(request):
 
 
 # ---------------------------------------------------------------------------
-#  10. Состояние среды
+#  11. Состояние среды
 # ---------------------------------------------------------------------------
 
 

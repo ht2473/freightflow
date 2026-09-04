@@ -23,7 +23,7 @@ CABINET_ROUTES = [
 # Разделы панели, посвящённые работе с данными: доступны диспетчеру.
 OPERATOR_ROUTES = [
     "console:dashboard", "console:quality", "console:etl",
-    "console:etl_upload", "console:quarantine",
+    "console:etl_upload", "console:quarantine", "console:verification",
 ]
 
 # Разделы ведения системы: только для администратора.
@@ -96,7 +96,7 @@ class TestRolePermissions:
         client.force_login(users["operator"])
         response = client.get(reverse("console:dashboard"))
         codes = {row[0] for row in response.context["tabs"]}
-        assert codes == {"dashboard", "etl", "quarantine", "quality"}
+        assert codes == {"dashboard", "etl", "quarantine", "verification", "quality"}
 
     def test_operator_can_review_quarantine(self, client, users, full_dataset):
         """Диспетчер разбирает карантин, а не только смотрит на него."""

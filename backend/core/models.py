@@ -41,6 +41,7 @@ from .choices import (
     RouteType,
     SourceType,
     UpdateFrequency,
+    VerificationState,
     congestion_state,
     severity_state,
 )
@@ -351,6 +352,32 @@ class InfrastructureObject(models.Model):
         blank=True,
         verbose_name=_("Источник данных"),
     )
+    # --- Осмотр записи -------------------------------------------------------
+    # Осмотр отвечает на вопрос, соответствует ли запись действительности,
+    # и сведений источника не меняет: правка разметки OpenStreetMap делается
+    # в самой разметке, иначе следующая загрузка её сотрёт.
+    verification = models.CharField(
+        _("Осмотр"),
+        max_length=16,
+        choices=VerificationState.choices,
+        blank=True,
+        default=VerificationState.NONE,
+    )
+    verification_note = models.CharField(
+        _("Замечание осмотра"), max_length=300, blank=True, default="",
+        help_text=_("Что именно расходится с действительностью"),
+    )
+    verified_at = models.DateTimeField(_("Осмотрена"), null=True, blank=True)
+    verified_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        db_column="verified_by_id",
+        related_name="verified_objects",
+        null=True,
+        blank=True,
+        verbose_name=_("Осмотр выполнил"),
+    )
+
     created_at = models.DateTimeField(_("Создан"), default=timezone.now)
     updated_at = models.DateTimeField(_("Обновлён"), auto_now=True)
 
@@ -365,6 +392,7 @@ class InfrastructureObject(models.Model):
             models.Index(fields=["district"], name="idx_infra_district"),
             models.Index(fields=["type"], name="idx_infra_type"),
             models.Index(fields=["osm_type", "osm_id"], name="idx_infra_osm"),
+            models.Index(fields=["verification"], name="idx_infra_verification"),
         ]
         constraints = [
             # Ключ исходного элемента уникален: повторная загрузка обновляет
@@ -382,6 +410,18 @@ class InfrastructureObject(models.Model):
 
     def get_absolute_url(self) -> str:
         return reverse("core:object_detail", args=[self.pk])
+
+    @property
+    def verification_is_stale(self) -> bool:
+        """Сведения источника обновились после осмотра.
+
+        Осмотр относится к тому состоянию записи, которое человек видел.
+        Новая выгрузка могла принести другое наименование или другой контур,
+        и подтверждение прежнего состояния к ним не относится.
+        """
+        if not self.verified_at or not self.source_updated_at:
+            return False
+        return self.source_updated_at > self.verified_at
 
     @property
     def is_round_the_clock(self) -> bool:

@@ -117,10 +117,17 @@ CREATE TABLE IF NOT EXISTS infrastructure_objects (
     classification_rule VARCHAR(32),
     source_updated_at   TIMESTAMPTZ,
     source_id       INTEGER REFERENCES data_sources (id) ON DELETE SET NULL,
+    verification      VARCHAR(16),
+    verification_note VARCHAR(300),
+    verified_at       TIMESTAMPTZ,
+    verified_by_id    INTEGER REFERENCES auth_user (id) ON DELETE SET NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT infra_capacity_positive CHECK (capacity_tons IS NULL OR capacity_tons >= 0),
-    CONSTRAINT infra_area_positive CHECK (area_sq_m IS NULL OR area_sq_m >= 0)
+    CONSTRAINT infra_area_positive CHECK (area_sq_m IS NULL OR area_sq_m >= 0),
+    CONSTRAINT infra_verification_known CHECK (
+        verification IS NULL OR verification IN ('', 'confirmed', 'disputed')
+    )
 );
 
 -- Ключ исходного элемента уникален: повторная загрузка обновляет запись,
@@ -137,6 +144,11 @@ COMMENT ON COLUMN infrastructure_objects.capacity_origin IS 'Происхожд�
 COMMENT ON COLUMN infrastructure_objects.area_origin IS 'Происхождение площади: measured | derived | modelled';
 COMMENT ON COLUMN infrastructure_objects.footprint IS 'Контур объекта; площадь по нему является измеренной величиной';
 COMMENT ON COLUMN infrastructure_objects.classification_rule IS 'Обозначение правила, по которому объект отнесён к типу';
+COMMENT ON COLUMN infrastructure_objects.verification IS 'Итог осмотра записи человеком: confirmed | disputed';
+COMMENT ON COLUMN infrastructure_objects.verified_at IS 'Момент осмотра; сравнение с source_updated_at показывает, устарел ли он';
+
+CREATE INDEX IF NOT EXISTS idx_infra_verification
+    ON infrastructure_objects (verification);
 
 -- Ключевые участки улично-дорожной сети, по которым ведётся мониторинг.
 -- road_class: highway (магистраль) | arterial (городская магистраль) | collector (связующая).
