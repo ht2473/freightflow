@@ -30,6 +30,7 @@ def _load() -> dict[str, Pipeline]:
         return _PIPELINES
 
     from .osm.corridors import CorridorsPipeline
+    from .osm.incidents import RoadworksPipeline
     from .osm.loaders import DistrictsPipeline, InfrastructurePipeline
     from .osm.roads import RoadNetworkPipeline
     from .osm.zones import RestrictionZonesPipeline
@@ -41,6 +42,7 @@ def _load() -> dict[str, Pipeline]:
         RoadNetworkPipeline,
         RestrictionZonesPipeline,
         CorridorsPipeline,
+        RoadworksPipeline,
         FreightFramePipeline,
     )
     for pipeline_class in ordered:
