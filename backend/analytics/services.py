@@ -5,9 +5,15 @@
 1. **Композитный индекс логистической нагрузки** — сведение разнородных
    показателей округа к единой сопоставимой оценке;
 2. **Типология округов** — разбиение на однородные группы методом k-средних;
-3. **Прогнозирование грузопотока** — модель тренда с сезонной составляющей и
-   оценкой качества аппроксимации;
+3. **Прогнозирование грузопотока** — сопоставление нескольких моделей
+   на отложенной выборке и продолжение ряда лучшей из них;
 4. **Сценарное моделирование** — пересчёт нагрузки при заданных изменениях.
+
+Каждый расчёт сопровождается тем, что позволяет судить о его надёжности:
+индекс — анализом чувствительности к весам, типология — силуэтом разбиения,
+прогноз — ошибкой на наблюдениях, которых модель не видела. Показатель без
+такой оценки читается как утверждение системы о городе, тогда как он —
+следствие принятых допущений.
 
 Все алгоритмы реализованы средствами стандартной библиотеки. Решение принято
 осознанно: объём выборки (двенадцать округов, десятки месяцев наблюдений) не
@@ -959,9 +965,11 @@ def linear_regression(xs: list[float], ys: list[float]) -> tuple[float, float, f
     return intercept, slope, r_squared
 
 
-#: Наименьшее число наблюдений, при котором строится прогноз. Ряд короче
-#: не позволяет ни выделить отложенную выборку, ни оценить надёжность тренда:
-#: подгонка по трём точкам всегда выглядит безупречной и ничего не означает.
+#: Наименьшее число наблюдений, при котором строится прогноз.
+#:
+#: Ряд короче не позволяет ни выделить отложенную выборку, ни оценить
+#: надёжность тренда: подгонка по трём точкам всегда выглядит безупречной
+#: и ничего не означает.
 MIN_OBSERVATIONS = 8
 
 #: Доля ряда, отводимая под отложенную выборку. Качество измеряется на ней,
@@ -969,20 +977,309 @@ MIN_OBSERVATIONS = 8
 #: не точность прогноза, а гибкость модели.
 HOLDOUT_SHARE = 0.2
 
+#: Длина сезонного цикла помесячного ряда.
+SEASON_LENGTH = 12
+
+#: Окно скользящего среднего: три последних наблюдения.
+#:
+#: Величина не подбиралась по той же выборке, на которой измеряется качество:
+#: подобранное так окно давало бы модели преимущество, которого у неё
+#: на новых данных не будет.
+MOVING_WINDOW = 3
+
+
+# --- Модели -----------------------------------------------------------------
+#
+# Каждая модель получает обучающий ряд и возвращает функцию, дающую значение
+# в произвольной точке — как внутри ряда, так и за его пределами. Единая
+# форма позволяет сопоставлять модели одним и тем же кодом, а не тремя
+# похожими ветвями.
+
+
+def _fit_naive(values: list[float], season: int | None):
+    """Наивная модель: продолжение последним наблюдением.
+
+    Служит точкой отсчёта. Модель, не превзошедшая её на отложенной выборке,
+    не приносит ничего сверх того, что уже известно из последнего значения,
+    и сложность её ничем не оправдана.
+    """
+    last = values[-1]
+    return lambda position: last
+
+
+def _fit_drift(values: list[float], season: int | None):
+    """Наивная модель с дрейфом: прямая через первое и последнее наблюдение.
+
+    Отличается от линейного тренда тем, что не сглаживает середину ряда.
+    На ряде с переломом это оказывается достоинством: тренд по всей длине
+    усредняет обе части и не описывает ни одну.
+    """
+    length = len(values)
+    step = (values[-1] - values[0]) / (length - 1) if length > 1 else 0.0
+    return lambda position: values[-1] + step * (position - (length - 1))
+
+
+def _fit_moving_average(values: list[float], season: int | None):
+    """Скользящее среднее последних наблюдений.
+
+    Сглаживает случайные отклонения последнего значения, но тренда не имеет:
+    прогноз на любом горизонте остаётся постоянным.
+    """
+    window = values[-min(MOVING_WINDOW, len(values)):]
+    level = sum(window) / len(window)
+    return lambda position: level
+
+
+def _fit_linear(values: list[float], season: int | None):
+    """Линейный тренд по методу наименьших квадратов."""
+    intercept, slope, _ = linear_regression(list(range(len(values))), values)
+    return lambda position: intercept + slope * position
+
+
+def _fit_holt(values: list[float], season: int | None):
+    """Двухпараметрическое экспоненциальное сглаживание (модель Хольта).
+
+    Уровень и наклон пересчитываются на каждом шаге, причём последние
+    наблюдения весят больше ранних. Этим модель отличается от линейного
+    тренда, который считает все наблюдения равноценными.
+
+    Параметры сглаживания подбираются перебором по обучающему ряду —
+    по нему же, а не по отложенной выборке: подбор по проверочным данным
+    сделал бы их частью обучения и завысил бы оценку качества.
+    """
+    grid = [0.1, 0.3, 0.5, 0.7, 0.9]
+    best = None
+    for alpha in grid:
+        for beta in grid:
+            level, trend = values[0], values[1] - values[0]
+            error = 0.0
+            for step in range(1, len(values)):
+                forecast = level + trend
+                error += (values[step] - forecast) ** 2
+                previous = level
+                level = alpha * values[step] + (1 - alpha) * (level + trend)
+                trend = beta * (level - previous) + (1 - beta) * trend
+            if best is None or error < best[0]:
+                best = (error, level, trend)
+
+    _, level, trend = best
+    origin = len(values) - 1
+    return lambda position: level + trend * (position - origin)
+
+
+def _fit_seasonal(values: list[float], season: int | None):
+    """Линейный тренд с аддитивной сезонной составляющей.
+
+    Сезонная поправка — среднее отклонение соответствующего шага цикла
+    от линии тренда. Модель применима только к ряду, у которого цикл есть
+    и наблюдается дважды: по одному циклу поправка неотличима от шума.
+    """
+    length = season or SEASON_LENGTH
+    intercept, slope, _ = linear_regression(list(range(len(values))), values)
+    offsets: dict[int, list[float]] = {}
+    for position, value in enumerate(values):
+        offsets.setdefault(position % length, []).append(
+            value - (intercept + slope * position)
+        )
+    corrections = {
+        phase: sum(items) / len(items) for phase, items in offsets.items()
+    }
+    return lambda position: (
+        intercept + slope * position + corrections.get(position % length, 0.0)
+    )
+
+
+@dataclass(frozen=True)
+class ForecastModel:
+    """Модель прогноза: как считает и когда применима."""
+
+    code: str
+    title: str
+    note: str
+    fit: object
+    #: Наименьшая длина обучающего ряда, при которой оценки осмысленны.
+    min_train: int = 2
+    #: Модель описывает внутригодовой профиль и требует помесячного ряда.
+    seasonal: bool = False
+
+    def unavailable(self, train: int, season: int | None) -> str:
+        """Причина, по которой модель к ряду неприменима, либо пустая строка."""
+        if self.seasonal and not season:
+            return str(_("внутригодового профиля у годового ряда нет"))
+        if self.seasonal and train < 2 * (season or SEASON_LENGTH):
+            return str(_("на обучающей части меньше двух сезонных циклов"))
+        if train < self.min_train:
+            return str(
+                _("на обучающей части меньше %(count)d наблюдений")
+                % {"count": self.min_train}
+            )
+        return ""
+
+
+#: Сопоставляемые модели. Наивная идёт первой: она задаёт уровень,
+#: относительно которого и оценивается польза остальных.
+FORECAST_MODELS: tuple[ForecastModel, ...] = (
+    ForecastModel(
+        code="naive",
+        title=_("Наивная"),
+        note=_("продолжение последним наблюдением; точка отсчёта"),
+        fit=_fit_naive,
+        min_train=1,
+    ),
+    ForecastModel(
+        code="drift",
+        title=_("Наивная с дрейфом"),
+        note=_("прямая через первое и последнее наблюдение"),
+        fit=_fit_drift,
+    ),
+    ForecastModel(
+        code="mean",
+        title=_("Скользящее среднее"),
+        note=_("среднее трёх последних наблюдений, без тренда"),
+        fit=_fit_moving_average,
+    ),
+    ForecastModel(
+        code="linear",
+        title=_("Линейный тренд"),
+        note=_("метод наименьших квадратов по всей обучающей части"),
+        fit=_fit_linear,
+        min_train=3,
+    ),
+    ForecastModel(
+        code="holt",
+        title=_("Экспоненциальное сглаживание"),
+        note=_("модель Хольта: уровень и наклон с убывающими весами"),
+        fit=_fit_holt,
+        min_train=4,
+    ),
+    ForecastModel(
+        code="seasonal",
+        title=_("Тренд с сезонной составляющей"),
+        note=_("линейный тренд и средняя поправка на месяц"),
+        fit=_fit_seasonal,
+        min_train=24,
+        seasonal=True,
+    ),
+)
+
+MODEL_BY_CODE: dict[str, ForecastModel] = {item.code: item for item in FORECAST_MODELS}
+
+
+# --- Меры ошибки ------------------------------------------------------------
+
+
+def mean_absolute_error(actual: list[float], fitted: list[float]) -> float:
+    """Средняя абсолютная ошибка в единицах ряда."""
+    return sum(abs(a - f) for a, f in zip(actual, fitted, strict=False)) / len(actual)
+
+
+def root_mean_squared_error(actual: list[float], fitted: list[float]) -> float:
+    """Корень из средней квадратичной ошибки.
+
+    В отличие от средней абсолютной, придаёт большим промахам больший вес:
+    ряд, где модель обычно точна, но однажды ошиблась вдвое, здесь виден.
+    """
+    return math.sqrt(
+        sum((a - f) ** 2 for a, f in zip(actual, fitted, strict=False)) / len(actual)
+    )
+
+
+def mean_absolute_percentage_error(
+    actual: list[float], fitted: list[float]
+) -> float | None:
+    """Средняя абсолютная процентная ошибка.
+
+    Не определена, если все проверочные наблюдения нулевые: делить на них
+    нельзя, а заменять ноль малой величиной значило бы придумать данные.
+    """
+    errors = [
+        abs(a - f) / abs(a) for a, f in zip(actual, fitted, strict=False) if a
+    ]
+    return sum(errors) / len(errors) * 100 if errors else None
+
+
+def _evaluate(model: ForecastModel, values: list[float], holdout: int,
+              season: int | None) -> dict:
+    """Обучить модель на начале ряда и измерить ошибку на его хвосте."""
+    train, test = values[:-holdout], values[-holdout:]
+    predict = model.fit(train, season)
+    fitted = [max(predict(len(train) + step), 0.0) for step in range(len(test))]
+    return {
+        "model": model,
+        "mae": mean_absolute_error(test, fitted),
+        "rmse": root_mean_squared_error(test, fitted),
+        "mape": mean_absolute_percentage_error(test, fitted),
+        "fitted": fitted,
+    }
+
+
+def compare_forecast_models(history: list[dict]) -> dict:
+    """Сопоставить модели прогноза на отложенной выборке.
+
+    Ряд делится по времени: начало отводится под обучение, хвост — под
+    проверку. Каждая модель обучается на начале и предсказывает хвост,
+    которого не видела; ошибки на этом хвосте и сравниваются.
+
+    Разделение именно по времени, а не случайной выборкой: прогноз работает
+    вперёд, и модель, обученная на будущем ряда, показала бы точность,
+    недостижимую в применении.
+
+    Лучшей считается модель с наименьшей абсолютной ошибкой на проверочной
+    части. Процентная ошибка для выбора не годится: она не определена там,
+    где наблюдение нулевое, и делает модели несопоставимыми.
+    """
+    values = [row["volume"] for row in history]
+    season = SEASON_LENGTH if history[-1]["period_type"] != PeriodType.YEAR else None
+    holdout = max(2, round(len(values) * HOLDOUT_SHARE))
+    train = len(values) - holdout
+
+    outcomes, rejected = [], []
+    for model in FORECAST_MODELS:
+        reason = model.unavailable(train, season)
+        if reason:
+            rejected.append({"model": model, "reason": reason})
+            continue
+        outcomes.append(_evaluate(model, values, holdout, season))
+
+    outcomes.sort(key=lambda item: item["mae"])
+    baseline = next(
+        (item for item in outcomes if item["model"].code == "naive"), None
+    )
+    for position, item in enumerate(outcomes, start=1):
+        item["position"] = position
+        item["best"] = position == 1
+        # Насколько модель точнее наивной. Отрицательное значение означает,
+        # что она проигрывает продолжению последним наблюдением.
+        item["gain"] = (
+            None
+            if baseline is None or not baseline["mae"]
+            else round((baseline["mae"] - item["mae"]) / baseline["mae"] * 100, 1)
+        )
+
+    return {
+        "outcomes": outcomes,
+        "rejected": rejected,
+        "holdout": holdout,
+        "train": train,
+        "season": season,
+        "best": outcomes[0] if outcomes else None,
+        "baseline": baseline,
+    }
+
 
 def forecast_flow(territory: str | None = None, horizon: int = 5,
-                  scope: str | None = None) -> dict:
+                  scope: str | None = None, model_code: str | None = None) -> dict:
     """Построить прогноз объёма перевозок по территории.
 
-    Модель — линейный тренд; на помесячных рядах к нему добавляется сезонная
-    составляющая, оценённая как среднее отклонение соответствующего месяца
-    от линии тренда. Простая форма выбрана осознанно: на ряде в десятки
-    наблюдений сложные модели дают неустойчивые оценки параметров и мнимую
-    точность.
+    Порядок работы:
 
-    Качество измеряется на отложенной выборке: модель обучается на начале ряда
-    и проверяется на его хвосте, которого при обучении не видела. Ошибка,
-    посчитанная на обучающих данных, характеризует не точность прогноза.
+    1. ряд проверяется на пригодность — короткий ряд прогнозу не подлежит;
+    2. модели сопоставляются на отложенной выборке;
+    3. выбранная модель переобучается на ряде целиком и продолжает его.
+
+    Переобучение на полном ряде обязательно: отложенная выборка нужна была
+    для проверки, а выбрасывать последние наблюдения из модели, которой
+    предстоит продолжать ряд, значило бы прогнозировать из позавчерашнего дня.
     """
     # Без указания территории берётся ряд по городу: ведомственный, если он
     # загружен, иначе внутригородской, собранный по округам.
@@ -991,32 +1288,30 @@ def forecast_flow(territory: str | None = None, horizon: int = 5,
         if territory
         else selectors.city_flow_series(scope or FlowScope.ALL)
     )
-    if len(history) < MIN_OBSERVATIONS:
+    refusal = forecast_refusal(history)
+    if refusal:
         return {
             "available": False,
             "history": history,
             "territory": territory or selectors.CITY_TERRITORY,
-            "reason": _(
-                "Ряд короче %(minimum)d наблюдений: прогноз по нему "
-                "не строится, а оценка его качества была бы недостоверной."
-            ) % {"minimum": MIN_OBSERVATIONS},
+            "reason": refusal,
         }
 
+    comparison = compare_forecast_models(history)
+    chosen = next(
+        (item for item in comparison["outcomes"] if item["model"].code == model_code),
+        comparison["best"],
+    )
+    model = chosen["model"]
+
+    values = [row["volume"] for row in history]
     annual = history[-1]["period_type"] == PeriodType.YEAR
-    # Сезонность оценивается только там, где она наблюдаема: на годовом ряде
-    # внутригодового профиля нет, а на помесячном нужны хотя бы два цикла.
-    seasonal_model = not annual and len(history) >= 24
+    predict = model.fit(values, comparison["season"])
+    predictions = _predict(history, predict, horizon, annual)
 
-    holdout = max(2, round(len(history) * HOLDOUT_SHARE))
-    train, test = history[:-holdout], history[-holdout:]
-
-    trained = _fit(train, seasonal_model)
-    mape = _mape(test, trained, offset=len(train))
-
-    # Прогноз строится по всему ряду: отложенная выборка нужна для проверки,
-    # а не для того, чтобы выбросить последние наблюдения из модели.
-    model = _fit(history, seasonal_model)
-    predictions = _predict(history, model, horizon, annual)
+    # Коэффициент детерминации характеризует прилегание к обучающему ряду
+    # и приводится рядом с ошибкой на отложенной выборке, а не вместо неё.
+    _, slope, r_squared = linear_regression(list(range(len(values))), values)
 
     return {
         "available": True,
@@ -1024,59 +1319,50 @@ def forecast_flow(territory: str | None = None, horizon: int = 5,
         "forecast": predictions,
         "territory": territory or selectors.CITY_TERRITORY,
         "granularity": PeriodType.YEAR if annual else history[-1]["period_type"],
-        "seasonal_model": seasonal_model,
-        "slope": round(model["slope"], 1),
-        "r_squared": round(model["r_squared"], 3),
-        "mape": mape,
-        "holdout": len(test),
+        "comparison": comparison,
+        "model": model,
+        "chosen": chosen,
+        "seasonal_model": model.seasonal,
+        "slope": round(slope, 1),
+        "r_squared": round(r_squared, 3),
+        "mae": round(chosen["mae"], 1),
+        "rmse": round(chosen["rmse"], 1),
+        "mape": None if chosen["mape"] is None else round(chosen["mape"], 1),
+        "gain": chosen["gain"],
+        "beats_baseline": bool(chosen["gain"] and chosen["gain"] > 0),
+        "holdout": comparison["holdout"],
         "horizon": horizon,
-        "step_growth": round(model["slope"], 1),
-        "seasonal": {month: round(value, 1) for month, value in sorted(model["seasonal"].items())},
-        "quality": _quality_label(model["r_squared"], mape),
+        "quality": _quality_label(r_squared, chosen["mape"]),
     }
 
 
-def _fit(rows: list[dict], seasonal_model: bool) -> dict:
-    """Оценить параметры модели по ряду наблюдений."""
-    xs = list(range(len(rows)))
-    ys = [row["volume"] for row in rows]
-    intercept, slope, r_squared = linear_regression(xs, ys)
+def forecast_refusal(history: list[dict]) -> str:
+    """Причина, по которой ряд прогнозу не подлежит, либо пустая строка.
 
-    seasonal: dict[int, float] = {}
-    if seasonal_model:
-        residuals: dict[int, list[float]] = {}
-        for position, row in enumerate(rows):
-            trend = intercept + slope * position
-            residuals.setdefault(row["period"].month, []).append(row["volume"] - trend)
-        seasonal = {
-            month: sum(values) / len(values) for month, values in residuals.items()
-        }
-
-    return {
-        "intercept": intercept,
-        "slope": slope,
-        "r_squared": r_squared,
-        "seasonal": seasonal,
-    }
-
-
-def _value_at(model: dict, position: int, month: int) -> float:
-    """Значение модели в заданной точке ряда."""
-    trend = model["intercept"] + model["slope"] * position
-    return max(trend + model["seasonal"].get(month, 0.0), 0.0)
+    Отказ объявляется прямо и с указанием причины. Прогноз, построенный
+    по трём наблюдениям, выглядит так же убедительно, как построенный
+    по тридцати, и отличить их читатель не в состоянии — значит, это
+    обязана делать система.
+    """
+    if not history:
+        return str(_("По территории нет ни одного наблюдения ряда перевозок."))
+    if len(history) < MIN_OBSERVATIONS:
+        return str(
+            _(
+                "В ряду %(count)d наблюдений при необходимых %(minimum)d. "
+                "Более короткий ряд не позволяет отложить часть наблюдений "
+                "для проверки, а прогноз без проверки ничем не подтверждён."
+            )
+            % {"count": len(history), "minimum": MIN_OBSERVATIONS}
+        )
+    if len({row["volume"] for row in history}) == 1:
+        return str(
+            _("Все наблюдения ряда совпадают: продолжать в нём нечего.")
+        )
+    return ""
 
 
-def _mape(rows: list[dict], model: dict, offset: int) -> float | None:
-    """Средняя абсолютная процентная ошибка на отложенной выборке."""
-    errors = []
-    for step, row in enumerate(rows):
-        fitted = _value_at(model, offset + step, row["period"].month)
-        if row["volume"]:
-            errors.append(abs(row["volume"] - fitted) / row["volume"])
-    return round(sum(errors) / len(errors) * 100, 1) if errors else None
-
-
-def _predict(history: list[dict], model: dict, horizon: int, annual: bool) -> list[dict]:
+def _predict(history: list[dict], predict, horizon: int, annual: bool) -> list[dict]:
     """Построить продолжение ряда на заданное число шагов."""
     last: date = history[-1]["period"]
     predictions = []
@@ -1087,21 +1373,19 @@ def _predict(history: list[dict], model: dict, horizon: int, annual: bool) -> li
         else:
             month = (last.month - 1 + step) % 12 + 1
             period = date(last.year + (last.month - 1 + step) // 12, month, 1)
-        trend = model["intercept"] + model["slope"] * position
         predictions.append(
             {
                 "period": period,
                 # Ключ сохранён ради общего построителя графиков.
                 "month": period,
-                "value": round(_value_at(model, position, period.month), 1),
-                "trend": round(max(trend, 0.0), 1),
+                "value": round(max(predict(position), 0.0), 1),
             }
         )
     return predictions
 
 
 def _quality_label(r_squared: float, mape: float | None) -> str:
-    """Словесная оценка качества аппроксимации."""
+    """Словесная оценка качества прогноза по отложенной выборке."""
     if mape is None:
         return _("не определено")
     if mape < 10 and r_squared > 0.6:

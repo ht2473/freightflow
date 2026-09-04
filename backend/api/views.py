@@ -325,29 +325,53 @@ def forecast(request):
     result = analytics_services.forecast_flow(
         territory or None,
         min(max(int(horizon) if horizon.isdigit() else 5, 1), 10),
+        model_code=(request.query_params.get("model") or "").strip() or None,
     )
     if not result.get("available"):
         return Response({"detail": result.get("reason", "Прогноз недоступен")}, status=422)
 
+    comparison = result["comparison"]
     return Response(
         {
             "territory": result["territory"],
             "granularity": result["granularity"],
+            "model": {
+                "code": result["model"].code,
+                "title": str(result["model"].title),
+                "note": str(result["model"].note),
+            },
             "quality": {
-                "r_squared": result["r_squared"],
+                "mae": result["mae"],
+                "rmse": result["rmse"],
                 "mape": result["mape"],
+                "r_squared": result["r_squared"],
                 "holdout": result["holdout"],
+                "gain_over_naive": result["gain"],
                 "label": result["quality"],
             },
-            "step_growth_tons": result["step_growth"],
+            "models": [
+                {
+                    "code": item["model"].code,
+                    "title": str(item["model"].title),
+                    "position": item["position"],
+                    "mae": round(item["mae"], 1),
+                    "rmse": round(item["rmse"], 1),
+                    "mape": None if item["mape"] is None else round(item["mape"], 1),
+                    "gain_over_naive": item["gain"],
+                }
+                for item in comparison["outcomes"]
+            ],
+            "rejected": [
+                {"code": item["model"].code, "reason": item["reason"]}
+                for item in comparison["rejected"]
+            ],
             "history": [
                 {"period": row["period"].isoformat(), "volume": row["volume"],
                  "turnover_ton_km": row["turnover"]}
                 for row in result["history"]
             ],
             "forecast": [
-                {"period": row["period"].isoformat(), "value": row["value"],
-                 "trend": row["trend"]}
+                {"period": row["period"].isoformat(), "value": row["value"]}
                 for row in result["forecast"]
             ],
         }

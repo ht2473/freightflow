@@ -103,7 +103,10 @@ def forecast(request):
         territory = selectors.CITY_TERRITORY if names else ""
 
     horizon = min(max(int_param(request, "horizon", 5) or 5, 1), 12)
-    result = services.forecast_flow(territory, horizon)
+    # Модель по умолчанию выбирается сопоставлением, но её можно назвать
+    # явно: сравнить прогнозы двух моделей на одном ряде — законный запрос.
+    chosen = request.GET.get("model", "").strip()
+    result = services.forecast_flow(territory, horizon, model_code=chosen or None)
     annual = result.get("granularity") == PeriodType.YEAR
     # Шаг ряда определяет и набор горизонтов, и их подписи: предлагать
     # «12 месяцев» для годового ряда бессмысленно.
@@ -119,9 +122,9 @@ def forecast(request):
         request,
         title=_("Прогноз перевозок"),
         lead=_(
-            "Продолжение ряда перевозок по модели линейного тренда. Качество "
-            "измеряется на отложенной выборке — на наблюдениях, которых "
-            "модель при обучении не видела."
+            "Продолжение ряда перевозок. Модели сопоставляются на отложенной "
+            "выборке — на наблюдениях, которых они при обучении не видели, — "
+            "и ряд продолжает та, что ошиблась меньше прочих."
         ),
         active="forecast",
         crumbs=[(_("Аналитика"), "analytics:index"), (_("Прогноз"),)],
@@ -131,7 +134,8 @@ def forecast(request):
         territories=territories,
         territory=territory,
         horizons=horizons,
-        filters={"territory": territory, "horizon": horizon},
+        filters={"territory": territory, "horizon": horizon,
+                 "model": result.get("model").code if result.get("available") else ""},
     )
     return render(request, "pages/analytics_forecast.html", context)
 

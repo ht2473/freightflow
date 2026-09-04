@@ -412,14 +412,183 @@ class TestForecast:
             assert later > earlier
 
     def test_quality_metrics_present(self, full_dataset):
-        """Результат содержит показатели качества аппроксимации."""
+        """Результат содержит меры ошибки на отложенной выборке."""
         result = services.forecast_flow(horizon=6)
-        assert "r_squared" in result and "mape" in result and result["quality"]
+        assert result["mae"] is not None and result["rmse"] is not None
+        assert result["quality"]
 
     def test_insufficient_history(self, db):
         """При недостатке наблюдений прогноз не строится."""
         result = services.forecast_flow(horizon=6)
         assert result["available"] is False and result["reason"]
+
+
+class TestErrorMeasures:
+    """Меры ошибки прогноза."""
+
+    def test_absolute_error(self):
+        assert services.mean_absolute_error([10, 20], [12, 18]) == 2.0
+
+    def test_squared_error_weights_large_misses(self):
+        """Корень из средней квадратичной не меньше средней абсолютной."""
+        actual, fitted = [10, 20, 30], [10, 20, 45]
+        assert services.root_mean_squared_error(actual, fitted) > \
+            services.mean_absolute_error(actual, fitted)
+
+    def test_percentage_error(self):
+        assert services.mean_absolute_percentage_error([100, 200], [110, 180]) == \
+            pytest.approx(10.0)
+
+    def test_percentage_error_undefined_on_zero_series(self):
+        """Процентная ошибка на нулевом ряде не определена, а не равна нулю."""
+        assert services.mean_absolute_percentage_error([0, 0], [1, 2]) is None
+
+
+class TestForecastModels:
+    """Отдельные модели прогноза."""
+
+    RISING = [10.0, 12.0, 14.0, 16.0, 18.0, 20.0]
+
+    def test_naive_repeats_the_last_observation(self):
+        predict = services._fit_naive(self.RISING, None)
+        assert predict(10) == 20.0
+        assert predict(100) == 20.0
+
+    def test_drift_continues_the_slope(self):
+        """Дрейф продолжает ряд с шагом между первым и последним значением."""
+        predict = services._fit_drift(self.RISING, None)
+        assert predict(len(self.RISING)) == pytest.approx(22.0)
+
+    def test_moving_average_has_no_trend(self):
+        """Скользящее среднее даёт постоянное значение на любом горизонте."""
+        predict = services._fit_moving_average(self.RISING, None)
+        assert predict(6) == predict(20)
+
+    def test_linear_trend_fits_a_line(self):
+        """На строго линейном ряде тренд восстанавливается точно."""
+        predict = services._fit_linear(self.RISING, None)
+        assert predict(6) == pytest.approx(22.0)
+
+    def test_holt_follows_a_linear_series(self):
+        """Сглаживание Хольта на линейном ряде близко к его продолжению."""
+        predict = services._fit_holt(self.RISING, None)
+        assert predict(6) == pytest.approx(22.0, rel=0.1)
+
+    def test_seasonal_model_reproduces_the_profile(self):
+        """Сезонная поправка воспроизводит размах повторяющегося профиля."""
+        values = [10.0, 20.0] * 6
+        predict = services._fit_seasonal(values, 2)
+        assert predict(13) - predict(12) == pytest.approx(10.0, abs=0.5)
+
+    def test_seasonal_model_without_a_profile_matches_the_trend(self):
+        """Ряд без внутрицикловых колебаний сезонной поправки не получает."""
+        values = [float(value) for value in range(10, 22)]
+        seasonal = services._fit_seasonal(values, 2)
+        linear = services._fit_linear(values, None)
+        assert seasonal(12) == pytest.approx(linear(12))
+
+
+@pytest.mark.django_db
+class TestModelComparison:
+    """Отбор модели сопоставлением на отложенной выборке."""
+
+    @staticmethod
+    def series(values, period_type="month"):
+        """Ряд наблюдений в том виде, в каком его отдаёт выборка."""
+        from datetime import date
+
+        return [
+            {
+                "period": date(2020 + index // 12, index % 12 + 1, 1),
+                "period_type": period_type,
+                "volume": float(value),
+            }
+            for index, value in enumerate(values)
+        ]
+
+    def test_every_applicable_model_is_measured(self):
+        """Каждая применимая модель получает все три меры ошибки."""
+        result = services.compare_forecast_models(self.series(range(10, 30)))
+        assert result["outcomes"]
+        for outcome in result["outcomes"]:
+            assert outcome["mae"] >= 0 and outcome["rmse"] >= 0
+
+    def test_ordered_by_absolute_error(self):
+        """Модели упорядочены по возрастанию абсолютной ошибки."""
+        outcomes = services.compare_forecast_models(
+            self.series(range(10, 30))
+        )["outcomes"]
+        errors = [outcome["mae"] for outcome in outcomes]
+        assert errors == sorted(errors)
+        assert outcomes[0]["best"] is True
+
+    def test_naive_is_the_reference_point(self):
+        """Наивная модель участвует в сопоставлении и не имеет выигрыша."""
+        result = services.compare_forecast_models(self.series(range(10, 30)))
+        naive = next(
+            item for item in result["outcomes"] if item["model"].code == "naive"
+        )
+        assert naive["gain"] == 0.0
+
+    def test_trend_beats_naive_on_a_rising_series(self):
+        """На ряде с устойчивым ростом тренд точнее продолжения последним."""
+        result = services.compare_forecast_models(self.series(range(10, 40)))
+        linear = next(
+            item for item in result["outcomes"] if item["model"].code == "linear"
+        )
+        assert linear["gain"] > 0
+
+    def test_seasonal_model_rejected_on_annual_series(self):
+        """Сезонная модель к годовому ряду не применяется."""
+        result = services.compare_forecast_models(
+            self.series(range(10, 30), period_type="year")
+        )
+        rejected = {item["model"].code for item in result["rejected"]}
+        assert "seasonal" in rejected
+
+    def test_seasonal_model_rejected_on_short_monthly_series(self):
+        """Помесячный ряд короче двух циклов сезонности не даёт."""
+        result = services.compare_forecast_models(self.series(range(10, 30)))
+        reasons = {item["model"].code: item["reason"] for item in result["rejected"]}
+        assert "цикл" in reasons.get("seasonal", "")
+
+    def test_seasonal_model_accepted_on_long_monthly_series(self):
+        """При двух полных циклах сезонная модель в сопоставление входит."""
+        result = services.compare_forecast_models(self.series(range(10, 50)))
+        codes = {item["model"].code for item in result["outcomes"]}
+        assert "seasonal" in codes
+
+    def test_holdout_is_taken_from_the_end(self):
+        """Проверочная часть — хвост ряда, а не случайная выборка."""
+        result = services.compare_forecast_models(self.series(range(10, 30)))
+        assert result["train"] + result["holdout"] == 20
+
+
+@pytest.mark.django_db
+class TestForecastRefusal:
+    """Явный отказ от прогноза при непригодном ряде."""
+
+    def test_empty_series(self):
+        assert "ни одного наблюдения" in services.forecast_refusal([])
+
+    def test_short_series(self):
+        rows = TestModelComparison.series(range(4))
+        reason = services.forecast_refusal(rows)
+        assert str(services.MIN_OBSERVATIONS) in reason
+
+    def test_constant_series(self):
+        """Ряд из одинаковых значений продолжать нечем."""
+        rows = TestModelComparison.series([7] * 20)
+        assert "совпадают" in services.forecast_refusal(rows)
+
+    def test_usable_series_is_not_refused(self):
+        assert services.forecast_refusal(TestModelComparison.series(range(10, 30))) == ""
+
+    def test_refusal_names_the_shortfall(self, db):
+        """Отказ сообщает, сколько наблюдений есть и сколько нужно."""
+        result = services.forecast_flow(horizon=6)
+        assert result["available"] is False
+        assert "наблюден" in result["reason"]
 
 
 @pytest.mark.django_db

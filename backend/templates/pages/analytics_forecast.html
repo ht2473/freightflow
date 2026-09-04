@@ -22,6 +22,19 @@
                 {% endfor %}
             </select>
         </div>
+        {% if result.available %}
+            <div class="field">
+                <label for="f-model">{% trans 'Модель' %}</label>
+                <select id="f-model" name="model">
+                    {% for outcome in result.comparison.outcomes %}
+                        <option value="{{ outcome.model.code }}"
+                                {% if outcome.model.code == filters.model %}selected{% endif %}>
+                            {{ outcome.model.title }}{% if outcome.best %} — {% trans 'отобрана сопоставлением' %}{% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        {% endif %}
         <div class="row">
             <a class="button button--ghost" href="{% url 'analytics:forecast' %}">{% trans 'Сбросить' %}</a>
         </div>
@@ -31,27 +44,36 @@
 {% if result.available %}
     <div class="grid grid--4" style="margin-bottom:var(--sp-5)">
         <div class="metric metric--accent">
-            <span class="metric__label">{% if annual %}{% trans 'Годовой прирост тренда' %}{% else %}{% trans 'Помесячный прирост тренда' %}{% endif %}</span>
-            <span class="metric__value">
-                {% if result.slope > 0 %}+{% endif %}{{ result.slope|spaced:0 }}<small> т</small>
+            <span class="metric__label">{% trans 'Модель ряда' %}</span>
+            <span class="metric__value" style="font-size:var(--fs-md);line-height:1.4">
+                {{ result.model.title }}
             </span>
-            <span class="metric__note">{% trans 'оценка методом наименьших квадратов' %}</span>
+            <span class="metric__note">{{ result.model.note }}</span>
         </div>
-        <div class="metric">
-            <span class="metric__label">{% trans 'Коэффициент детерминации' %}</span>
-            <span class="metric__value">{{ result.r_squared|spaced:3 }}</span>
-            <span class="metric__note">{% trans 'доля объяснённой дисперсии' %}</span>
+        <div class="metric metric--{% if result.beats_baseline %}ok{% else %}warn{% endif %}">
+            <span class="metric__label">{% trans 'Точнее наивной модели' %}</span>
+            <span class="metric__value">
+                {% if result.gain != None %}{% if result.gain > 0 %}+{% endif %}{{ result.gain|spaced:1 }}<small> %</small>
+                {% else %}—{% endif %}
+            </span>
+            <span class="metric__note">
+                {% if result.beats_baseline %}{% trans 'превосходит продолжение последним значением' %}
+                {% else %}{% trans 'продолжение последним значением не хуже' %}{% endif %}
+            </span>
         </div>
         <div class="metric metric--{% if result.mape < 10 %}ok{% elif result.mape < 20 %}warn{% else %}alert{% endif %}">
             <span class="metric__label">{% trans 'Ошибка на отложенной выборке' %}</span>
             <span class="metric__value">{{ result.mape|spaced:1 }}<small> %</small></span>
             <span class="metric__note">
-                {% blocktrans with count=result.holdout %}проверено на {{ count }} наблюдениях{% endblocktrans %}</span>
+                {% trans 'проверено на' %} {{ result.holdout }}
+                {{ result.holdout|plural:"наблюдении,наблюдениях,наблюдениях" }}</span>
         </div>
         <div class="metric">
             <span class="metric__label">{% trans 'Наблюдений в ряду' %}</span>
             <span class="metric__value">{{ result.history|length }}</span>
-            <span class="metric__note">{% blocktrans with count=result.forecast|length %}прогноз на {{ count }} шагов ряда{% endblocktrans %}</span>
+            <span class="metric__note">
+                {% trans 'прогноз на' %} {{ result.forecast|length }}
+                {{ result.forecast|length|plural:"шаг,шага,шагов" }} {% trans 'ряда' %}</span>
         </div>
     </div>
 
@@ -74,14 +96,79 @@
     </section>
 
     <section class="section">
+        <div class="section__head">
+            <div>
+                <p class="eyebrow">{% trans 'Отбор модели' %}</p>
+                <h2>{% trans 'Сопоставление на отложенной выборке' %}</h2>
+            </div>
+            <p class="small faint">
+                {% trans 'обучение — первые' %} {{ result.comparison.train }}
+                {{ result.comparison.train|plural:"наблюдение,наблюдения,наблюдений" }},
+                {% trans 'проверка — последние' %} {{ result.comparison.holdout }}
+            </p>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th class="num">№</th>
+                        <th>{% trans 'Модель' %}</th>
+                        <th class="num">MAE, т</th>
+                        <th class="num">RMSE, т</th>
+                        <th class="num">MAPE, %</th>
+                        <th class="num">{% trans 'Против наивной' %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for outcome in result.comparison.outcomes %}
+                        <tr {% if outcome.model.code == result.model.code %}class="is-subject"{% endif %}>
+                            <td class="num faint">{{ outcome.position }}</td>
+                            <td>
+                                <span class="table-title">{{ outcome.model.title }}</span>
+                                <span class="table-sub">{{ outcome.model.note }}</span>
+                            </td>
+                            <td class="num">{{ outcome.mae|spaced:0 }}</td>
+                            <td class="num faint">{{ outcome.rmse|spaced:0 }}</td>
+                            <td class="num">{{ outcome.mape|spaced:1 }}</td>
+                            <td class="num">
+                                {% if outcome.gain == None %}—
+                                {% elif outcome.gain > 0 %}
+                                    <span class="below">+{{ outcome.gain|spaced:1 }} %</span>
+                                {% elif outcome.gain < 0 %}
+                                    <span class="above">{{ outcome.gain|spaced:1 }} %</span>
+                                {% else %}{% trans 'точка отсчёта' %}{% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    {% for skipped in result.comparison.rejected %}
+                        <tr>
+                            <td class="num faint">—</td>
+                            <td class="faint">
+                                <span class="table-title">{{ skipped.model.title }}</span>
+                                <span class="table-sub">{{ skipped.model.note }}</span>
+                            </td>
+                            <td colspan="4" class="small faint">
+                                {% trans 'к этому ряду неприменима:' %} {{ skipped.reason }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="small muted" style="margin-top:var(--sp-3)">
+            {% trans 'MAE — средняя абсолютная ошибка в тоннах, RMSE — корень из средней квадратичной, придающий большим промахам больший вес, MAPE — средняя ошибка в процентах от наблюдения. Модель отбирается по MAE: процентная ошибка не определена там, где наблюдение нулевое, и делает модели несопоставимыми.' %}
+        </p>
+    </section>
+
+    <section class="section">
         <div class="grid grid--2">
             <article class="card card--flush">
                 <div class="card__head"><h3>{% trans 'Прогнозные значения' %}</h3></div>
                 <div class="table-wrap" style="border:none">
                     <table class="data">
                         <thead>
-                            <tr><th>{% trans 'Период' %}</th><th class="num">{% trans 'Прогноз, т' %}</th>
-                                <th class="num">{% trans 'Тренд, т' %}</th></tr>
+                            <tr><th>{% trans 'Период' %}</th>
+                                <th class="num">{% trans 'Прогноз, т' %}</th></tr>
                         </thead>
                         <tbody>
                             {% for row in result.forecast %}
@@ -89,7 +176,6 @@
                                     <td class="mono">
                                         {% if annual %}{{ row.period|date:"Y" }}{% else %}{{ row.period|date:"m.Y" }}{% endif %}</td>
                                     <td class="num"><strong>{{ row.value|spaced:0 }}</strong></td>
-                                    <td class="num faint">{{ row.trend|spaced:0 }}</td>
                                 </tr>
                             {% endfor %}
                         </tbody>
@@ -100,8 +186,9 @@
             <div class="card">
                 <h3 style="margin-bottom:var(--sp-3)">{% trans 'Как читать прогноз' %}</h3>
                 <div class="prose">
-                    <p class="small muted">{% trans 'Модель описывает ряд линейным трендом. На помесячных рядах к нему добавляется сезонная составляющая — среднее отклонение соответствующего месяца от линии тренда; на годовом ряде внутригодового профиля нет, и сезонная составляющая не оценивается. Простая форма выбрана осознанно: на ряде в десятки наблюдений сложные модели дают неустойчивые оценки параметров и мнимую точность.' %}</p>
-                    <p class="small muted">{% trans 'Качество измеряется на отложенной выборке: модель обучается на начале ряда, а ошибка считается на его хвосте, которого модель при обучении не видела. Ошибка на обучающих данных характеризовала бы гибкость модели, а не точность прогноза. Значение ниже 10 % считается высоким качеством, от 10 до 20 % — приемлемым, свыше 20 % — низким.' %}</p>
+                    <p class="small muted">{% trans 'Ряд продолжает не заранее назначенная модель, а та, что ошиблась меньше прочих на отложенной выборке. Отобранная модель затем переобучается на ряде целиком: отложенная часть нужна была для проверки, а прогнозировать, отбросив последние наблюдения, значило бы вести отсчёт из позавчерашнего дня.' %}</p>
+                    <p class="small muted">{% trans 'Наивная модель — продолжение последним наблюдением — участвует в сопоставлении наравне с прочими и служит точкой отсчёта. Модель, не превзошедшая её, не даёт ничего сверх последнего значения, и сложность её ничем не оправдана.' %}</p>
+                    <p class="small muted">{% trans 'Ошибка измеряется на наблюдениях, которых модель при обучении не видела. Ошибка на обучающих данных характеризовала бы гибкость модели, а не точность прогноза. Значение ниже 10 % считается высоким качеством, от 10 до 20 % — приемлемым, свыше 20 % — низким.' %}</p>
                     <p class="small muted">{% trans 'Прогноз описывает продолжение сложившихся тенденций и не учитывает изменения условий — ввод новых мощностей, изменение режима допуска транспорта, крупные ремонтные работы. Для оценки таких изменений предназначен' %}<a href="{% url 'analytics:scenario' %}">{% trans 'сценарный расчёт' %}</a>.
                     </p>
                 </div>

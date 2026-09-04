@@ -176,7 +176,21 @@ class TestForecast:
         """На годовом ряде внутригодового профиля нет и оценивать его нечем."""
         result = services.forecast_flow("г. Москва")
         assert result["seasonal_model"] is False
-        assert result["seasonal"] == {}
+        rejected = {item["model"].code for item in result["comparison"]["rejected"]}
+        assert "seasonal" in rejected
+
+    def test_model_is_chosen_by_comparison(self, statistics):
+        """Ряд продолжает модель, показавшая наименьшую ошибку на проверке."""
+        result = services.forecast_flow("г. Москва")
+        outcomes = result["comparison"]["outcomes"]
+        assert result["model"].code == outcomes[0]["model"].code
+        assert result["mae"] == round(min(item["mae"] for item in outcomes), 1)
+
+    def test_named_model_overrides_the_comparison(self, statistics):
+        """Модель можно назвать явно, не полагаясь на отбор."""
+        result = services.forecast_flow("г. Москва", model_code="naive")
+        assert result["model"].code == "naive"
+        assert result["forecast"][0]["value"] == result["history"][-1]["volume"]
 
     def test_quality_is_measured_on_held_out_observations(self, statistics):
         result = services.forecast_flow("г. Москва")
