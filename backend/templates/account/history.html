@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% include "partials/_tabs.html" %}
+
+{% if page_obj.object_list %}
+    <div class="row row--between" style="margin-bottom:var(--sp-4)">
+        <p class="small muted">
+            {% blocktrans with count=page_obj.paginator.count %}Обращений в истории: {{ count }}{% endblocktrans %}
+        </p>
+        <form method="post" action="{% url 'accounts:history_action' %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="clear">
+            <button class="button button--sm button--danger" type="submit">{% trans 'Очистить историю' %}</button>
+        </form>
+    </div>
+
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+                <tr><th>{% trans 'Раздел' %}</th><th>{% trans 'Условия отбора' %}</th>
+                    <th class="num">{% trans 'Обращений' %}</th><th>{% trans 'Последнее' %}</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for item in page_obj.object_list %}
+                    <tr>
+                        <td>
+                            <a class="table-title" href="{{ item.url }}">{{ item.title }}</a>
+                        </td>
+                        <td class="small muted">
+                            {% for label, value in item.conditions %}
+                                <span class="badge badge--plain">{{ label }}: {{ value }}</span>
+                            {% empty %}
+                                <span class="faint">{% trans 'без отбора' %}</span>
+                            {% endfor %}
+                        </td>
+                        <td class="num">{{ item.open_count }}</td>
+                        <td class="small faint nowrap">{{ item.opened_at|date:"d.m.Y H:i" }}</td>
+                        <td class="right">
+                            <form method="post" action="{% url 'accounts:history_action' %}"
+                                  class="row" style="gap:var(--sp-2);justify-content:flex-end">
+                                {% csrf_token %}
+                                <input type="hidden" name="entry" value="{{ item.pk }}">
+                                <button class="button button--sm" type="submit"
+                                        name="action" value="save">{% trans 'Сохранить как вид' %}</button>
+                                <button class="button button--sm button--ghost" type="submit"
+                                        name="action" value="forget">{% trans 'Забыть' %}</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include "partials/_pagination.html" %}
+{% else %}
+    {% include "partials/_empty.html" with empty_title="История пуста" empty_text="Сюда попадают обращения к реестрам, карте и аналитическим разделам вместе с условиями отбора. Открытая заново, выборка соберётся на текущих данных." empty_action_url="/objects/" empty_action_title="Открыть реестр объектов" %}
+{% endif %}
+{% endblock %}

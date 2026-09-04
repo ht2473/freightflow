@@ -57,6 +57,32 @@
             </div>
         </article>
 
+        {% if recent_history %}
+            <article class="card card--flush">
+                <div class="card__head">
+                    <div>
+                        <p class="eyebrow">{% trans 'Продолжить работу' %}</p>
+                        <h3>{% trans 'Последние выборки' %}</h3>
+                    </div>
+                    <a class="small" href="{% url 'accounts:history' %}">{% trans 'Вся история →' %}</a>
+                </div>
+                <div class="card__body stack stack--tight">
+                    {% for item in recent_history %}
+                        <a href="{{ item.url }}" class="row row--between small"
+                           style="color:inherit;padding:5px 0;border-bottom:1px solid var(--border)">
+                            <span>
+                                <span class="table-title">{{ item.title }}</span>
+                                <span class="table-sub">
+                                    {% for label, value in item.conditions %}{{ label }}: {{ value }}{% if not forloop.last %}, {% endif %}{% empty %}{% trans 'без отбора' %}{% endfor %}
+                                </span>
+                            </span>
+                            <span class="mono faint">{{ item.opened_at|date:"d.m H:i" }}</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            </article>
+        {% endif %}
+
         {% if recent_views %}
             <article class="card card--flush">
                 <div class="card__head">

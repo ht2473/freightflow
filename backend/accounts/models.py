@@ -352,6 +352,96 @@ class SavedView(models.Model):
         return f"{base}?{self.query}" if self.query else base
 
 
+class QueryHistory(models.Model):
+    """Обращение пользователя к разделу данных с заданными условиями отбора.
+
+    История отвечает на вопрос «что я смотрел вчера»: разделы системы
+    адресуемы целиком, поэтому достаточно запомнить адрес и условия, чтобы
+    вернуть выборку — на текущих данных, а не на тех, что были тогда.
+
+    Одинаковые обращения не копятся: повторный заход в тот же раздел с теми
+    же условиями обновляет отметку времени и счётчик. Иначе история за день
+    работы состояла бы из одной страницы, открытой двадцать раз.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="query_history",
+        verbose_name=_("Пользователь"),
+    )
+    route = models.CharField(_("Раздел"), max_length=64)
+    title = models.CharField(_("Наименование раздела"), max_length=200)
+    query = models.CharField(_("Условия отбора"), max_length=500, blank=True, default="")
+    opened_at = models.DateTimeField(_("Последнее обращение"), default=timezone.now)
+    open_count = models.IntegerField(_("Число обращений"), default=1)
+
+    class Meta:
+        db_table = "app_query_history"
+        ordering = ("-opened_at",)
+        verbose_name = _("Обращение к данным")
+        verbose_name_plural = _("История запросов")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "route", "query"], name="uniq_history_per_query"
+            )
+        ]
+        indexes = [models.Index(fields=["user", "-opened_at"], name="idx_history_recent")]
+
+    def __str__(self) -> str:
+        return f"{self.title} · {self.query}" if self.query else self.title
+
+    @property
+    def url(self) -> str:
+        """Восстановить адрес обращения вместе с условиями отбора."""
+        base = reverse(self.route)
+        return f"{base}?{self.query}" if self.query else base
+
+    @property
+    def conditions(self) -> list[tuple[str, str]]:
+        """Условия отбора парами «что отбиралось, чем».
+
+        Значения приводятся как есть: подписи справочников пришлось бы
+        разрешать запросом на каждую строку истории, а понятность от этого
+        выигрывает мало — человек узнаёт собственный запрос по разделу
+        и составу условий.
+        """
+        from urllib.parse import parse_qsl
+
+        return [
+            (CONDITION_LABELS.get(key, key), value)
+            for key, value in parse_qsl(self.query)
+            if value
+        ]
+
+
+#: Подписи условий отбора для истории запросов. Перечень намеренно неполный:
+#: неучтённый параметр показывается собственным именем, и это лучше, чем
+#: пропустить его молча.
+CONDITION_LABELS: dict[str, str] = {
+    "district": _("округ"),
+    "type": _("тип"),
+    "class": _("класс"),
+    "source": _("источник"),
+    "state": _("состояние"),
+    "severity": _("серьёзность"),
+    "cargo": _("грузовое движение"),
+    "q": _("поиск"),
+    "sort": _("сортировка"),
+    "mass": _("масса, т"),
+    "eco": _("экологический класс"),
+    "area": _("площадь от, м²"),
+    "frame": _("до каркаса, км"),
+    "band": _("полоса, км"),
+    "route": _("коридор"),
+    "horizon": _("горизонт"),
+    "model": _("модель"),
+    "metric": _("показатель"),
+    "radius": _("радиус, км"),
+    "k": _("групп"),
+}
+
+
 class ComparisonSet(models.Model):
     """Набор округов или объектов, отобранных пользователем для сравнения."""
 

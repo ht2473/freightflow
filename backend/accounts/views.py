@@ -27,6 +27,7 @@ from .models import (
     Favorite,
     IncidentSubscription,
     Notification,
+    QueryHistory,
     SavedView,
     profile_for,
 )
@@ -46,6 +47,7 @@ CABINET_TABS: tuple[tuple[str, str, str], ...] = (
     ("exports", _("Центр выгрузок"), "accounts:exports"),
     ("subscriptions", _("Подписки"), "accounts:subscriptions"),
     ("notifications", _("Уведомления"), "accounts:notifications"),
+    ("history", _("История запросов"), "accounts:history"),
     ("activity", _("Журнал действий"), "accounts:activity"),
     ("api", _("Доступ к API"), "accounts:api_access"),
 )
@@ -106,7 +108,10 @@ def overview(request):
         request,
         title=_("Обзор"),
         tab="overview",
-        lead=_("Состояние личного кабинета и последние действия в системе."),
+        lead=_(
+            "Рабочее место: последние выборки, сохранённые виды, отчёты "
+            "и уведомления системы."
+        ),
         counters={
             "favorites": Favorite.objects.filter(user=request.user).count(),
             "views": SavedView.objects.filter(user=request.user).count(),
@@ -115,7 +120,9 @@ def overview(request):
             "subscriptions": IncidentSubscription.objects.filter(
                 user=request.user, is_active=True
             ).count(),
+            "history": QueryHistory.objects.filter(user=request.user).count(),
         },
+        recent_history=QueryHistory.objects.filter(user=request.user)[:5],
         recent_views=SavedView.objects.filter(user=request.user)[:5],
         recent_favorites=Favorite.objects.filter(user=request.user)[:5],
         recent_exports=exports[:5],
@@ -288,7 +295,9 @@ def exports(request):
         tab="exports",
         lead=(
             "Сформированные отчёты в форматах XLSX, DOCX, CSV, PDF и GeoJSON. "
-            f"Файлы хранятся {settings.EXPORT_RETENTION_DAYS} суток."
+            f"Файлы хранятся {settings.EXPORT_RETENTION_DAYS} суток. "
+            "Отчёт повторяется одним нажатием: условия отбора сохранены "
+            "вместе с заданием, и новый файл собирается на текущих данных."
         ),
         page_obj=paginate(request, queryset, per_page=20),
         total_size=totals["size"] or 0,
@@ -420,6 +429,55 @@ def activity(request):
         selected_action=action,
     )
     return render(request, "account/activity.html", context)
+
+
+@login_required
+def history(request):
+    """История обращений пользователя к разделам данных."""
+    context = _cabinet_context(
+        request,
+        title=_("История запросов"),
+        tab="history",
+        lead=_(
+            "Разделы и условия отбора, с которыми вы работали. Открытая "
+            "заново, выборка соберётся на текущих данных: история хранит "
+            "запрос, а не его результат."
+        ),
+        page_obj=paginate(request, QueryHistory.objects.filter(user=request.user), 20),
+    )
+    return render(request, "account/history.html", context)
+
+
+@require_POST
+@login_required
+def history_action(request):
+    """Забыть одно обращение либо очистить историю целиком."""
+    action = request.POST.get("action", "")
+    scope = QueryHistory.objects.filter(user=request.user)
+
+    if action == "clear":
+        removed, _details = scope.delete()
+        messages.info(request, _("История очищена: %(count)d записей") % {"count": removed})
+    elif action == "forget":
+        scope.filter(pk=request.POST.get("entry")).delete()
+        messages.info(request, _("Обращение удалено из истории."))
+    elif action == "save":
+        entry = get_object_or_404(scope, pk=request.POST.get("entry"))
+        SavedView.objects.get_or_create(
+            user=request.user,
+            page=entry.route,
+            query=entry.query,
+            defaults={
+                "title": entry.title,
+                "description": str(_("Сохранено из истории запросов")),
+            },
+        )
+        messages.success(request, _("Вид сохранён и доступен в разделе «Сохранённые виды»."))
+    else:
+        messages.error(request, _("Действие не распознано."))
+
+    request.audit_written = True
+    return redirect(request.POST.get("next") or "accounts:history")
 
 
 @login_required

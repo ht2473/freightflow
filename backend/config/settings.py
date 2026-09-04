@@ -143,6 +143,7 @@ MIDDLEWARE = [
     # Собственные обработчики: сквозной идентификатор запроса и журнал действий.
     "core.middleware.RequestIdMiddleware",
     "accounts.middleware.AuditMiddleware",
+    "accounts.middleware.HistoryMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"

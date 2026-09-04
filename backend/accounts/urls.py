@@ -21,6 +21,8 @@ urlpatterns = [
     path("notifications/", views.notifications, name="notifications"),
     path("notifications/<int:pk>/open/", views.notification_open, name="notification_open"),
     path("notifications/read/", views.notifications_read, name="notifications_read"),
+    path("history/", views.history, name="history"),
+    path("history/action/", views.history_action, name="history_action"),
     path("activity/", views.activity, name="activity"),
     path("api-access/", views.api_access, name="api_access"),
 ]

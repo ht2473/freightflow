@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from core.context_processors import flatten_nav
+from django.db.models import F
 from django.urls import Resolver404, resolve
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from .models import AuditEvent
@@ -32,6 +35,7 @@ ACTION_LABELS: dict[str, str] = {
     "accounts:subscriptions": _("Оформление подписки"),
     "accounts:subscription_delete": _("Отмена подписки"),
     "accounts:notifications_read": _("Уведомления отмечены прочитанными"),
+    "accounts:history_action": _("Изменение истории запросов"),
     "accounts:api_access": _("Управление токеном доступа"),
     "password_change": _("Смена пароля"),
     "content:feedback": _("Отправка обращения"),
@@ -114,3 +118,95 @@ class AuditMiddleware:
         if forwarded:
             return forwarded.split(",")[0].strip()
         return request.META.get("REMOTE_ADDR")
+
+
+#: Разделы, обращения к которым попадают в историю запросов. Перечень —
+#: разделы данных: справочные и информационные страницы условий отбора
+#: не имеют, и запоминать в них нечего.
+TRACKED_ROUTES: frozenset[str] = frozenset({
+    "core:map",
+    "core:object_list",
+    "core:district_list",
+    "core:road_list",
+    "core:incident_list",
+    "core:traffic",
+    "core:route_list",
+    "core:flow_overview",
+    "core:cargo_list",
+    "core:permit_check",
+    "core:zone_list",
+    "core:source_list",
+    "core:etl_log",
+    "analytics:index",
+    "analytics:sensitivity",
+    "analytics:typology",
+    "analytics:spatial",
+    "analytics:forecast",
+    "analytics:compare",
+    "analytics:scenario",
+    "analytics:siting",
+    "analytics:corridor",
+})
+
+#: Сколько обращений хранится по каждому пользователю. История — рабочий
+#: инструмент «вернуться ко вчерашней выборке», а не журнал: за пределами
+#: полусотни записей ею уже не пользуются.
+HISTORY_DEPTH = 50
+
+
+class HistoryMiddleware:
+    """Запоминать обращения пользователя к разделам данных.
+
+    Разделы системы адресуемы целиком, поэтому истории достаточно запомнить
+    маршрут и условия отбора: открытая заново, выборка соберётся на текущих
+    данных. Хранится именно запрос, а не его результат.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        # Подписи берутся из состава меню: раздел назван в истории так же,
+        # как в навигации, и второго перечня названий не заводится.
+        self._titles = {
+            item.route: str(item.title) for item in flatten_nav() if item.route
+        }
+
+    def __call__(self, request):
+        response = self.get_response(request)
+
+        if request.method != "GET" or response.status_code != 200:
+            return response
+        if not getattr(request, "user", None) or not request.user.is_authenticated:
+            return response
+
+        try:
+            match = resolve(request.path_info)
+        except Resolver404:
+            return response
+        if match.view_name not in TRACKED_ROUTES:
+            return response
+
+        self._remember(request, match.view_name)
+        return response
+
+    def _remember(self, request, route: str) -> None:
+        """Обновить запись обращения и подрезать историю до глубины хранения."""
+        from .models import QueryHistory
+
+        query = request.GET.urlencode()[:500]
+        entry, created = QueryHistory.objects.get_or_create(
+            user=request.user,
+            route=route,
+            query=query,
+            defaults={"title": self._titles.get(route, route)},
+        )
+        if not created:
+            QueryHistory.objects.filter(pk=entry.pk).update(
+                opened_at=timezone.now(), open_count=F("open_count") + 1
+            )
+            return
+
+        stale = QueryHistory.objects.filter(user=request.user).values_list(
+            "pk", flat=True
+        )[HISTORY_DEPTH:]
+        if stale:
+            QueryHistory.objects.filter(pk__in=list(stale)).delete()
