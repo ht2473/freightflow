@@ -137,13 +137,21 @@ INDEX_WEIGHTS: dict[str, float] = {item.key: item.weight for item in COMPONENTS}
 #: Подписи составляющих для легенд и таблиц.
 INDEX_COMPONENTS: dict[str, str] = {item.key: item.title for item in COMPONENTS}
 
-#: Названия типологических групп в порядке возрастания нагрузки.
-CLUSTER_NAMES: tuple[str, ...] = (
-    _("Периферийные округа с низкой нагрузкой"),
-    _("Округа сбалансированного профиля"),
-    _("Округа концентрации складских мощностей"),
-    _("Округа предельной транспортной нагрузки"),
-)
+#: Чем отличается группа, у которой выделяется данная составляющая.
+#:
+#: Названия групп выводятся из их состава, а не назначаются списком:
+#: число групп задаёт пользователь, и заготовленная подпись при другом
+#: их числе описывала бы уже не то разбиение.
+CLUSTER_TRAITS: dict[str, str] = {
+    "storage": _("Округа концентрации складских площадей"),
+    "network": _("Округа со слабой магистральной сетью"),
+    "restrictions": _("Округа с наибольшими помехами движению"),
+    "residential": _("Округа плотной жилой застройки"),
+}
+
+#: Отклонение центра группы, начиная с которого признак считается выраженным.
+#: Признаки стандартизованы, поэтому величина измеряется в долях отклонения.
+TRAIT_THRESHOLD = 0.3
 
 
 # ---------------------------------------------------------------------------
@@ -701,6 +709,165 @@ def _share(row: dict, key: str) -> float:
     return 0.5 if value is None else value
 
 
+def silhouette(points: list[list[float]], labels: list[int]) -> float:
+    """Средний силуэт разбиения — мера его обоснованности.
+
+    Для каждого объекта сравнивается среднее расстояние до своей группы
+    с наименьшим средним расстоянием до чужой. Значение, близкое к единице,
+    означает, что объект лежит в своей группе и далеко от прочих; около нуля —
+    что он равно принадлежит двум; отрицательное — что отнесён не туда.
+
+    Величина отвечает на вопрос, на который сумма внутригрупповых расстояний
+    ответить не может: она убывает с ростом числа групп всегда, и по ней
+    нельзя отличить обоснованное разбиение от дробления выборки.
+    """
+    if len(points) < 3 or len(set(labels)) < 2:
+        return 0.0
+
+    members: dict[int, list[int]] = {}
+    for position, label in enumerate(labels):
+        members.setdefault(label, []).append(position)
+
+    total = 0.0
+    for position, label in enumerate(labels):
+        own = [other for other in members[label] if other != position]
+        if not own:
+            # Одиночная группа: сравнивать объект внутри неё не с чем,
+            # и приписывать ему согласие с самим собой нельзя.
+            continue
+        inner = sum(
+            math.sqrt(_sq_distance(points[position], points[other])) for other in own
+        ) / len(own)
+        outer = min(
+            sum(
+                math.sqrt(_sq_distance(points[position], points[other]))
+                for other in group
+            )
+            / len(group)
+            for other_label, group in members.items()
+            if other_label != label
+        )
+        spread = max(inner, outer)
+        total += (outer - inner) / spread if spread else 0.0
+
+    return total / len(points)
+
+
+def silhouette_verdict(score: float) -> str:
+    """Словесная оценка выраженности групповой структуры.
+
+    Границы приняты по общепринятому толкованию силуэта: до 0,25 группы
+    неотличимы от произвольного разбиения, до 0,5 структура прослеживается,
+    но слабо, выше 0,7 разделение отчётливое. Сообщать это обязательно:
+    метод k-средних разложит на группы любую выборку, в том числе такую,
+    в которой групп нет.
+    """
+    if score >= 0.7:
+        return _("структура отчётливая")
+    if score >= 0.5:
+        return _("структура выражена")
+    if score >= 0.25:
+        return _("структура прослеживается слабо")
+    return _("групповой структуры не обнаружено: разбиение условно")
+
+
+#: Пределы перебора числа групп.
+#:
+#: Одна группа типологией не является, а двенадцать округов, разложенные
+#: более чем на шесть групп, дают группы по одному-два округа: такое
+#: разбиение описывает выборку, а не обобщает её.
+CLUSTER_RANGE = range(2, 7)
+
+
+def cluster_quality() -> dict:
+    """Обосновать число групп типологии перебором.
+
+    Для каждого допустимого числа групп считаются две величины: сумма
+    внутригрупповых расстояний и средний силуэт. Первая убывает всегда
+    и указывает лишь точку перелома — то место, после которого дробление
+    перестаёт заметно улучшать разбиение. Вторая имеет максимум, и он
+    и предлагается как обоснованное число групп.
+    """
+
+    def build() -> dict:
+        points, _rows = _feature_space()
+        if len(points) < 3:
+            return {"available": False, "recommended": 0, "steps": []}
+
+        steps = []
+        previous: float | None = None
+        for size in CLUSTER_RANGE:
+            outcome = k_means(points, size)
+            score = silhouette(points, outcome.labels)
+            steps.append(
+                {
+                    "k": size,
+                    "inertia": round(outcome.inertia, 3),
+                    "silhouette": round(score, 3),
+                    # Насколько дробление уменьшило разброс внутри групп:
+                    # по этой величине и отыскивается точка перелома.
+                    "gain": (
+                        None
+                        if previous is None or not previous
+                        else round((previous - outcome.inertia) / previous * 100, 1)
+                    ),
+                    "sizes": sorted(
+                        (outcome.labels.count(label) for label in set(outcome.labels)),
+                        reverse=True,
+                    ),
+                }
+            )
+            previous = outcome.inertia
+
+        best = max(steps, key=lambda step: step["silhouette"])
+        for step in steps:
+            step["recommended"] = step["k"] == best["k"]
+        return {
+            "available": True,
+            "steps": steps,
+            "recommended": best["k"],
+            "score": best["silhouette"],
+            "verdict": silhouette_verdict(best["silhouette"]),
+        }
+
+    return _cached("analytics:cluster_quality", build)
+
+
+def cluster_name(centroid: list[float]) -> str:
+    """Назвать группу по тому, чем она выделяется.
+
+    Признаки стандартизованы, поэтому координаты центра прямо показывают,
+    насколько группа отклоняется от среднего по городу. Группа, отклонений
+    не имеющая, так и называется: приписывать ей черту, которой в данных
+    нет, значило бы выдать разбиение за содержательный вывод.
+    """
+    keys = [item.key for item in COMPONENTS]
+    pairs = dict(zip(keys, centroid, strict=False))
+    if all(value <= -TRAIT_THRESHOLD for value in centroid):
+        return _("Округа низкой нагрузки по всем составляющим")
+    if all(value >= TRAIT_THRESHOLD for value in centroid):
+        return _("Округа высокой нагрузки по всем составляющим")
+    leading = max(pairs, key=lambda key: pairs[key])
+    if pairs[leading] < TRAIT_THRESHOLD:
+        return _("Округа без выраженного профиля")
+    return CLUSTER_TRAITS[leading]
+
+
+def _feature_space() -> tuple[list[list[float]], list[dict]]:
+    """Признаковое пространство типологии и породившие его записи.
+
+    Признаки стандартизуются: без этого расстояние определялось бы той
+    составляющей, разброс которой шире, — а разброс зависит от единицы
+    измерения, а не от содержания.
+    """
+    rows = load_index()
+    if len(rows) < 2:
+        return [], rows
+    features = [item.key for item in COMPONENTS]
+    columns = {key: z_scores([_share(row, key) for row in rows]) for key in features}
+    return [[columns[key][i] for key in features] for i in range(len(rows))], rows
+
+
 def typology(k: int = 4) -> dict:
     """Построить типологию округов по нормированным показателям.
 
@@ -712,16 +879,11 @@ def typology(k: int = 4) -> dict:
     """
 
     def build() -> dict:
-        rows = load_index()
+        points, rows = _feature_space()
         if len(rows) < 2:
             return {"clusters": [], "rows": rows, "k": 0}
 
         features = [item.key for item in COMPONENTS]
-        columns = {
-            key: z_scores([_share(row, key) for row in rows]) for key in features
-        }
-        points = [[columns[key][i] for key in features] for i in range(len(rows))]
-
         result = k_means(points, k)
 
         # Кластеры упорядочиваются по средней нагрузке, чтобы номер группы
@@ -739,7 +901,10 @@ def typology(k: int = 4) -> dict:
                 position,
                 {
                     "index": position,
-                    "name": CLUSTER_NAMES[min(position, len(CLUSTER_NAMES) - 1)],
+                    "name": cluster_name(result.centroids[label]),
+                    "centroid": dict(
+                        zip(features, result.centroids[label], strict=False)
+                    ),
                     "members": [],
                     "avg_score": 0.0,
                 },
@@ -758,6 +923,7 @@ def typology(k: int = 4) -> dict:
             "rows": rows,
             "k": k,
             "inertia": round(result.inertia, 3),
+            "silhouette": round(silhouette(points, result.labels), 3),
             "iterations": result.iterations,
             "features": [INDEX_COMPONENTS[f] for f in features],
         }
@@ -1085,5 +1251,6 @@ def invalidate() -> None:
     """Сбросить кеш аналитических расчётов после обновления данных."""
     cache.delete("analytics:load_index")
     cache.delete("analytics:sensitivity")
-    for k in range(2, 7):
+    cache.delete("analytics:cluster_quality")
+    for k in CLUSTER_RANGE:
         cache.delete(f"analytics:typology:{k}")

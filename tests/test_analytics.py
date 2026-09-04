@@ -308,6 +308,85 @@ class TestTypology:
             assert cluster["name"]
 
 
+class TestClusterNaming:
+    """Название группы выводится из её положения в признаковом пространстве."""
+
+    def test_leading_trait_gives_the_name(self):
+        """Группу называет составляющая, по которой она выделяется."""
+        keys = [item.key for item in services.COMPONENTS]
+        centroid = [2.0 if key == "restrictions" else 0.0 for key in keys]
+        assert services.cluster_name(centroid) == services.CLUSTER_TRAITS["restrictions"]
+
+    def test_uniformly_low_group(self):
+        """Группа, отстающая по всем составляющим, названа так и есть."""
+        low = [-1.0] * len(services.COMPONENTS)
+        assert "низкой нагрузки" in str(services.cluster_name(low))
+
+    def test_uniformly_high_group(self):
+        """То же для группы, ведущей по всем составляющим."""
+        high = [1.0] * len(services.COMPONENTS)
+        assert "высокой нагрузки" in str(services.cluster_name(high))
+
+    def test_group_without_a_trait(self):
+        """Группе без отклонений черта не приписывается."""
+        flat = [0.05] * len(services.COMPONENTS)
+        assert "без выраженного профиля" in str(services.cluster_name(flat))
+
+
+class TestSilhouette:
+    """Силуэт как мера обоснованности разбиения."""
+
+    def test_separated_groups_score_high(self):
+        """Далеко разнесённые группы дают силуэт, близкий к единице."""
+        points = [[0, 0], [0.1, 0], [10, 10], [10.1, 10]]
+        assert services.silhouette(points, [0, 0, 1, 1]) > 0.9
+
+    def test_mixed_labels_score_low(self):
+        """Разбиение поперёк настоящих групп силуэта не получает."""
+        points = [[0, 0], [0.1, 0], [10, 10], [10.1, 10]]
+        assert services.silhouette(points, [0, 1, 0, 1]) < 0
+
+    def test_single_group_is_not_measurable(self):
+        """Одна группа сравнивать себя не с чем."""
+        assert services.silhouette([[0, 0], [1, 1], [2, 2]], [0, 0, 0]) == 0.0
+
+    def test_verdict_reports_weak_structure(self):
+        """Слабая структура называется слабой, а не выдаётся за группы."""
+        assert "не обнаружено" in str(services.silhouette_verdict(0.1))
+        assert "слабо" in str(services.silhouette_verdict(0.3))
+
+
+@pytest.mark.django_db
+class TestClusterQuality:
+    """Обоснование числа групп."""
+
+    def test_every_size_is_examined(self, full_dataset):
+        """Перебираются все допустимые числа групп."""
+        steps = services.cluster_quality()["steps"]
+        assert [step["k"] for step in steps] == list(services.CLUSTER_RANGE)
+
+    def test_inertia_never_grows(self, full_dataset):
+        """Разброс внутри групп с их числом только убывает.
+
+        Свойство и есть причина, по которой одной суммой расстояний число
+        групп обосновать нельзя.
+        """
+        inertia = [step["inertia"] for step in services.cluster_quality()["steps"]]
+        assert inertia == sorted(inertia, reverse=True)
+
+    def test_recommended_size_has_the_best_silhouette(self, full_dataset):
+        """Предлагается число групп с наибольшим силуэтом."""
+        result = services.cluster_quality()
+        best = max(result["steps"], key=lambda step: step["silhouette"])
+        assert result["recommended"] == best["k"]
+        assert best["recommended"] is True
+
+    def test_group_sizes_cover_the_sample(self, full_dataset, districts):
+        """Размеры групп в сумме дают всю выборку."""
+        for step in services.cluster_quality()["steps"]:
+            assert sum(step["sizes"]) == len(districts)
+
+
 @pytest.mark.django_db
 class TestForecast:
     """Прогнозирование объёма грузопотока."""

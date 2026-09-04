@@ -239,6 +239,11 @@ code, kbd, .mono, .num {
 
 .muted { color: var(--text-dim); }
 .faint { color: var(--text-faint); }
+
+/* Знак отклонения величины: применяется там, где важен не размер числа,
+   а сторона, в которую оно отклонилось от среднего. */
+.above { color: var(--tone-alert); }
+.below { color: var(--tone-ok); }
 .small { font-size: var(--fs-sm); }
 .nowrap { white-space: nowrap; }
 .right { text-align: right; }

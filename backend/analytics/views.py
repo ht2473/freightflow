@@ -21,8 +21,8 @@ def _float_param(request, name: str, default: float = 0.0) -> float:
         value = float(request.GET.get(name, default))
     except (TypeError, ValueError):
         return default
-    # Сценарные параметры ограничены разумным диапазоном: за его пределами
-    # линейная модель отклика теряет содержательный смысл.
+    # Пределы отвечают тому, что можно себе представить как решение:
+    # вывод более чем девяти десятых мощностей или троекратный их ввод.
     return max(-90.0, min(value, 200.0))
 
 
@@ -65,7 +65,13 @@ def sensitivity(request):
 
 def typology(request):
     """Типология округов по методу k-средних."""
-    k = min(max(int_param(request, "k", 4) or 4, 2), 6)
+    quality = services.cluster_quality()
+    # Без явного указания берётся число групп, обоснованное силуэтом:
+    # круглое значение по умолчанию задавало бы разбиение произволом.
+    default = quality.get("recommended") or 4
+    bounds = services.CLUSTER_RANGE
+    k = min(max(int_param(request, "k", default) or default, bounds.start),
+            bounds.stop - 1)
     result = services.typology(k)
     context = page_context(
         request,
@@ -77,8 +83,11 @@ def typology(request):
         active="typology",
         crumbs=[(_("Аналитика"), "analytics:index"), (_("Типология"),)],
         result=result,
+        quality=quality,
+        components=services.INDEX_COMPONENTS,
+        verdict=services.silhouette_verdict(result.get("silhouette") or 0.0),
         k=k,
-        k_options=range(2, 7),
+        k_options=bounds,
     )
     return render(request, "pages/analytics_typology.html", context)
 

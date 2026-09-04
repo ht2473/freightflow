@@ -9,13 +9,18 @@
             <select id="f-k" name="k">
                 {% for option in k_options %}
                     <option value="{{ option }}" {% if k == option %}selected{% endif %}>
-                        {{ option }} группы</option>
+                        {{ option }} {{ option|plural:"группа,группы,групп" }}{% if option == quality.recommended %}
+                        — {% trans 'обосновано силуэтом' %}{% endif %}</option>
                 {% endfor %}
             </select>
+            <p class="field__hint">
+                {% blocktrans with best=quality.recommended %}Силуэт наибольший при {{ best }}{% endblocktrans %}
+            </p>
         </div>
         <div class="row">
             <p class="small faint">
                 Метод k-средних, признаки стандартизованы.
+                Средний силуэт: {{ result.silhouette|spaced:3 }} — {{ verdict }}.
                 Сумма внутригрупповых расстояний: {{ result.inertia|spaced:2 }},
                 итераций: {{ result.iterations }}
             </p>
@@ -30,9 +35,23 @@
                 <div>
                     <p class="eyebrow">Группа {{ cluster.index|add:1 }} · {{ cluster.size }} {{ cluster.size|plural:"округ,округа,округов" }}</p>
                     <h3 style="margin-top:var(--sp-2)">{{ cluster.name }}</h3>
+                    <p class="small faint" style="margin-top:var(--sp-1)">
+                        {% trans 'отклонение центра группы от среднего по городу' %}
+                    </p>
                 </div>
                 <span class="badge badge--accent">{{ cluster.avg_score|spaced:1 }}</span>
             </div>
+
+            <dl class="facts" style="margin-top:var(--sp-4)">
+                {% for key, value in cluster.centroid.items %}
+                    <div>
+                        <dt>{{ components|lookup:key }}</dt>
+                        <dd class="{% if value > 0 %}above{% elif value < 0 %}below{% endif %}">
+                            {% if value > 0 %}+{% endif %}{{ value|spaced:2 }} σ
+                        </dd>
+                    </div>
+                {% endfor %}
+            </dl>
 
             <div class="stack stack--tight" style="margin-top:var(--sp-4)">
                 {% for member in cluster.members %}
@@ -51,6 +70,60 @@
         <div class="card"><p class="muted">{% trans 'Недостаточно данных для кластеризации.' %}</p></div>
     {% endfor %}
 </div>
+
+{% if quality.available %}
+<section class="section">
+    <div class="section__head">
+        <div>
+            <p class="eyebrow">{% trans 'Обоснование' %}</p>
+            <h2>{% trans 'Сколько групп выделять' %}</h2>
+        </div>
+    </div>
+    <div class="grid grid--sidebar">
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th class="num">{% trans 'Групп' %}</th>
+                        <th class="num">{% trans 'Разброс внутри групп' %}</th>
+                        <th class="num">{% trans 'Снижение' %}</th>
+                        <th class="num">{% trans 'Силуэт' %}</th>
+                        <th>{% trans 'Размеры групп' %}</th>
+                        <th>{% trans 'Оценка' %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for step in quality.steps %}
+                        <tr {% if step.recommended %}class="is-subject"{% endif %}>
+                            <td class="num">
+                                <a href="?k={{ step.k }}">{{ step.k }}</a>
+                            </td>
+                            <td class="num">{{ step.inertia|spaced:2 }}</td>
+                            <td class="num faint">
+                                {% if step.gain %}−{{ step.gain|spaced:1 }} %{% else %}—{% endif %}
+                            </td>
+                            <td class="num"><strong>{{ step.silhouette|spaced:3 }}</strong></td>
+                            <td class="mono small">{{ step.sizes|join:" · " }}</td>
+                            <td>
+                                {% if step.recommended %}
+                                    <span class="badge badge--accent">{% trans 'наибольший силуэт' %}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <aside class="prose">
+            <p class="small muted">{% trans 'Сумма внутригрупповых расстояний убывает с ростом числа групп всегда: разбив выборку на двенадцать групп по одному округу, её можно свести к нулю. Поэтому она указывает лишь точку перелома — место, после которого дробление перестаёт заметно улучшать разбиение.' %}</p>
+            <p class="small muted">{% trans 'Силуэт сравнивает расстояние объекта до своей группы с расстоянием до ближайшей чужой и имеет максимум. Его наибольшее значение и принимается за обоснованное число групп.' %}</p>
+            <p class="small muted">
+                {% blocktrans with best=quality.recommended score=quality.score|spaced:3 verdict=quality.verdict %}При {{ best }} группах силуэт равен {{ score }}: {{ verdict }}.{% endblocktrans %}
+            </p>
+        </aside>
+    </div>
+</section>
+{% endif %}
 
 <section class="section">
     <div class="card">
