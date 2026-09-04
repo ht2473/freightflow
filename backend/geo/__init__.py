@@ -13,6 +13,7 @@ from .fields import (
     PointField,
 )
 from .geometry import DEFAULT_SRID, Geometry, GeometryError, feature_collection, haversine_km
+from .mvt import TILE_CONTENT_TYPE, TileFeature, render_tile
 from .queries import (
     annotate_distance,
     bbox_of,
@@ -21,9 +22,13 @@ from .queries import (
     simplify,
     to_feature_collection,
 )
+from .tiles import TILE_BUFFER, TILE_EXTENT, TileError, tile_bounds, tile_of
 
 __all__ = [
     "DEFAULT_SRID",
+    "TILE_BUFFER",
+    "TILE_CONTENT_TYPE",
+    "TILE_EXTENT",
     "Geometry",
     "GeometryError",
     "GeometryField",
@@ -31,12 +36,17 @@ __all__ = [
     "MultiLineStringField",
     "MultiPolygonField",
     "PointField",
+    "TileError",
+    "TileFeature",
     "annotate_distance",
     "bbox_of",
     "feature_collection",
     "haversine_km",
     "in_bbox",
     "nearest",
+    "render_tile",
     "simplify",
+    "tile_bounds",
+    "tile_of",
     "to_feature_collection",
 ]
