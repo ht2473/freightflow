@@ -161,9 +161,7 @@
                             <span>{{ row.label }}</span>
                             <span class="mono">{{ row.volume|tons }}</span>
                         </div>
-                        <div class="bar" style="margin-top:6px">
-                            <div class="bar__fill" style="width:{{ row.volume|ratio:total_flow_volume }}%"></div>
-                        </div>
+                        {% bar row.volume total_flow_volume stacked=True %}
                     </div>
                 {% empty %}
                     <p class="muted small">{% trans 'Разрез ряда не заполнен.' %}</p>
@@ -178,10 +176,7 @@
                             <span>{{ row.name }}</span>
                             <span class="mono">{{ row.count }}</span>
                         </div>
-                        <div class="bar" style="margin-top:6px">
-                            <div class="bar__fill bar__fill--ok"
-                                 style="width:{{ row.count|ratio:max_type_count }}%"></div>
-                        </div>
+                        {% bar row.count max_type_count tone="ok" stacked=True %}
                     </div>
                 {% endfor %}
             </div>

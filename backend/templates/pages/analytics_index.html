@@ -65,10 +65,7 @@
                             <strong style="font-size:var(--fs-md)">{{ row.score|spaced:1 }}</strong>
                         </td>
                         <td style="min-width:160px">
-                            <div class="bar">
-                                <div class="bar__fill bar__fill--{{ row.congestion|tone }}"
-                                     style="width:{{ row.score }}%"></div>
-                            </div>
+                            {% bar row.score tone=row.congestion|tone %}
                         </td>
                         {% for item in components %}
                             <td class="num">{{ row.components|lookup:item.key|spaced:0 }}</td>

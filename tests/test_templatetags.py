@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 import pytest
-from core.templatetags.ff import lookup, origin, plural
+from core.templatetags.ff import bar, coverage_tone, lookup, origin, plural
 from django.template import Context, Template
 
 
@@ -100,3 +100,68 @@ class TestOriginMark:
 
         rendered = Template("{% load ff %}{% origin 'guessed' %}").render(Context({}))
         assert rendered.strip() == ""
+
+
+class TestBar:
+    """Полоса доли."""
+
+    @pytest.mark.parametrize(
+        ("value", "total", "expected"),
+        [
+            (0, 100, "0.0"),
+            (50, 100, "50.0"),
+            (7.4, 100, "7.4"),
+            (1, 3, "33.3"),
+            # Величина больше опорной полосу не переполняет.
+            (150, 100, "100.0"),
+            # Опорная величина, равная нулю, оставляет полосу пустой.
+            (5, 0, "0.0"),
+            (None, 100, "0.0"),
+        ],
+    )
+    def test_width_is_written_for_a_style_rule(self, value, total, expected):
+        """Ширина записывается с точкой в дробной части.
+
+        Разделитель определяет действительность правила CSS: браузер
+        отбрасывает ``width:7,4%`` целиком, и полоса занимает всю дорожку
+        независимо от величины.
+        """
+        assert bar(value, total)["width"] == expected
+
+    def test_width_stays_decimal_under_russian_locale(self):
+        """Русская локаль на запись ширины не влияет."""
+        from django.utils import translation
+
+        with translation.override("ru"):
+            assert "," not in bar(7.4, 100)["width"]
+
+    def test_bar_is_hidden_from_screen_readers(self):
+        """Полоса объявлена оформительской: она повторяет соседнее число."""
+        rendered = Template("{% load ff %}{% bar 40 100 %}").render(Context({}))
+        assert 'aria-hidden="true"' in rendered
+        assert "width:40.0%" in rendered
+
+    def test_tone_becomes_a_modifier(self):
+        """Оттенок полосы задаётся модификатором класса."""
+        rendered = Template(
+            '{% load ff %}{% bar 40 100 tone="alert" %}'
+        ).render(Context({}))
+        assert "bar__fill--alert" in rendered
+
+    def test_empty_tone_leaves_the_bar_neutral(self):
+        """Пустой оттенок модификатора не добавляет."""
+        rendered = Template("{% load ff %}{% bar 40 100 %}").render(Context({}))
+        assert "bar__fill--" not in rendered
+
+
+class TestCoverageTone:
+    """Оттенок обеспеченности округа."""
+
+    @pytest.mark.parametrize(
+        ("share", "expected"),
+        [(100, "ok"), (75, "ok"), (74.9, "warn"), (50, "warn"), (49, "alert"),
+         (0, "alert"), (None, "muted")],
+    )
+    def test_share_maps_to_a_tone(self, share, expected):
+        """Доля обеспеченности переводится в ступень шкалы."""
+        assert coverage_tone(share) == expected

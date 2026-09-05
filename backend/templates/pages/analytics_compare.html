@@ -115,9 +115,7 @@
                                 <dd>{{ row.components|lookup:component.key|spaced:0 }}</dd></div>
                         {% endfor %}
                     </dl>
-                    <div class="bar" style="margin-top:var(--sp-3)">
-                        <div class="bar__fill" style="width:{{ row.score }}%"></div>
-                    </div>
+                    {% bar row.score stacked=True %}
                     <a class="button button--block" style="margin-top:var(--sp-4)"
                        href="{{ row.district.get_absolute_url }}">{% trans 'Профиль округа' %}</a>
                 </article>

@@ -76,10 +76,7 @@
                             <span class="badge badge--{{ row.tone }}">{{ row.label }}</span>
                             <span class="mono">{{ row.count }}</span>
                         </div>
-                        <div class="bar" style="margin-top:6px">
-                            <div class="bar__fill bar__fill--{{ row.tone }}"
-                                 style="width:{{ row.count|ratio:conditions_count }}%"></div>
-                        </div>
+                        {% bar row.count conditions_count tone=row.tone stacked=True %}
                     </div>
                 {% empty %}
                     <p class="muted small">{% trans 'Замеры отсутствуют.' %}</p>

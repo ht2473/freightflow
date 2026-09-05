@@ -86,10 +86,7 @@
                             <span>{{ row.type__name }}</span>
                             <span class="mono">{{ row.count }}</span>
                         </div>
-                        <div class="bar" style="margin-top:5px">
-                            <div class="bar__fill"
-                                 style="width:{{ row.count|ratio:profile.object_count }}%"></div>
-                        </div>
+                        {% bar row.count profile.object_count stacked=True %}
                     </div>
                 {% empty %}
                     <p class="muted small">{% trans 'Нет данных.' %}</p>

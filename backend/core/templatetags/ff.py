@@ -126,6 +126,27 @@ def severity_tone(value) -> str:
     return "ok"
 
 
+@register.inclusion_tag("partials/_bar.html")
+def bar(value, total=100, tone: str = "", stacked: bool = False) -> dict:
+    """Полоса, показывающая долю величины от наибольшей в подборке.
+
+    Ширина считается здесь, а не в разметке: подставленная в разметку доля
+    проходит через локализацию, и при русском языке 7.4 выводится как 7,4.
+    Правило ``width:7,4%`` недействительно, браузер его отбрасывает, и полоса
+    занимает всю дорожку независимо от величины — то есть показывает
+    неверное, но правдоподобное.
+
+    Полоса повторяет стоящее рядом число, поэтому программе чтения с экрана
+    не нужна и объявлена оформительской.
+    """
+    share = ratio(value, total)
+    return {
+        "width": f"{share:.1f}".replace(",", "."),
+        "tone": tone,
+        "stacked": stacked,
+    }
+
+
 @register.inclusion_tag("partials/_origin.html")
 def origin(value: str) -> dict:
     """Отметка происхождения величины: измерена, рассчитана или получена моделью.
@@ -155,6 +176,19 @@ def origin(value: str) -> dict:
         ),
     }
     return {"code": kind.value, "label": kind.label, "meaning": meanings[kind]}
+
+
+@register.filter
+def coverage_tone(value) -> str:
+    """Определить модификатор оформления по обеспеченности в процентах."""
+    number = _to_float(value)
+    if number is None:
+        return "muted"
+    if number >= 75:
+        return "ok"
+    if number >= 50:
+        return "warn"
+    return "alert"
 
 
 @register.filter

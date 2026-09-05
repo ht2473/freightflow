@@ -1004,6 +1004,9 @@ a.readout__item:hover .readout__value {
 .bar__fill--ok { background: var(--tone-ok); }
 .bar__fill--warn { background: var(--tone-warn); }
 .bar__fill--alert { background: var(--tone-alert); }
+
+/* Полоса под числом, а не рядом с ним. */
+.bar--stacked { margin-top: var(--sp-2); }
 .bar__fill--crit { background: var(--tone-crit); }
 
 /* Сигнатурный элемент: лента состояния сети. Каждый сегмент — участок

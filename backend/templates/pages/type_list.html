@@ -15,9 +15,7 @@
                 <div><dt>{% trans 'Доля от общего числа' %}</dt><dd>{{ row.count|ratio:total|percent }}</dd></div>
                 <div><dt>{% trans 'Суммарная мощность' %}</dt><dd>{{ row.capacity|tons }}</dd></div>
             </dl>
-            <div class="bar" style="margin-top:var(--sp-3)">
-                <div class="bar__fill" style="width:{{ row.count|ratio:total }}%"></div>
-            </div>
+            {% bar row.count total stacked=True %}
         </a>
     {% empty %}
         {% include "partials/_empty.html" %}

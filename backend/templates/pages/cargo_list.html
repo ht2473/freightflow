@@ -47,10 +47,7 @@
                     </td>
                     <td class="num">{{ item.volume|tons }}</td>
                     <td style="min-width:120px">
-                        <div class="bar">
-                            <div class="bar__fill{% if item.category.is_hazardous %} bar__fill--alert{% endif %}"
-                                 style="width:{{ item.volume|ratio:max_volume }}%"></div>
-                        </div>
+                        {% bar item.volume max_volume tone=item.category.is_hazardous|yesno:"alert," %}
                     </td>
                     <td class="num">{{ item.vehicles|spaced }}</td>
                 </tr>

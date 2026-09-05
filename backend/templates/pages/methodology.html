@@ -70,10 +70,7 @@
                             <span class="mono">{{ row.count|spaced }}</span>
                         </div>
                         {% if row.geo is not None %}
-                            <div class="bar" style="margin-top:5px">
-                                <div class="bar__fill bar__fill--ok"
-                                     style="width:{{ row.geo|ratio:row.count }}%"></div>
-                            </div>
+                            {% bar row.geo row.count tone="ok" stacked=True %}
                             <p class="small faint" style="margin-top:3px">
                                 с координатами {{ row.geo|ratio:row.count|percent:0 }}
                             </p>

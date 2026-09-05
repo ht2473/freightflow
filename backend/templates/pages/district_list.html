@@ -68,10 +68,7 @@
                         <td class="num">{{ profile.capacity_tons|tons }}</td>
                         <td class="num">{{ profile.volume_tons|tons }}</td>
                         <td style="min-width:130px">
-                            <div class="bar">
-                                <div class="bar__fill"
-                                     style="width:{{ profile.volume_tons|ratio:max_volume }}%"></div>
-                            </div>
+                            {% bar profile.volume_tons max_volume %}
                         </td>
                         <td class="num">{{ profile.road_length_km|spaced:1 }}</td>
                         <td>

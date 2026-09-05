@@ -66,10 +66,7 @@
                                 <td class="num">{{ row.count|spaced }}</td>
                                 <td style="min-width:140px">
                                     {% if row.geo is not None %}
-                                        <div class="bar">
-                                            <div class="bar__fill bar__fill--ok"
-                                                 style="width:{{ row.geo|ratio:row.count }}%"></div>
-                                        </div>
+                                        {% bar row.geo row.count tone="ok" %}
                                         <span class="small faint">
                                             {{ row.geo|spaced }} из {{ row.count|spaced }}
                                         </span>
@@ -125,9 +122,7 @@
                             <span>{{ row.label }}</span>
                             <span class="mono">{{ row.count }}</span>
                         </div>
-                        <div class="bar" style="margin-top:5px">
-                            <div class="bar__fill" style="width:{{ row.count|ratio:users.total }}%"></div>
-                        </div>
+                        {% bar row.count users.total stacked=True %}
                     </div>
                 {% endfor %}
             </div>

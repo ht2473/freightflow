@@ -75,10 +75,7 @@
                         с координатами: {{ row.geo|spaced }}
                         ({{ row.geo|ratio:row.count|percent:0 }})
                     </p>
-                    <div class="bar" style="margin-top:6px">
-                        <div class="bar__fill bar__fill--ok"
-                             style="width:{{ row.geo|ratio:row.count }}%"></div>
-                    </div>
+                    {% bar row.geo row.count tone="ok" stacked=True %}
                 {% endif %}
             </div>
         {% endfor %}

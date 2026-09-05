@@ -55,10 +55,7 @@
                         </p>
                     </div>
                 </div>
-                <div class="bar" style="margin-top:var(--sp-3)">
-                    <div class="bar__fill bar__fill--{{ check.severity }}"
-                         style="width:{{ check.share }}%"></div>
-                </div>
+                {% bar check.share tone=check.severity stacked=True %}
             </article>
         {% endfor %}
     </div>

@@ -160,10 +160,7 @@
                         <td class="num">{{ row.area_sq_km|spaced:0 }}</td>
                         <td class="num">{{ row.share|spaced:1 }} %</td>
                         <td style="min-width:140px">
-                            <div class="bar">
-                                <div class="bar__fill bar__fill--{% if row.share >= 75 %}ok{% elif row.share >= 50 %}warn{% else %}alert{% endif %}"
-                                     style="width:{{ row.share }}%"></div>
-                            </div>
+                            {% bar row.share tone=row.share|coverage_tone %}
                         </td>
                         <td class="num">{{ row.mean_distance|spaced:2 }}</td>
                         <td class="num faint">{{ row.max_distance|spaced:2 }}</td>

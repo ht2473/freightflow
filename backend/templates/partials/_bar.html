@@ -1,0 +1,4 @@
+{% comment %}
+Полоса доли. Готовится тегом {% bar %}: ширина уже приведена к виду,
+пригодному для правила CSS.
+{% endcomment %}<div class="bar{% if stacked %} bar--stacked{% endif %}" aria-hidden="true"><div class="bar__fill{% if tone %} bar__fill--{{ tone }}{% endif %}" style="width:{{ width }}%"></div></div>

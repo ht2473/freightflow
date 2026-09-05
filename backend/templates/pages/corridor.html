@@ -74,10 +74,7 @@
                                         <td class="num">{{ reach.length_km|spaced:1 }}</td>
                                         <td class="num">{{ reach.object_count }}</td>
                                         <td style="min-width:120px">
-                                            <div class="bar">
-                                                <div class="bar__fill"
-                                                     style="width:{{ reach.length_km|ratio:result.length_km }}%"></div>
-                                            </div>
+                                            {% bar reach.length_km result.length_km %}
                                         </td>
                                     </tr>
                                 {% endfor %}
