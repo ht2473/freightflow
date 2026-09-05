@@ -6,7 +6,11 @@
 
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 from io import StringIO
+from pathlib import Path
 
 import pytest
 from django.core.management import call_command
@@ -118,3 +122,41 @@ class TestInitDemo:
 
         call_command("init_demo", "--skip-users", stdout=StringIO())
         assert not User.objects.filter(username="viewer").exists()
+
+
+class TestConsoleOutput:
+    """Вывод команд в консоль."""
+
+    def test_report_survives_a_single_byte_console(self):
+        """Команда договаривает отчёт на консоли с однобайтовой кодировкой.
+
+        Сообщения набраны по-русски и содержат знаки вроде «км²», которых
+        нет в однобайтовых кодировках Windows. Без приведения потока вывода
+        к UTF-8 команда прерывается отказом кодирования — уже выполнив
+        работу, но не сообщив о ней: отказ оформления выглядит как отказ
+        загрузки.
+        """
+        root = Path(__file__).resolve().parent.parent
+        env = dict(os.environ)
+        # Кодировка потоков определяется окружением; переменная, которой
+        # её можно задать явно, снимается, чтобы вступила в силу кодовая
+        # страница системы.
+        env.pop("PYTHONIOENCODING", None)
+        env["FF_DB_ENGINE"] = "sqlite"
+
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(root / "backend" / "manage.py"),
+                "shell",
+                "-c",
+                "print('площадь зоны, км²')",
+            ],
+            capture_output=True,
+            cwd=root,
+            env=env,
+        )
+        assert completed.returncode == 0, completed.stderr.decode(
+            "utf-8", errors="replace"
+        )
+        assert "км²" in completed.stdout.decode("utf-8", errors="replace")
