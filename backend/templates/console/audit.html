@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% include "partials/_tabs.html" %}
+
+<form class="filters" method="get" data-autosubmit>
+    <div class="filters__grid">
+        <div class="field">
+            <label for="f-action">{% trans 'Тип действия' %}</label>
+            <select id="f-action" name="action">
+                <option value="">{% trans 'Все действия' %}</option>
+                {% for value, label in actions %}
+                    <option value="{{ value }}" {% if filters.action == value %}selected{% endif %}>
+                        {{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field">
+            <label for="f-user">{% trans 'Пользователь' %}</label>
+            <select id="f-user" name="user">
+                <option value="">{% trans 'Все пользователи' %}</option>
+                {% for item in users %}
+                    <option value="{{ item.pk }}" {% if filters.user == item.pk %}selected{% endif %}>
+                        {{ item.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field">
+            <label for="f-days">{% trans 'Период' %}</label>
+            <select id="f-days" name="days">
+                <option value="7" {% if filters.days == 7 %}selected{% endif %}>{% trans '7 суток' %}</option>
+                <option value="30" {% if filters.days == 30 %}selected{% endif %}>{% trans '30 суток' %}</option>
+                <option value="90" {% if filters.days == 90 %}selected{% endif %}>{% trans '90 суток' %}</option>
+                <option value="365" {% if filters.days == 365 %}selected{% endif %}>{% trans 'Год' %}</option>
+            </select>
+        </div>
+        <div class="row">
+            <a class="button button--ghost" href="{% url 'console:audit' %}">{% trans 'Сбросить' %}</a>
+        </div>
+    </div>
+</form>
+
+<div class="grid grid--2" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Событий за период' %}</span>
+        <span class="metric__value">{{ total_count|spaced }}</span>
+        <span class="metric__note">последние {{ filters.days }} суток</span>
+    </div>
+    <div class="card">
+        <p class="eyebrow" style="margin-bottom:var(--sp-3)">{% trans 'Распределение по типам' %}</p>
+        <div class="stack stack--tight">
+            {% for row in by_action %}
+                <div class="row row--between small">
+                    <span>{% for value, label in actions %}{% if value == row.action %}{{ label }}{% endif %}{% endfor %}</span>
+                    <span class="mono">{{ row.count|spaced }}</span>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="table-wrap">
+    <table class="data">
+        <thead>
+            <tr><th>{% trans 'Время' %}</th><th>{% trans 'Пользователь' %}</th><th>{% trans 'Действие' %}</th>
+                <th>{% trans 'Описание' %}</th><th>{% trans 'Адрес' %}</th><th>IP</th><th>{% trans 'Запрос' %}</th></tr>
+        </thead>
+        <tbody>
+            {% for event in page_obj.object_list %}
+                <tr>
+                    <td class="mono small">{{ event.created_at|date:"d.m.Y H:i:s" }}</td>
+                    <td class="small">{{ event.user.username|default:"аноним" }}</td>
+                    <td><span class="badge badge--plain">{{ event.get_action_display }}</span></td>
+                    <td class="small muted">{{ event.summary|translated|truncatechars:70|dash }}</td>
+                    <td class="small mono faint">{{ event.path|truncatechars:36|dash }}</td>
+                    <td class="small mono faint">{{ event.ip_address|dash }}</td>
+                    <td class="small mono faint">{{ event.request_id|dash }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="7" class="muted">{% trans 'Событий за период нет.' %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% include "partials/_pagination.html" %}
+{% endblock %}

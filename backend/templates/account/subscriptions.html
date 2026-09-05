@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% include "partials/_tabs.html" %}
+
+<div class="grid grid--wide">
+    <div>
+        {% if items %}
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                        <tr><th>{% trans 'Территория' %}</th><th class="num">{% trans 'Порог серьёзности' %}</th>
+                            <th>{% trans 'Только грузовые' %}</th><th>{% trans 'Состояние' %}</th><th>{% trans 'Создана' %}</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                            <tr>
+                                <td>
+                                    <span class="table-title">
+                                        {{ item.district.name|default:"Вся территория города" }}
+                                    </span>
+                                </td>
+                                <td class="num">{{ item.min_severity }} и выше</td>
+                                <td>{% if item.cargo_only %}да{% else %}нет{% endif %}</td>
+                                <td>
+                                    {% if item.is_active %}
+                                        <span class="badge badge--ok">{% trans 'активна' %}</span>
+                                    {% else %}
+                                        <span class="badge">{% trans 'отключена' %}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="small faint">{{ item.created_at|date:"d.m.Y" }}</td>
+                                <td class="right">
+                                    <form method="post"
+                                          action="{% url 'accounts:subscription_delete' item.pk %}">
+                                        {% csrf_token %}
+                                        <button class="button button--sm button--danger"
+                                                type="submit">{% trans 'Удалить' %}</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            {% include "partials/_empty.html" with empty_title="Подписок нет" empty_text="Оформите подписку формой справа, чтобы получать уведомления о дорожных событиях в интересующем округе." %}
+        {% endif %}
+    </div>
+
+    <aside class="stack">
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Новая подписка' %}</h3>
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                    {% if field.name == "cargo_only" %}
+                        <label class="check" style="margin-top:var(--sp-3)">
+                            {{ field }}<span>{% trans 'Только события, влияющие на грузовой транспорт' %}</span>
+                        </label>
+                    {% else %}
+                        <div class="field" style="margin-bottom:var(--sp-3)">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+                <button class="button button--primary button--block"
+                        style="margin-top:var(--sp-4)" type="submit">{% trans 'Подписаться' %}</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Шкала серьёзности' %}</h3>
+            <dl class="facts">
+                <div><dt>{% trans '1 — незначительный' %}</dt><dd>{% trans 'помеха движению' %}</dd></div>
+                <div><dt>{% trans '2 — умеренный' %}</dt><dd>{% trans 'сужение проезжей части' %}</dd></div>
+                <div><dt>{% trans '3 — значительный' %}</dt><dd>{% trans 'перекрытие полосы' %}</dd></div>
+                <div><dt>{% trans '4 — серьёзный' %}</dt><dd>{% trans 'перекрытие направления' %}</dd></div>
+                <div><dt>{% trans '5 — критический' %}</dt><dd>{% trans 'полное перекрытие' %}</dd></div>
+            </dl>
+        </div>
+    </aside>
+</div>
+{% endblock %}

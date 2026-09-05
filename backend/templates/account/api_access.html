@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% include "partials/_tabs.html" %}
+
+<div class="grid grid--wide">
+    <div class="stack">
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Персональный токен' %}</h3>
+
+            {% if not can_use %}
+                <p class="small muted" style="margin-bottom:var(--sp-4)">{% trans 'Программный доступ по токену предоставляется с роли «Аналитик». Справочники и реестры при этом доступны без авторизации — токен лишь повышает допустимую частоту обращений.' %}</p>
+                <a class="button" href="{% url 'core:api_docs' %}">{% trans 'Описание интерфейса' %}</a>
+            {% elif token %}
+                <div class="code-block" id="api-token">{{ token }}</div>
+                <p class="small faint" style="margin-top:var(--sp-2)">
+                    Выпущен {{ issued_at|date:"d.m.Y H:i" }}. Храните токен как пароль:
+                    он даёт доступ от вашего имени.
+                </p>
+                <div class="row" style="margin-top:var(--sp-4)">
+                    <button class="button" type="button" data-copy="#api-token">{% trans 'Скопировать' %}</button>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="issue">
+                        <button class="button" type="submit">{% trans 'Выпустить новый' %}</button>
+                    </form>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="revoke">
+                        <button class="button button--danger" type="submit">{% trans 'Отозвать' %}</button>
+                    </form>
+                </div>
+            {% else %}
+                <p class="small muted" style="margin-bottom:var(--sp-4)">{% trans 'Токен не выпущен. Он потребуется для обращений к API с повышенной частотой и для доступа к методам, требующим авторизации.' %}</p>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="issue">
+                    <button class="button button--primary" type="submit">{% trans 'Выпустить токен' %}</button>
+                </form>
+            {% endif %}
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Пример обращения' %}</h3>
+            <div class="code-block">curl -H "Authorization: Token ВАШ_ТОКЕН" \
+     "{{ base_url }}objects/?district=1&amp;page_size=10"</div>
+            <p class="small faint" style="margin-top:var(--sp-3)">{% trans 'Базовый адрес:' %}<span class="mono">{{ base_url }}</span>
+            </p>
+        </div>
+    </div>
+
+    <aside class="stack">
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Ограничения' %}</h3>
+            <dl class="facts">
+                <div><dt>{% trans 'Без токена' %}</dt><dd>{% trans '60 запросов/мин' %}</dd></div>
+                <div><dt>{% trans 'По токену' %}</dt><dd>{% trans '600 запросов/мин' %}</dd></div>
+                <div><dt>{% trans 'Размер страницы' %}</dt><dd>{% trans 'до 500 записей' %}</dd></div>
+            </dl>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Документация' %}</h3>
+            <div class="stack stack--tight small">
+                <a href="{% url 'core:api_docs' %}">{% trans 'Справочная страница API' %}</a>
+                <a href="/api/v1/docs/">{% trans 'Интерактивная документация' %}</a>
+                <a href="/api/v1/schema/">{% trans 'Спецификация OpenAPI' %}</a>
+            </div>
+        </div>
+    </aside>
+</div>
+{% endblock %}

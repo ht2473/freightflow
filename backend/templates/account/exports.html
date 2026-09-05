@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% include "partials/_tabs.html" %}
+
+<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Всего выгрузок' %}</span>
+        <span class="metric__value">{{ page_obj.paginator.count }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Суммарный объём' %}</span>
+        <span class="metric__value">{{ total_size|filesizeformat }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Выгружено строк' %}</span>
+        <span class="metric__value">{{ total_rows|spaced }}</span>
+    </div>
+    <div class="metric metric--{% if can_export %}ok{% else %}muted{% endif %}">
+        <span class="metric__label">{% trans 'Право на выгрузку' %}</span>
+        <span class="metric__value" style="font-size:var(--fs-lg)">
+            {% if can_export %}Есть{% else %}Нет{% endif %}
+        </span>
+        <span class="metric__note">
+            {% if can_export %}хранение {{ retention }} суток
+            {% else %}требуется роль «Аналитик»{% endif %}
+        </span>
+    </div>
+</div>
+
+{% if not can_export %}
+    <div class="card card--accent" style="margin-bottom:var(--sp-5)">
+        <h3 style="margin-bottom:var(--sp-3)">{% trans 'Выгрузка отчётов недоступна' %}</h3>
+        <p class="small muted">{% trans 'Формирование отчётов в форматах XLSX, DOCX, CSV, PDF и GeoJSON предоставляется с роли «Аналитик». Запросите расширение прав через' %}<a href="{% url 'content:feedback' %}">{% trans 'форму обратной связи' %}</a>{% trans ', указав организацию и характер задач.' %}</p>
+    </div>
+{% endif %}
+
+{% if page_obj.object_list %}
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+                <tr><th>{% trans 'Отчёт' %}</th><th>{% trans 'Формат' %}</th><th class="num">{% trans 'Строк' %}</th>
+                    <th class="num">{% trans 'Размер' %}</th><th>{% trans 'Создан' %}</th><th>{% trans 'Состояние' %}</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for job in page_obj.object_list %}
+                    <tr>
+                        <td>
+                            <span class="table-title">{{ job.title }}</span>
+                        </td>
+                        <td><span class="badge badge--plain">{{ job.fmt|upper }}</span></td>
+                        <td class="num">{{ job.row_count|spaced }}</td>
+                        <td class="num">{{ job.size_human }}</td>
+                        <td class="small faint">{{ job.created_at|date:"d.m.Y H:i" }}</td>
+                        <td>
+                            {% if job.status == "done" %}
+                                <span class="badge badge--ok">{% trans 'готов' %}</span>
+                            {% elif job.status == "failed" %}
+                                <span class="badge badge--alert">{% trans 'ошибка' %}</span>
+                            {% else %}
+                                <span class="badge badge--warn">{% trans 'в очереди' %}</span>
+                            {% endif %}
+                        </td>
+                        <td class="right">
+                            {% if job.is_ready %}
+                                <a class="button button--sm"
+                                   href="{% url 'accounts:export_download' job.pk %}">{% trans 'Скачать' %}</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include "partials/_pagination.html" %}
+{% else %}
+    {% include "partials/_empty.html" with empty_title="Выгрузок пока нет" empty_text="Откройте любой реестр, настройте условия отбора и воспользуйтесь кнопкой выгрузки — сформированные файлы появятся здесь." empty_action_url="/objects/" empty_action_title="Перейти к реестру" %}
+{% endif %}
+{% endblock %}

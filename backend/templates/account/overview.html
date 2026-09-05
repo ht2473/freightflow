@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% include "partials/_tabs.html" %}
+
+<div class="grid grid--5" style="margin-bottom:var(--sp-5)">
+    <a class="metric metric--accent" href="{% url 'accounts:favorites' %}">
+        <span class="metric__label">{% trans 'Избранное' %}</span>
+        <span class="metric__value">{{ counters.favorites }}</span>
+    </a>
+    <a class="metric metric--accent" href="{% url 'accounts:saved_views' %}">
+        <span class="metric__label">{% trans 'Сохранённые виды' %}</span>
+        <span class="metric__value">{{ counters.views }}</span>
+    </a>
+    <a class="metric metric--accent" href="{% url 'accounts:comparisons' %}">
+        <span class="metric__label">{% trans 'Наборы сравнения' %}</span>
+        <span class="metric__value">{{ counters.comparisons }}</span>
+    </a>
+    <a class="metric metric--accent" href="{% url 'accounts:exports' %}">
+        <span class="metric__label">{% trans 'Выгрузки' %}</span>
+        <span class="metric__value">{{ counters.exports }}</span>
+    </a>
+    <a class="metric metric--{% if unread %}warn{% else %}accent{% endif %}"
+       href="{% url 'accounts:notifications' %}">
+        <span class="metric__label">{% trans 'Непрочитанные' %}</span>
+        <span class="metric__value">{{ unread }}</span>
+        <span class="metric__note">{% blocktrans with count=counters.subscriptions %}подписок: {{ count }}{% endblocktrans %}</span>
+    </a>
+</div>
+
+<div class="grid grid--wide">
+    <div class="stack">
+        <article class="card">
+            <div class="row row--between" style="margin-bottom:var(--sp-4)">
+                <div>
+                    <p class="eyebrow">{% trans 'Учётная запись' %}</p>
+                    <h3 style="margin-top:var(--sp-2)">
+                        {{ user.get_full_name|default:user.username }}
+                    </h3>
+                </div>
+                <span class="badge badge--accent">{{ profile.get_role_display }}</span>
+            </div>
+            <p class="small muted">{{ profile.role_description }}</p>
+            <dl class="facts" style="margin-top:var(--sp-4)">
+                <div><dt>{% trans 'Организация' %}</dt>
+                    <dd style="font-family:var(--font-body)">{{ profile.organization|dash }}</dd></div>
+                <div><dt>{% trans 'Должность' %}</dt>
+                    <dd style="font-family:var(--font-body)">{{ profile.position|dash }}</dd></div>
+                <div><dt>{% trans 'Электронная почта' %}</dt>
+                    <dd style="font-family:var(--font-body)">{{ user.email|dash }}</dd></div>
+                <div><dt>{% trans 'Последний вход' %}</dt><dd>{{ user.last_login|date:"d.m.Y H:i"|dash }}</dd></div>
+            </dl>
+            <div class="row" style="margin-top:var(--sp-4)">
+                <a class="button" href="{% url 'accounts:profile' %}">{% trans 'Изменить профиль' %}</a>
+                <a class="button button--ghost" href="{% url 'password_change' %}">{% trans 'Сменить пароль' %}</a>
+            </div>
+        </article>
+
+        {% if recent_views %}
+            <article class="card card--flush">
+                <div class="card__head">
+                    <h3>{% trans 'Сохранённые виды' %}</h3>
+                    <a class="small" href="{% url 'accounts:saved_views' %}">{% trans 'Все →' %}</a>
+                </div>
+                <div class="card__body stack stack--tight">
+                    {% for view in recent_views %}
+                        <a href="{{ view.url }}" class="row row--between small"
+                           style="color:inherit;padding:5px 0;border-bottom:1px solid var(--border)">
+                            <span>
+                                <span class="table-title">{{ view.title }}</span>
+                                <span class="table-sub">{{ view.description|dash }}</span>
+                            </span>
+                            <span class="mono faint">{{ view.open_count }} откр.</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            </article>
+        {% endif %}
+
+        <article class="card card--flush">
+            <div class="card__head">
+                <h3>{% trans 'Последние действия' %}</h3>
+                <a class="small" href="{% url 'accounts:activity' %}">{% trans 'Весь журнал →' %}</a>
+            </div>
+            <div class="table-wrap" style="border:none">
+                <table class="data">
+                    <thead><tr><th>{% trans 'Время' %}</th><th>{% trans 'Действие' %}</th><th>{% trans 'Описание' %}</th></tr></thead>
+                    <tbody>
+                        {% for event in recent_events %}
+                            <tr>
+                                <td class="mono small">{{ event.created_at|date:"d.m H:i" }}</td>
+                                <td class="small">{{ event.get_action_display }}</td>
+                                <td class="small muted">{{ event.summary|translated|truncatechars:60 }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="3" class="muted">{% trans 'Действия не зафиксированы.' %}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </div>
+
+    <aside class="stack">
+        {% if notifications %}
+            <div class="card">
+                <h3 style="margin-bottom:var(--sp-3)">{% trans 'Новые уведомления' %}</h3>
+                <div class="stack stack--tight">
+                    {% for item in notifications %}
+                        <div style="padding:var(--sp-2) 0;border-bottom:1px solid var(--border)">
+                            <span class="badge badge--{% if item.level == 'alert' %}alert{% elif item.level == 'warning' %}warn{% else %}plain{% endif %}">
+                                {{ item.get_level_display }}</span>
+                            <p class="table-title" style="margin-top:6px">{{ item.title }}</p>
+                            <p class="small muted">{{ item.body|truncatechars:90 }}</p>
+                        </div>
+                    {% endfor %}
+                </div>
+                <a class="button button--block" style="margin-top:var(--sp-3)"
+                   href="{% url 'accounts:notifications' %}">{% trans 'Все уведомления' %}</a>
+            </div>
+        {% endif %}
+
+        {% if recent_favorites %}
+            <div class="card">
+                <h3 style="margin-bottom:var(--sp-3)">{% trans 'Избранное' %}</h3>
+                <div class="stack stack--tight">
+                    {% for item in recent_favorites %}
+                        <a href="{{ item.url }}" class="small" style="color:inherit">
+                            <span class="table-title">{{ item.title|truncatechars:38 }}</span>
+                            <span class="table-sub">{{ item.get_kind_display }}</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if profile.can_administer %}
+            <div class="card card--accent">
+                <h3 style="margin-bottom:var(--sp-3)">{% trans 'Панель администратора' %}</h3>
+                <p class="small muted" style="margin-bottom:var(--sp-3)">{% trans 'Управление пользователями, справочниками и контроль качества данных.' %}</p>
+                <a class="button button--primary button--block"
+                   href="{% url 'console:dashboard' %}">{% trans 'Открыть панель' %}</a>
+            </div>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}

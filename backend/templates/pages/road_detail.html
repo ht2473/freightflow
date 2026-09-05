@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--{% if current %}{{ current.congestion_level|tone }}{% else %}muted{% endif %}">
+        <span class="metric__label">{% trans 'Текущая загруженность' %}</span>
+        <span class="metric__value">
+            {% if current %}{{ current.congestion_level }}<small>/10</small>{% else %}—{% endif %}
+        </span>
+        <span class="metric__note">
+            {% if current %}{{ current.state.1 }} · {{ current.recorded_at|date:"d.m H:i" }}
+            {% else %}замеры отсутствуют{% endif %}
+        </span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Скорость потока' %}</span>
+        <span class="metric__value">
+            {% if current %}{{ current.avg_speed_kmh|spaced:0 }}<small>{% trans 'км/ч' %}</small>{% else %}—{% endif %}
+        </span>
+        <span class="metric__note">
+            при разрешённой {{ road.speed_limit_kmh|dash }} км/ч
+            {% if current.speed_ratio %}· {{ current.speed_ratio|ratio:1|percent:0 }} от нормы{% endif %}
+        </span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Средний балл за период' %}</span>
+        <span class="metric__value">{{ stats.avg_level|spaced:2 }}</span>
+        <span class="metric__note">максимум {{ stats.max_level }}, замеров {{ stats.samples }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Пропускная способность' %}</span>
+        <span class="metric__value">{{ road.capacity_index|spaced:0 }}</span>
+        <span class="metric__note">{{ road.lanes|dash }} полос × {{ road.speed_limit_kmh|dash }} км/ч</span>
+    </div>
+</div>
+
+<div class="grid grid--wide">
+    <div class="stack">
+        <article class="card card--flush">
+            <div class="card__head">
+                <div>
+                    <p class="eyebrow">{% trans 'Динамика' %}</p>
+                    <h3>{% trans 'Загруженность участка по времени' %}</h3>
+                </div>
+            </div>
+            <div class="card__body">
+                {% if history %}
+                    {% chart_from history "recorded_at" "congestion_level" "d.m H:i" as hist_chart %}
+                    {% chart_tones history "congestion_level" as hist_tones %}
+                    <div data-chart='{{ hist_chart }}' data-chart-type="bar" data-height="240"></div>
+                    <p class="small faint" style="margin-top:var(--sp-2)">{% trans 'Шкала загруженности: 0 — свободное движение, 10 — движение остановлено.' %}</p>
+                {% else %}
+                    <p class="muted small">{% trans 'Замеры обстановки по участку отсутствуют.' %}</p>
+                {% endif %}
+            </div>
+        </article>
+
+        {% if road.geom %}
+            <article class="card card--flush">
+                <div class="card__head"><h3>{% trans 'Трасса участка' %}</h3></div>
+                <div id="road-map" style="height:360px"
+                     data-line="{{ road.geom.geojson|safe }}"></div>
+            </article>
+        {% endif %}
+    </div>
+
+    <aside class="stack">
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Характеристики' %}</h3>
+            <dl class="facts">
+                <div><dt>{% trans 'Класс' %}</dt><dd>{{ road.get_road_class_display }}</dd></div>
+                <div><dt>{% trans 'Протяжённость' %}</dt><dd>{{ road.length_km|spaced:1 }} км</dd></div>
+                <div><dt>{% trans 'Число полос' %}</dt><dd>{{ road.lanes|dash }}</dd></div>
+                <div><dt>{% trans 'Разрешённая скорость' %}</dt><dd>{{ road.speed_limit_kmh|dash }} км/ч</dd></div>
+                <div>
+                    <dt>{% trans 'Округ' %}</dt>
+                    <dd>{% if road.district %}
+                        <a href="{{ road.district.get_absolute_url }}">{{ road.district.short_name }}</a>
+                        {% else %}—{% endif %}</dd>
+                </div>
+                <div><dt>{% trans 'Источник' %}</dt><dd>{{ road.source.name|dash }}</dd></div>
+            </dl>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Инциденты на участке' %}</h3>
+            <div class="stack stack--tight">
+                {% for incident in incidents %}
+                    <a href="{{ incident.get_absolute_url }}" style="color:inherit;padding:4px 0">
+                        <div class="row row--between">
+                            <span class="small">{{ incident.get_incident_type_display }}</span>
+                            <span class="badge badge--{{ incident.severity|severity_tone }}">
+                                {{ incident.severity }}</span>
+                        </div>
+                        <span class="table-sub">{{ incident.reported_at|date:"d.m.Y H:i" }}</span>
+                    </a>
+                {% empty %}
+                    <p class="muted small">{% trans 'Инциденты не зарегистрированы.' %}</p>
+                {% endfor %}
+            </div>
+        </div>
+    </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if road.geom %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var node = document.getElementById("road-map");
+    if (!node || typeof L === "undefined") return;
+    var geometry = JSON.parse(node.dataset.line.replace(/'/g, '"'));
+    var map = L.map(node, { scrollWheelZoom: false });
+    L.tileLayer("{{ MAP_TILE_URL }}", { attribution: "{{ MAP_ATTRIBUTION }}" }).addTo(map);
+    var line = L.geoJSON({ type: "Feature", geometry: geometry, properties: {} },
+        { style: { color: "#f2a03d", weight: 5, opacity: 0.85 } }).addTo(map);
+    map.fitBounds(line.getBounds(), { padding: [30, 30] });
+});
+</script>
+{% endif %}
+{% endblock %}

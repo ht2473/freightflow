@@ -1,0 +1,14 @@
+{% load i18n %}
+{# Общая полоса вкладок для личного кабинета и панели администратора. #}
+<nav class="tabs" aria-label="{% trans 'Разделы' %}">
+    {% for tab in tabs %}
+        {% if tab|length == 3 %}
+            <a href="{% url tab.2 %}"
+               class="{% if current_tab == tab.0 %}is-active{% endif %}">{{ tab.1 }}</a>
+        {% else %}
+            <a href="{% url tab.2 %}"
+               class="{% if current_tab == tab.0 %}is-active{% endif %}"
+               title="{{ tab.3 }}">{{ tab.1 }}</a>
+        {% endif %}
+    {% endfor %}
+</nav>

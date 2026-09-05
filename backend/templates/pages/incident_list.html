@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block page_header %}
+<header class="page-header">
+    <div class="page-header__row">
+        <div>
+            <h1>{{ page_title }}</h1>
+            <p class="lead">{{ page_lead }}</p>
+        </div>
+        <div class="page-header__actions">
+            {% include "partials/_export.html" %}
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<form class="filters" method="get" data-autosubmit>
+    <div class="filters__grid">
+        <div class="field">
+            <label for="f-type">{% trans 'Тип события' %}</label>
+            <select id="f-type" name="type">
+                <option value="">{% trans 'Все типы' %}</option>
+                {% for value, label in incident_types %}
+                    <option value="{{ value }}" {% if filters.type == value %}selected{% endif %}>
+                        {{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field">
+            <label for="f-state">{% trans 'Состояние' %}</label>
+            <select id="f-state" name="state">
+                <option value="">{% trans 'Любое' %}</option>
+                <option value="open" {% if filters.state == "open" %}selected{% endif %}>{% trans 'Открытые' %}</option>
+                <option value="closed" {% if filters.state == "closed" %}selected{% endif %}>{% trans 'Устранённые' %}</option>
+            </select>
+        </div>
+        <div class="field">
+            <label for="f-district">{% trans 'Округ' %}</label>
+            <select id="f-district" name="district">
+                <option value="">{% trans 'Все округа' %}</option>
+                {% for district in districts %}
+                    <option value="{{ district.pk }}"
+                            {% if filters.district == district.pk %}selected{% endif %}>
+                        {{ district.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field">
+            <label for="f-severity">{% trans 'Серьёзность не ниже' %}</label>
+            <select id="f-severity" name="severity">
+                <option value="">{% trans 'Любая' %}</option>
+                {% for level in "12345" %}
+                    <option value="{{ level }}"
+                            {% if filters.severity|stringformat:"s" == level %}selected{% endif %}>
+                        {{ level }} и выше</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field">
+            <span class="field__label">{% trans 'Грузовой транспорт' %}</span>
+            <label class="check">
+                <input type="checkbox" name="cargo" value="1" {% if filters.cargo %}checked{% endif %}>
+                <span>{% trans 'Только влияющие на грузовые перевозки' %}</span>
+            </label>
+        </div>
+        <div class="row">
+            <button class="button button--primary" type="submit">{% trans 'Показать' %}</button>
+            <a class="button button--ghost" href="{% url 'core:incident_list' %}">{% trans 'Очистить' %}</a>
+        </div>
+    </div>
+</form>
+
+<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Найдено событий' %}</span>
+        <span class="metric__value">{{ total_count }}</span>
+    </div>
+    <div class="metric metric--alert">
+        <span class="metric__label">{% trans 'Открыто сейчас' %}</span>
+        <span class="metric__value">{{ statistics.open }}</span>
+        <span class="metric__note">за последние {{ statistics.days }} суток</span>
+    </div>
+    <div class="metric metric--warn">
+        <span class="metric__label">{% trans 'Влияют на грузовой транспорт' %}</span>
+        <span class="metric__value">{{ statistics.cargo }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Всего за период' %}</span>
+        <span class="metric__value">{{ statistics.total }}</span>
+        <span class="metric__note">последние {{ statistics.days }} суток</span>
+    </div>
+</div>
+
+<div class="table-wrap">
+    <table class="data">
+        <thead>
+            <tr>
+                <th>{% trans 'Событие' %}</th><th>{% trans 'Участок' %}</th><th>{% trans 'Округ' %}</th>
+                <th>{% trans 'Серьёзность' %}</th><th>{% trans 'Зарегистрировано' %}</th>
+                <th class="num">{% trans 'Длительность' %}</th><th>{% trans 'Состояние' %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for incident in page_obj.object_list %}
+                <tr data-href="{{ incident.get_absolute_url }}">
+                    <td>
+                        <span class="table-title">{{ incident.get_incident_type_display }}</span>
+                        <span class="table-sub">{{ incident.description|truncatechars:70|dash }}</span>
+                    </td>
+                    <td class="small">{{ incident.road.name|dash }}</td>
+                    <td>{% if incident.road.district %}
+                        <span class="badge badge--plain">{{ incident.road.district.short_name }}</span>
+                        {% else %}—{% endif %}</td>
+                    <td><span class="badge badge--{{ incident.severity|severity_tone }}">
+                        {{ incident.severity_state.0 }}</span></td>
+                    <td class="small">{{ incident.reported_at|date:"d.m.Y H:i" }}</td>
+                    <td class="num">{{ incident.duration_hours|spaced:1 }} ч</td>
+                    <td>
+                        {% if incident.is_open %}
+                            <span class="badge badge--alert">{% trans 'открыт' %}</span>
+                        {% else %}
+                            <span class="badge badge--ok">{% trans 'устранён' %}</span>
+                        {% endif %}
+                        {% if incident.affects_cargo %}
+                            <span class="badge badge--plain">{% trans 'груз' %}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="7" class="muted">{% trans 'События не найдены.' %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% include "partials/_pagination.html" %}
+{% endblock %}

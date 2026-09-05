@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% include "partials/_tabs.html" %}
+
+<form class="filters" method="get" data-autosubmit>
+    <div class="filters__grid">
+        <div class="field">
+            <label for="f-kind">{% trans 'Тип закладки' %}</label>
+            <select id="f-kind" name="kind">
+                <option value="">{% trans 'Все типы' %}</option>
+                {% for value, label in kinds %}
+                    <option value="{{ value }}" {% if selected_kind == value %}selected{% endif %}>
+                        {{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="row">
+            <a class="button button--ghost" href="{% url 'accounts:favorites' %}">{% trans 'Сбросить' %}</a>
+        </div>
+    </div>
+</form>
+
+{% if page_obj.object_list %}
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+                <tr><th>{% trans 'Объект' %}</th><th>{% trans 'Тип' %}</th><th>{% trans 'Заметка' %}</th><th>{% trans 'Добавлено' %}</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for item in page_obj.object_list %}
+                    <tr>
+                        <td><a href="{{ item.url }}" class="table-title">{{ item.title|dash }}</a></td>
+                        <td><span class="badge badge--plain">{{ item.get_kind_display }}</span></td>
+                        <td class="small muted">{{ item.note|dash }}</td>
+                        <td class="small faint">{{ item.created_at|date:"d.m.Y" }}</td>
+                        <td class="right">
+                            <form method="post" action="{% url 'accounts:favorite_toggle' %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="kind" value="{{ item.kind }}">
+                                <input type="hidden" name="target_id" value="{{ item.target_id }}">
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button class="button button--sm button--danger" type="submit">{% trans 'Убрать' %}</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include "partials/_pagination.html" %}
+{% else %}
+    {% include "partials/_empty.html" with empty_title="Пока ничего не добавлено" empty_text="Откройте карточку объекта, округа или участка сети и нажмите «В избранное» — записи появятся здесь." empty_action_url="/objects/" empty_action_title="Перейти к реестру объектов" %}
+{% endif %}
+{% endblock %}

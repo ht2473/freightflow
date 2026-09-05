@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+<div class="grid grid--sidebar">
+    <div class="card">
+        <form method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="flash flash--error" style="margin-bottom:var(--sp-4);position:static">
+                    <span>{{ form.non_field_errors|join:" " }}</span>
+                </div>
+            {% endif %}
+
+            <div class="grid grid--2">
+                <div class="field">
+                    <label for="{{ form.name.id_for_label }}" class="required">{% trans 'Представьтесь' %}</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}<p class="field__error">{{ form.name.errors|join:" " }}</p>{% endif %}
+                </div>
+                <div class="field">
+                    <label for="{{ form.email.id_for_label }}" class="required">{% trans 'Адрес для ответа' %}</label>
+                    {{ form.email }}
+                    {% if form.email.errors %}<p class="field__error">{{ form.email.errors|join:" " }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="grid grid--2" style="margin-top:var(--sp-3)">
+                <div class="field">
+                    <label for="{{ form.organization.id_for_label }}">{% trans 'Организация' %}</label>
+                    {{ form.organization }}
+                    <p class="field__hint">{% trans 'Необязательно' %}</p>
+                </div>
+                <div class="field">
+                    <label for="{{ form.topic.id_for_label }}" class="required">{% trans 'Тема обращения' %}</label>
+                    {{ form.topic }}
+                    {% if form.topic.errors %}<p class="field__error">{{ form.topic.errors|join:" " }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="field" style="margin-top:var(--sp-3)">
+                <label for="{{ form.message.id_for_label }}" class="required">{% trans 'Текст обращения' %}</label>
+                {{ form.message }}
+                {% if form.message.errors %}
+                    <p class="field__error">{{ form.message.errors|join:" " }}</p>
+                {% else %}
+                    <p class="field__hint">{% trans 'Опишите вопрос подробно: если речь о конкретной записи, укажите её название или ссылку на страницу.' %}</p>
+                {% endif %}
+            </div>
+
+            <div class="field" style="margin-top:var(--sp-3)">
+                <label for="{{ form.attachment.id_for_label }}">{% trans 'Вложение' %}</label>
+                {{ form.attachment }}
+                {% if form.attachment.errors %}
+                    <p class="field__error">{{ form.attachment.errors|join:" " }}</p>
+                {% else %}
+                    <p class="field__hint">{% trans 'PDF, изображение, таблица или документ до 10 МБ' %}</p>
+                {% endif %}
+            </div>
+
+            {{ form.website }}
+
+            <label class="check" style="margin-top:var(--sp-4)">
+                {{ form.consent }}
+                <span>{{ form.consent.label }}</span>
+            </label>
+            {% if form.consent.errors %}
+                <p class="field__error">{{ form.consent.errors|join:" " }}</p>
+            {% endif %}
+
+            <div class="row" style="margin-top:var(--sp-5)">
+                <button class="button button--primary" type="submit">{% trans 'Отправить обращение' %}</button>
+                <a class="button button--ghost" href="{% url 'core:help' %}">{% trans 'Сначала посмотреть справку' %}</a>
+            </div>
+        </form>
+    </div>
+
+    <aside class="stack">
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Как обрабатываются обращения' %}</h3>
+            <dl class="facts">
+                <div><dt>{% trans 'Срок ответа' %}</dt><dd style="font-family:var(--font-body)">{% trans 'до 3 рабочих дней' %}</dd></div>
+                <div><dt>{% trans 'Обработано обращений' %}</dt><dd>{{ processed_count }}</dd></div>
+                <div><dt>{% trans 'Кто отвечает' %}</dt><dd style="font-family:var(--font-body)">{% trans 'администратор системы' %}</dd></div>
+            </dl>
+            <p class="small muted" style="margin-top:var(--sp-4)">{% trans 'Замечания к данным передаются поставщику источника, предложения по развитию системы включаются в план доработок. Ответ направляется на указанный адрес электронной почты.' %}</p>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Возможно, ответ уже есть' %}</h3>
+            <div class="stack stack--tight small">
+                <a href="{% url 'core:help' %}">{% trans 'Справка по работе с системой' %}</a>
+                <a href="{% url 'core:methodology' %}">{% trans 'Как рассчитываются показатели' %}</a>
+                <a href="{% url 'core:source_list' %}">{% trans 'Откуда берутся данные' %}</a>
+                <a href="{% url 'core:api_docs' %}">{% trans 'Программный доступ к данным' %}</a>
+            </div>
+        </div>
+    </aside>
+</div>
+{% endblock %}

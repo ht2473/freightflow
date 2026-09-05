@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% if featured %}
+    <article class="card card--accent" style="margin-bottom:var(--sp-6)">
+        <div class="grid grid--wide" style="gap:var(--sp-5)">
+            <div>
+                <p class="eyebrow">Главный материал · {{ featured.category.name }}</p>
+                <h2 style="margin:var(--sp-3) 0">
+                    <a href="{{ featured.get_absolute_url }}" style="color:inherit">{{ featured.title }}</a>
+                </h2>
+                <p class="lead">{{ featured.lead }}</p>
+                <p class="small faint" style="margin-top:var(--sp-3)">
+                    {{ featured.published_at|date:"d.m.Y" }} ·
+                    {{ featured.reading_minutes }} мин чтения ·
+                    {{ featured.view_count }} просмотров
+                </p>
+            </div>
+            <div class="row row--end" style="align-items:flex-end">
+                <a class="button button--primary" href="{{ featured.get_absolute_url }}">{% trans 'Читать' %}</a>
+            </div>
+        </div>
+    </article>
+{% endif %}
+
+<form class="filters" method="get" data-autosubmit>
+    <div class="filters__grid">
+        <div class="field">
+            <label for="f-q">{% trans 'Поиск по материалам' %}</label>
+            <input type="search" id="f-q" name="q" value="{{ filters.q }}"
+                   placeholder="{% trans 'Ключевое слово' %}">
+        </div>
+        <div class="field">
+            <label for="f-category">{% trans 'Рубрика' %}</label>
+            <select id="f-category" name="category">
+                <option value="">{% trans 'Все рубрики' %}</option>
+                {% for category in categories %}
+                    <option value="{{ category.code }}"
+                            {% if filters.category == category.code %}selected{% endif %}>
+                        {{ category.name }} ({{ category.total }})
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="row">
+            <button class="button button--primary" type="submit">{% trans 'Показать' %}</button>
+            <a class="button button--ghost" href="{% url 'content:article_list' %}">{% trans 'Очистить' %}</a>
+        </div>
+    </div>
+</form>
+
+{% if page_obj.object_list %}
+    <div class="grid grid--2">
+        {% for article in page_obj.object_list %}
+            <a class="card card--link" href="{{ article.get_absolute_url }}">
+                <p class="eyebrow">{{ article.category.name }}</p>
+                <h3 style="margin:var(--sp-2) 0 var(--sp-3)">{{ article.title }}</h3>
+                <p class="small muted">{{ article.lead|truncatechars:200 }}</p>
+                <p class="small faint" style="margin-top:var(--sp-3)">
+                    {{ article.published_at|date:"d.m.Y" }} ·
+                    {{ article.reading_minutes }} мин ·
+                    {{ article.view_count }} просмотров
+                </p>
+            </a>
+        {% endfor %}
+    </div>
+    {% include "partials/_pagination.html" %}
+{% else %}
+    {% include "partials/_empty.html" with empty_title="Материалы не найдены" empty_text="По заданному запросу публикаций нет. Измените условия отбора." empty_action_url="/materials/" %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,21 @@
+{% load i18n %}
+{# Главное меню. Состав разделов задаётся в core/context_processors.py и    #}
+{# переиспользуется шапкой, картой сайта и справкой.                        #}
+<nav class="nav" id="main-nav" aria-label="{% trans 'Основные разделы' %}">
+    {% for item in MAIN_NAV %}
+        <div class="nav__item{% if active in item.keys %} nav__item--active{% endif %}">
+            <a class="nav__link" href="{{ item.url }}"
+               {% if active == item.key %}aria-current="page"{% endif %}>{{ item.title }}</a>
+            {% if item.is_group %}
+                <div class="nav__menu">
+                    {% for child in item.children %}
+                        <a href="{{ child.url }}">
+                            <strong>{{ child.title }}</strong>
+                            <span>{{ child.description }}</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    {% endfor %}
+</nav>

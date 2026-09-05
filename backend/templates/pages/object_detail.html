@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block page_header %}
+<header class="page-header">
+    <div class="page-header__row">
+        <div>
+            <p class="eyebrow">{{ object.type.name }} · {{ object.district.name }} округ</p>
+            <h1>{{ object.name }}</h1>
+            <p class="lead">{{ page_lead }}</p>
+        </div>
+        <div class="page-header__actions">
+            {% if user.is_authenticated %}
+                <form method="post" action="{% url 'accounts:favorite_toggle' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="kind" value="object">
+                    <input type="hidden" name="target_id" value="{{ object.pk }}">
+                    <input type="hidden" name="title" value="{{ object.name }}">
+                    <input type="hidden" name="next" value="{{ request.path }}">
+                    <button class="button" type="submit">{% trans 'В избранное' %}</button>
+                </form>
+            {% endif %}
+            <a class="button button--primary"
+               href="{% url 'core:map' %}?object={{ object.pk }}">{% trans 'Показать на карте' %}</a>
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid--sidebar">
+    <div class="stack">
+        <article class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Характеристики объекта' %}</h3>
+            <dl class="facts">
+                <div><dt>{% trans 'Тип объекта' %}</dt><dd>{{ object.type.name }}</dd></div>
+                <div><dt>{% trans 'Административный округ' %}</dt><dd>{{ object.district.name }}</dd></div>
+                <div><dt>{% trans 'Адрес' %}</dt><dd>{{ object.address|dash }}</dd></div>
+                <div><dt>{% trans 'Мощность хранения' %}</dt><dd>{{ object.capacity_tons|spaced }} т</dd></div>
+                <div><dt>{% trans 'Площадь' %}</dt><dd>{{ object.area_sq_m|spaced }} м²</dd></div>
+                {% if object.utilization_hint %}
+                    <div>
+                        <dt>{% trans 'Удельная мощность' %}</dt>
+                        <dd>{{ object.utilization_hint|spaced:2 }} т/м²</dd>
+                    </div>
+                {% endif %}
+                <div><dt>{% trans 'Режим работы' %}</dt><dd>{{ object.operating_hours|dash }}</dd></div>
+                {% if object.geom %}
+                    <div>
+                        <dt>{% trans 'Координаты' %}</dt>
+                        <dd>{{ object.geom.lat|spaced:5 }}, {{ object.geom.lon|spaced:5 }}</dd>
+                    </div>
+                {% endif %}
+                <div>
+                    <dt>{% trans 'Источник данных' %}</dt>
+                    <dd>
+                        {% if object.source %}
+                            <a href="{{ object.source.get_absolute_url }}">{{ object.source.name }}</a>
+                        {% else %}—{% endif %}
+                    </dd>
+                </div>
+                <div><dt>{% trans 'Обновлён' %}</dt><dd>{{ object.updated_at|date:"d.m.Y H:i" }}</dd></div>
+            </dl>
+        </article>
+
+        {% if object.geom %}
+            <article class="card card--flush">
+                <div class="card__head"><h3>{% trans 'Расположение' %}</h3></div>
+                <div id="object-map" style="height:340px"
+                     data-lat="{{ object.geom.lat|stringformat:'f' }}"
+                     data-lon="{{ object.geom.lon|stringformat:'f' }}"
+                     data-title="{{ object.name }}"></div>
+            </article>
+        {% endif %}
+
+        {% if neighbours %}
+            <article class="card card--flush">
+                <div class="card__head">
+                    <div>
+                        <p class="eyebrow">{% trans 'В радиусе трёх километров' %}</p>
+                        <h3>{% trans 'Соседние объекты' %}</h3>
+                    </div>
+                </div>
+                <div class="table-wrap" style="border:none">
+                    <table class="data">
+                        <thead>
+                            <tr><th>{% trans 'Объект' %}</th><th>{% trans 'Тип' %}</th><th class="num">{% trans 'Расстояние' %}</th>
+                                <th class="num">{% trans 'Мощность' %}</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for item in neighbours %}
+                                <tr data-href="{{ item.object.get_absolute_url }}">
+                                    <td><span class="table-title">{{ item.object.name }}</span></td>
+                                    <td class="small muted">{{ item.object.type.name }}</td>
+                                    <td class="num">{{ item.distance_km|spaced:2 }} км</td>
+                                    <td class="num">{{ item.object.capacity_tons|spaced }} т</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+        {% endif %}
+    </div>
+
+    <aside class="stack">
+        {% if district_stats %}
+            <div class="card">
+                <p class="eyebrow">Округ {{ object.district.short_name }}</p>
+                <h3 style="margin:var(--sp-2) 0 var(--sp-3)">{% trans 'Профиль округа' %}</h3>
+                <dl class="facts">
+                    <div><dt>{% trans 'Объектов' %}</dt><dd>{{ district_stats.object_count }}</dd></div>
+                    <div><dt>{% trans 'Мощность' %}</dt><dd>{{ district_stats.capacity_tons|tons }}</dd></div>
+                    <div><dt>{% trans 'Грузопоток' %}</dt><dd>{{ district_stats.volume_tons|tons }}</dd></div>
+                    <div>
+                        <dt>{% trans 'Загруженность' %}</dt>
+                        <dd><span class="badge badge--{{ district_stats.congestion_tone }}">
+                            {{ district_stats.congestion|spaced:1 }}</span></dd>
+                    </div>
+                </dl>
+                <a class="button button--block" style="margin-top:var(--sp-3)"
+                   href="{{ object.district.get_absolute_url }}">{% trans 'Открыть профиль округа' %}</a>
+            </div>
+        {% endif %}
+
+        {% if same_district %}
+            <div class="card">
+                <p class="eyebrow">{% trans 'Тот же округ' %}</p>
+                <h3 style="margin:var(--sp-2) 0 var(--sp-3)">{% trans 'Другие объекты' %}</h3>
+                <div class="stack stack--tight">
+                    {% for item in same_district %}
+                        <a href="{{ item.get_absolute_url }}" class="small" style="color:inherit">
+                            <span class="table-title">{{ item.name }}</span>
+                            <span class="table-sub">{{ item.type.name }}</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if object.geom %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var node = document.getElementById("object-map");
+    if (!node || typeof L === "undefined") return;
+    var lat = parseFloat(node.dataset.lat);
+    var lon = parseFloat(node.dataset.lon);
+    var map = L.map(node, { scrollWheelZoom: false }).setView([lat, lon], 14);
+    L.tileLayer("{{ MAP_TILE_URL }}", { attribution: "{{ MAP_ATTRIBUTION }}" }).addTo(map);
+    L.circleMarker([lat, lon], {
+        radius: 9, color: "#f2a03d", weight: 2, fillColor: "#f2a03d", fillOpacity: 0.55
+    }).addTo(map).bindPopup(node.dataset.title);
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% include "partials/_tabs.html" %}
+
+<div class="grid grid--wide">
+    <div class="stack">
+        <article class="card">
+            <div class="row row--between" style="margin-bottom:var(--sp-4)">
+                <div>
+                    <p class="eyebrow">{{ message.get_topic_display }}</p>
+                    <h3 style="margin-top:var(--sp-2)">Обращение № {{ message.pk }}</h3>
+                </div>
+                <span class="badge badge--{% if message.status == 'new' %}alert{% elif message.status == 'in_work' %}warn{% elif message.status == 'answered' %}ok{% else %}plain{% endif %}">
+                    {{ message.get_status_display }}
+                </span>
+            </div>
+            <p style="white-space:pre-line">{{ message.message }}</p>
+
+            {% if message.attachment %}
+                <p class="small" style="margin-top:var(--sp-4)">{% trans 'Вложение:' %}<a href="{{ message.attachment.url }}">{{ message.attachment.name }}</a>
+                </p>
+            {% endif %}
+        </article>
+
+        {% if message.answer %}
+            <article class="card card--accent">
+                <p class="eyebrow">Ответ отправлен {{ message.answered_at|date:"d.m.Y H:i" }}</p>
+                <p style="margin-top:var(--sp-3);white-space:pre-line">{{ message.answer }}</p>
+                <p class="small faint" style="margin-top:var(--sp-3)">
+                    Обработал: {{ message.answered_by.get_full_name|default:message.answered_by.username }}
+                </p>
+            </article>
+        {% else %}
+            <article class="card">
+                <h3 style="margin-bottom:var(--sp-3)">{% trans 'Подготовить ответ' %}</h3>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="answer">
+                    <div class="field">
+                        <label for="answer">{% trans 'Текст ответа' %}</label>
+                        <textarea id="answer" name="answer" rows="8"
+                                  placeholder="Ответ будет направлен на адрес {{ message.email }}"></textarea>
+                    </div>
+                    <div class="row" style="margin-top:var(--sp-4)">
+                        <button class="button button--primary" type="submit">{% trans 'Отправить ответ' %}</button>
+                    </div>
+                </form>
+
+                <div class="row" style="margin-top:var(--sp-4)">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="in_work">
+                        <button class="button button--sm" type="submit">{% trans 'Взять в работу' %}</button>
+                    </form>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="close">
+                        <button class="button button--sm button--danger" type="submit">{% trans 'Закрыть без ответа' %}</button>
+                    </form>
+                </div>
+            </article>
+        {% endif %}
+    </div>
+
+    <aside class="stack">
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Автор обращения' %}</h3>
+            <dl class="facts">
+                <div><dt>{% trans 'Представился' %}</dt>
+                    <dd style="font-family:var(--font-body)">{{ message.name }}</dd></div>
+                <div><dt>{% trans 'Адрес почты' %}</dt>
+                    <dd style="font-family:var(--font-body);word-break:break-all">{{ message.email }}</dd></div>
+                <div><dt>{% trans 'Организация' %}</dt>
+                    <dd style="font-family:var(--font-body)">{{ message.organization|dash }}</dd></div>
+                <div><dt>{% trans 'Поступило' %}</dt><dd>{{ message.created_at|date:"d.m.Y H:i" }}</dd></div>
+                <div><dt>{% trans 'Возраст' %}</dt><dd>{{ message.age_days }} сут.</dd></div>
+                <div><dt>{% trans 'IP-адрес' %}</dt><dd>{{ message.ip_address|dash }}</dd></div>
+            </dl>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Клиент' %}</h3>
+            <p class="small faint mono" style="word-break:break-all">
+                {{ message.user_agent|dash }}
+            </p>
+        </div>
+
+        <a class="button button--block" href="{% url 'console:feedback' %}">{% trans 'К списку обращений' %}</a>
+    </aside>
+</div>
+{% endblock %}

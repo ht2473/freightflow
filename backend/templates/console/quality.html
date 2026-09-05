@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% include "partials/_tabs.html" %}
+
+<div class="grid grid--3" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--{% if issues_total %}warn{% else %}ok{% endif %}">
+        <span class="metric__label">{% trans 'Выявлено замечаний' %}</span>
+        <span class="metric__value">{{ issues_total|spaced }}</span>
+        <span class="metric__note">по {{ checks|length }} проверкам</span>
+    </div>
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Проверок выполняется' %}</span>
+        <span class="metric__value">{{ checks|length }}</span>
+        <span class="metric__note">{% trans 'при каждом открытии раздела' %}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Методика' %}</span>
+        <span class="metric__value" style="font-size:var(--fs-md)">
+            <a href="{% url 'core:methodology' %}">{% trans 'Раздел «Методология» →' %}</a>
+        </span>
+    </div>
+</div>
+
+<section class="section">
+    <div class="section__head">
+        <div>
+            <p class="eyebrow">{% trans 'Автоматические проверки' %}</p>
+            <h2>{% trans 'Полнота и согласованность данных' %}</h2>
+        </div>
+    </div>
+
+    <div class="stack">
+        {% for check in checks %}
+            <article class="card">
+                <div class="row row--between">
+                    <div style="flex:1">
+                        <div class="row" style="gap:var(--sp-3)">
+                            <span class="badge badge--{{ check.severity }}">
+                                {% if check.severity == 'alert' %}{% trans 'требует внимания' %}
+                                {% elif check.severity == 'warn' %}{% trans 'замечание' %}
+                                {% else %}{% trans 'информация' %}{% endif %}
+                            </span>
+                            <h3 style="font-size:var(--fs-md)">{{ check.title }}</h3>
+                        </div>
+                        <p class="small muted" style="margin-top:var(--sp-2)">{{ check.detail }}</p>
+                    </div>
+                    <div class="right" style="min-width:140px">
+                        <p class="metric__value" style="font-size:var(--fs-lg)">
+                            {{ check.count|spaced }}
+                        </p>
+                        <p class="small faint">
+                            {% blocktrans with total=check.total|spaced share=check.share|spaced:1 %}из {{ total }} · {{ share }} %{% endblocktrans %}
+                        </p>
+                    </div>
+                </div>
+                <div class="bar" style="margin-top:var(--sp-3)">
+                    <div class="bar__fill bar__fill--{{ check.severity }}"
+                         style="width:{{ check.share }}%"></div>
+                </div>
+            </article>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="section">
+    <div class="card">
+        <h3 style="margin-bottom:var(--sp-3)">{% trans 'Как трактовать результаты' %}</h3>
+        <div class="prose">
+            <p class="small muted">{% trans 'Перечень проверок составлен по принципу «дефект, искажающий выводы». В него включены только те условия, наличие которых меняет результат агрегации или делает запись недоступной пользователю: объект без координат не попадает на карту, объект без мощности не участвует в расчёте обеспеченности округа, инцидент без привязки к участку — в статистике аварийности.' %}</p>
+            <p class="small muted">{% trans 'Ненулевое число замечаний не свидетельствует о неисправности системы. Пропуски отражают состояние исходных источников: часть сведений поступает в неполном виде и уточняется при последующих загрузках. Устранение выполняется на стороне поставщика данных — через запрос на уточнение, — либо ручным дополнением в административной панели.' %}</p>
+        </div>
+    </div>
+</section>
+{% endblock %}

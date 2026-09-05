@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% load ff static i18n %}
+
+{% block page_header %}
+<header class="page-header">
+    <div class="page-header__row">
+        <div>
+            <p class="eyebrow">{% trans 'Пространственный обзор' %}</p>
+            <h1>{{ page_title }}</h1>
+            <p class="lead">{{ page_lead }}</p>
+        </div>
+        <div class="page-header__actions">
+            <span class="badge badge--accent">{{ summary.object_count }} объектов</span>
+            <span class="badge badge--{{ summary.congestion_tone }}">
+                сеть: {{ summary.congestion_avg|spaced:1 }}/10
+            </span>
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="map-layout">
+    <div class="map-panel stack">
+        {# --- Слои ------------------------------------------------------- #}
+        <div>
+            <h3>{% trans 'Слои карты' %}</h3>
+            <label class="layer-toggle">
+                <input type="checkbox" data-layer="objects" checked>
+                <span>{% trans 'Объекты инфраструктуры' %}</span>
+                <i style="background:var(--accent)"></i>
+            </label>
+            <p class="small faint" style="padding:0 var(--sp-2) var(--sp-2)"
+               data-layer-status="objects"></p>
+
+            <label class="layer-toggle">
+                <input type="checkbox" data-layer="roads" checked>
+                <span>{% trans 'Дорожная сеть' %}</span>
+                <i style="background:var(--tone-warn)"></i>
+            </label>
+            <p class="small faint" style="padding:0 var(--sp-2) var(--sp-2)"
+               data-layer-status="roads"></p>
+
+            <label class="layer-toggle">
+                <input type="checkbox" data-layer="incidents">
+                <span>{% trans 'Дорожные события' %}</span>
+                <i style="background:var(--tone-alert)"></i>
+            </label>
+            <p class="small faint" style="padding:0 var(--sp-2) var(--sp-2)"
+               data-layer-status="incidents"></p>
+
+            <label class="layer-toggle">
+                <input type="checkbox" data-layer="routes">
+                <span>{% trans 'Грузовые маршруты' %}</span>
+                <i style="background:var(--series-2)"></i>
+            </label>
+            <p class="small faint" style="padding:0 var(--sp-2) var(--sp-2)"
+               data-layer-status="routes"></p>
+
+            <label class="layer-toggle">
+                <input type="checkbox" data-layer="districts">
+                <span>{% trans 'Округа с показателями' %}</span>
+                <i style="background:var(--tone-ok)"></i>
+            </label>
+            <p class="small faint" style="padding:0 var(--sp-2) var(--sp-2)"
+               data-layer-status="districts"></p>
+        </div>
+
+        {# --- Условия отбора --------------------------------------------- #}
+        <div>
+            <h3>{% trans 'Условия отбора' %}</h3>
+            <div class="field">
+                <label for="m-district">{% trans 'Округ' %}</label>
+                <select id="m-district" data-map-filter="district">
+                    <option value="">{% trans 'Все округа' %}</option>
+                    {% for district in districts %}
+                        <option value="{{ district.pk }}">{{ district.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field" style="margin-top:var(--sp-3)">
+                <label for="m-type">{% trans 'Тип объекта' %}</label>
+                <select id="m-type" data-map-filter="type">
+                    <option value="">{% trans 'Все типы' %}</option>
+                    {% for type in types %}
+                        <option value="{{ type.pk }}">{{ type.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <p class="small faint" style="margin-top:var(--sp-2)">{% trans 'Изменение условий перезагружает включённые слои.' %}</p>
+        </div>
+
+        {# --- Инструмент «что рядом» -------------------------------------- #}
+        <div>
+            <h3>{% trans 'Что рядом с точкой' %}</h3>
+            <div class="field">
+                <label for="probe-radius">{% trans 'Радиус поиска, км' %}</label>
+                <input type="number" id="probe-radius" value="3" min="0.5" max="25" step="0.5">
+            </div>
+            <button class="button button--block" type="button" id="map-probe"
+                    style="margin-top:var(--sp-3)">{% trans 'Что рядом с точкой' %}</button>
+            <div id="probe-results" style="margin-top:var(--sp-3)"></div>
+        </div>
+
+        {# --- Легенда ------------------------------------------------------ #}
+        <div>
+            <h3>{% trans 'Загруженность сети' %}</h3>
+            <div class="ribbon-legend" style="flex-direction:column;gap:var(--sp-2)">
+                <span><i style="background:var(--tone-ok)"></i>{% trans 'свободно (0–4)' %}</span>
+                <span><i style="background:var(--tone-warn)"></i>{% trans 'затруднения (5–6)' %}</span>
+                <span><i style="background:var(--tone-alert)"></i>{% trans 'пробки (7–8)' %}</span>
+                <span><i style="background:var(--tone-crit)"></i>{% trans 'движение остановлено (9–10)' %}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="map-canvas" id="map-canvas"
+         data-settings='{"center": [{{ MAP_DEFAULT_CENTER.0 }}, {{ MAP_DEFAULT_CENTER.1 }}],
+                         "zoom": {{ MAP_DEFAULT_ZOOM }},
+                         "tileUrl": "{{ MAP_TILE_URL }}",
+                         "tileUrlDark": "{{ MAP_TILE_URL_DARK }}",
+                         "attribution": "{{ MAP_ATTRIBUTION }}",
+                         "urls": {"objects": "{% url 'core:layer_objects' %}",
+                                  "roads": "{% url 'core:layer_roads' %}",
+                                  "routes": "{% url 'core:layer_routes' %}",
+                                  "incidents": "{% url 'core:layer_incidents' %}",
+                                  "districts": "{% url 'core:layer_districts' %}",
+                                  "nearby": "{% url 'core:layer_nearby' %}"}}'></div>
+</div>
+
+<p class="small faint" style="margin-top:var(--sp-3)">
+    Слои загружаются по требованию. Одновременно отображается не более
+    {{ max_features }} объектов на слой — при большем числе записей уточните
+    условия отбора.
+</p>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/ff-map.js' %}" defer></script>
+{% endblock %}

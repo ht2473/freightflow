@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Объектов инфраструктуры' %}</span>
+        <span class="metric__value">{{ profile.object_count|default:0 }}</span>
+        <span class="metric__note">мощность {{ profile.capacity_tons|tons }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Грузопоток за период' %}</span>
+        <span class="metric__value">{{ profile.volume_tons|tons }}</span>
+        <span class="metric__note">{{ profile.vehicle_count|spaced }} рейсов</span>
+    </div>
+    <div class="metric metric--{{ profile.congestion_tone|default:'muted' }}">
+        <span class="metric__label">{% trans 'Загруженность сети' %}</span>
+        <span class="metric__value">{{ profile.congestion|spaced:1 }}<small>/10</small></span>
+        <span class="metric__note">{{ profile.congestion_label }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Плотность населения' %}</span>
+        <span class="metric__value">{{ district.density|spaced }}<small>{% trans 'чел/км²' %}</small></span>
+        <span class="metric__note">площадь {{ district.area_sq_km|spaced:1 }} км²</span>
+    </div>
+</div>
+
+<div class="grid grid--wide">
+    <div class="stack">
+        {% if timeseries %}
+            <article class="card card--flush">
+                <div class="card__head">
+                    <div>
+                        <p class="eyebrow">{% trans 'Помесячная динамика' %}</p>
+                        <h3>{% trans 'Грузопоток округа, тонн' %}</h3>
+                    </div>
+                </div>
+                <div class="card__body">
+                    {% chart_from timeseries "month" "volume" as flow_chart %}
+                    <div data-chart='{{ flow_chart }}' data-height="240"></div>
+                </div>
+            </article>
+        {% endif %}
+
+        <article class="card card--flush">
+            <div class="card__head">
+                <div>
+                    <p class="eyebrow">{% trans 'Крупнейшие по мощности' %}</p>
+                    <h3>{% trans 'Объекты инфраструктуры округа' %}</h3>
+                </div>
+                <a class="small" href="{% url 'core:object_list' %}?district={{ district.pk }}">{% trans 'Все объекты →' %}</a>
+            </div>
+            <div class="table-wrap" style="border:none">
+                <table class="data">
+                    <thead>
+                        <tr><th>{% trans 'Объект' %}</th><th>{% trans 'Тип' %}</th><th class="num">{% trans 'Мощность, т' %}</th>
+                            <th class="num">{% trans 'Площадь, м²' %}</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for object in largest_objects %}
+                            <tr data-href="{{ object.get_absolute_url }}">
+                                <td>
+                                    <span class="table-title">{{ object.name }}</span>
+                                    <span class="table-sub">{{ object.address|dash }}</span>
+                                </td>
+                                <td class="small muted">{{ object.type.name }}</td>
+                                <td class="num">{{ object.capacity_tons|spaced }}</td>
+                                <td class="num">{{ object.area_sq_m|spaced }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="4" class="muted">{% trans 'Объекты не зарегистрированы.' %}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </div>
+
+    <aside class="stack">
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Состав по типам объектов' %}</h3>
+            <div class="stack stack--tight">
+                {% for row in objects_by_type %}
+                    <div>
+                        <div class="row row--between small">
+                            <span>{{ row.type__name }}</span>
+                            <span class="mono">{{ row.count }}</span>
+                        </div>
+                        <div class="bar" style="margin-top:5px">
+                            <div class="bar__fill"
+                                 style="width:{{ row.count|ratio:profile.object_count }}%"></div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="muted small">{% trans 'Нет данных.' %}</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Участки дорожной сети' %}</h3>
+            <div class="stack stack--tight">
+                {% for road in roads %}
+                    <a href="{{ road.get_absolute_url }}" class="row row--between small"
+                       style="color:inherit;padding:4px 0">
+                        <span>{{ road.name }}</span>
+                        <span class="mono faint">{{ road.length_km|spaced:1 }} км</span>
+                    </a>
+                {% empty %}
+                    <p class="muted small">{% trans 'Участки не закреплены за округом.' %}</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <a class="button button--block button--primary"
+           href="{% url 'core:map' %}?district={{ district.pk }}">{% trans 'Показать округ на карте' %}</a>
+    </aside>
+</div>
+{% endblock %}

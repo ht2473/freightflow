@@ -1,0 +1,11 @@
+{# Общий заголовок страницы: надзаголовок, название, пояснение и действия. #}
+<header class="page-header">
+    <div class="page-header__row">
+        <div>
+            {% block eyebrow %}{% if page_eyebrow %}<p class="eyebrow">{{ page_eyebrow }}</p>{% endif %}{% endblock %}
+            <h1>{{ page_title }}</h1>
+            {% if page_lead %}<p class="lead">{{ page_lead }}</p>{% endif %}
+        </div>
+        {% block header_actions %}{% endblock %}
+    </div>
+</header>

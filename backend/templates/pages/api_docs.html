@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+<div class="grid grid--3" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Базовый адрес' %}</span>
+        <span class="metric__value mono" style="font-size:var(--fs-base)" id="api-base">{{ base_url }}</span>
+        <span class="metric__note">
+            <button class="button button--sm" type="button" data-copy="#api-base">{% trans 'Скопировать' %}</button>
+        </span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Спецификация' %}</span>
+        <span class="metric__value" style="font-size:var(--fs-md)">
+            <a href="/api/v1/schema/">OpenAPI 3 →</a>
+        </span>
+        <span class="metric__note">{% trans 'машиночитаемое описание всех методов' %}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Интерактивная документация' %}</span>
+        <span class="metric__value" style="font-size:var(--fs-md)">
+            <a href="/api/v1/docs/">Swagger UI →</a> · <a href="/api/v1/redoc/">ReDoc →</a>
+        </span>
+    </div>
+</div>
+
+<section class="section">
+    <div class="section__head">
+        <div>
+            <p class="eyebrow">{% trans 'Справочный перечень' %}</p>
+            <h2>{% trans 'Основные конечные точки' %}</h2>
+        </div>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+                <tr><th>{% trans 'Адрес' %}</th><th>{% trans 'Назначение' %}</th><th>{% trans 'Параметры' %}</th></tr>
+            </thead>
+            <tbody>
+                {% for endpoint in endpoints %}
+                    <tr>
+                        <td class="mono small" style="color:var(--accent)">
+                            GET /api/v1/{{ endpoint.path }}
+                        </td>
+                        <td>
+                            <span class="table-title">{{ endpoint.title }}</span>
+                            <span class="table-sub">{{ endpoint.description }}</span>
+                        </td>
+                        <td class="mono small faint">{{ endpoint.params }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="section">
+    <div class="grid grid--2">
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Пример запроса' %}</h3>
+            <div class="code-block">curl "{{ base_url }}objects/?district=1&amp;page_size=5"</div>
+            <h3 style="margin:var(--sp-4) 0 var(--sp-3)">{% trans 'Пример ответа' %}</h3>
+            <div class="code-block">{
+  "count": 12,
+  "pages": 3,
+  "page": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "Складской комплекс «Бутово»",
+      "type_name": "Распределительный центр",
+      "district_name": "САО",
+      "capacity_tons": "36955.33",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [37.52941, 55.854143]
+      }
+    }
+  ]
+}</div>
+        </div>
+
+        <div class="stack">
+            <div class="card">
+                <h3 style="margin-bottom:var(--sp-3)">{% trans 'Авторизация' %}</h3>
+                <p class="small muted">{% trans 'Справочники и реестры доступны без авторизации. Персональный токен требуется только для повышенных ограничений на частоту обращений; он выпускается в личном кабинете пользователям с ролью «Аналитик» и выше.' %}</p>
+                <div class="code-block" style="margin-top:var(--sp-3)">{% trans 'Authorization: Token ВАШ_ТОКЕН' %}</div>
+                {% if user.is_authenticated %}
+                    <a class="button button--block" style="margin-top:var(--sp-3)"
+                       href="{% url 'accounts:api_access' %}">{% trans 'Управление токеном' %}</a>
+                {% endif %}
+            </div>
+
+            <div class="card">
+                <h3 style="margin-bottom:var(--sp-3)">{% trans 'Ограничения на частоту' %}</h3>
+                <dl class="facts">
+                    <div><dt>{% trans 'Без авторизации' %}</dt><dd>{% trans '60 запросов в минуту' %}</dd></div>
+                    <div><dt>{% trans 'По токену' %}</dt><dd>{% trans '600 запросов в минуту' %}</dd></div>
+                    <div><dt>{% trans 'Размер страницы' %}</dt><dd>{% trans 'до 500 записей' %}</dd></div>
+                </dl>
+                <p class="small faint" style="margin-top:var(--sp-3)">{% trans 'При превышении возвращается код 429 и заголовок Retry-After с числом секунд до следующей попытки.' %}</p>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-bottom:var(--sp-3)">{% trans 'Формат геометрии' %}</h3>
+                <p class="small muted">{% trans 'Пространственные данные передаются в формате GeoJSON в системе координат WGS-84, порядок координат — долгота, широта. Ответ можно передать в картографическую библиотеку без промежуточных преобразований.' %}</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

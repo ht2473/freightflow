@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="grid grid--2" style="max-width:1000px;margin:0 auto;align-items:start">
+    <div class="card">
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="flash flash--error" style="position:static;margin-bottom:var(--sp-4)">
+                    <span>{{ form.non_field_errors|join:" " }}</span>
+                </div>
+            {% endif %}
+
+            <div class="grid grid--2">
+                <div class="field">
+                    <label for="{{ form.last_name.id_for_label }}" class="required">{% trans 'Фамилия' %}</label>
+                    {{ form.last_name }}
+                    {% if form.last_name.errors %}
+                        <p class="field__error">{{ form.last_name.errors|join:" " }}</p>{% endif %}
+                </div>
+                <div class="field">
+                    <label for="{{ form.first_name.id_for_label }}" class="required">{% trans 'Имя' %}</label>
+                    {{ form.first_name }}
+                    {% if form.first_name.errors %}
+                        <p class="field__error">{{ form.first_name.errors|join:" " }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="field" style="margin-top:var(--sp-3)">
+                <label for="{{ form.username.id_for_label }}" class="required">{% trans 'Имя пользователя' %}</label>
+                {{ form.username }}
+                {% if form.username.errors %}
+                    <p class="field__error">{{ form.username.errors|join:" " }}</p>
+                {% else %}
+                    <p class="field__hint">{% trans 'Латинские буквы, цифры и символы @ . + - _' %}</p>
+                {% endif %}
+            </div>
+
+            <div class="field" style="margin-top:var(--sp-3)">
+                <label for="{{ form.email.id_for_label }}" class="required">{% trans 'Адрес электронной почты' %}</label>
+                {{ form.email }}
+                {% if form.email.errors %}<p class="field__error">{{ form.email.errors|join:" " }}</p>{% endif %}
+            </div>
+
+            <div class="field" style="margin-top:var(--sp-3)">
+                <label for="{{ form.organization.id_for_label }}">{% trans 'Организация' %}</label>
+                {{ form.organization }}
+                <p class="field__hint">{{ form.organization.help_text }}</p>
+            </div>
+
+            <div class="grid grid--2" style="margin-top:var(--sp-3)">
+                <div class="field">
+                    <label for="{{ form.password1.id_for_label }}" class="required">{% trans 'Пароль' %}</label>
+                    {{ form.password1 }}
+                    {% if form.password1.errors %}
+                        <p class="field__error">{{ form.password1.errors|join:" " }}</p>{% endif %}
+                </div>
+                <div class="field">
+                    <label for="{{ form.password2.id_for_label }}" class="required">{% trans 'Повторите пароль' %}</label>
+                    {{ form.password2 }}
+                    {% if form.password2.errors %}
+                        <p class="field__error">{{ form.password2.errors|join:" " }}</p>{% endif %}
+                </div>
+            </div>
+
+            <button class="button button--primary button--block" type="submit"
+                    style="margin-top:var(--sp-5)">{% trans 'Создать учётную запись' %}</button>
+        </form>
+
+        <p class="small muted" style="margin-top:var(--sp-4)">{% trans 'Уже зарегистрированы?' %}<a href="{% url 'login' %}">{% trans 'Войдите' %}</a>.
+        </p>
+    </div>
+
+    <aside class="stack">
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Требования к паролю' %}</h3>
+            <ul class="small muted" style="padding-left:var(--sp-5);display:grid;gap:var(--sp-2)">
+                <li>{% trans 'не менее восьми символов;' %}</li>
+                <li>{% trans 'не совпадает с именем пользователя и другими данными профиля;' %}</li>
+                <li>{% trans 'не входит в перечень распространённых паролей;' %}</li>
+                <li>{% trans 'состоит не только из цифр.' %}</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Что даёт регистрация' %}</h3>
+            <div class="stack stack--tight small muted">
+                <span>{% trans 'Избранное — закладки на объекты, округа и участки сети' %}</span>
+                <span>{% trans 'Сохранённые виды — настроенные условия отбора' %}</span>
+                <span>{% trans 'Подписки на дорожные события выбранного округа' %}</span>
+                <span>{% trans 'Выгрузка отчётов и доступ к API — с роли «Аналитик»' %}</span>
+            </div>
+            <p class="small faint" style="margin-top:var(--sp-3)">{% trans 'Расширенные роли назначает администратор системы по запросу через форму обратной связи.' %}</p>
+        </div>
+    </aside>
+</div>
+{% endblock %}

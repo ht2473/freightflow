@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block content %}
+{% include "partials/_tabs.html" %}
+
+<div class="grid grid--wide">
+    <div>
+        {% if page_obj.object_list %}
+            <div class="stack">
+                {% for view in page_obj.object_list %}
+                    <article class="card">
+                        <div class="row row--between">
+                            <div>
+                                <h3 style="font-size:var(--fs-md)">
+                                    <a href="{{ view.url }}" style="color:inherit">{{ view.title }}</a>
+                                </h3>
+                                <p class="small muted" style="margin-top:4px">
+                                    {{ view.description|dash }}
+                                </p>
+                                <p class="small faint mono" style="margin-top:6px">
+                                    {{ view.page }}{% if view.query %}?{{ view.query }}{% endif %}
+                                </p>
+                            </div>
+                            <div class="row" style="gap:var(--sp-2)">
+                                {% if view.is_public %}
+                                    <span class="badge badge--ok">{% trans 'по ссылке' %}</span>
+                                {% endif %}
+                                <span class="badge badge--plain">{{ view.open_count }} откр.</span>
+                            </div>
+                        </div>
+
+                        <div class="row" style="margin-top:var(--sp-4)">
+                            <a class="button button--sm button--primary" href="{{ view.url }}">{% trans 'Открыть' %}</a>
+                            <form method="post" action="{% url 'accounts:saved_view_action' view.pk %}">
+                                {% csrf_token %}
+                                {% if view.is_public %}
+                                    <input type="hidden" name="action" value="unpublish">
+                                    <button class="button button--sm" type="submit">{% trans 'Закрыть доступ' %}</button>
+                                {% else %}
+                                    <input type="hidden" name="action" value="publish">
+                                    <button class="button button--sm" type="submit">{% trans 'Открыть по ссылке' %}</button>
+                                {% endif %}
+                            </form>
+                            <form method="post" action="{% url 'accounts:saved_view_action' view.pk %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete">
+                                <button class="button button--sm button--danger" type="submit">{% trans 'Удалить' %}</button>
+                            </form>
+                        </div>
+
+                        {% if view.is_public %}
+                            <p class="small faint mono" style="margin-top:var(--sp-3)">
+                                {{ request.scheme }}://{{ request.get_host }}{% url 'shared_view' view.share_token %}
+                            </p>
+                        {% endif %}
+                    </article>
+                {% endfor %}
+            </div>
+            {% include "partials/_pagination.html" %}
+        {% else %}
+            {% include "partials/_empty.html" with empty_title="Сохранённых видов нет" empty_text="Настройте условия отбора в любом реестре и сохраните их формой справа — вид можно будет открыть одним щелчком." %}
+        {% endif %}
+    </div>
+
+    <aside>
+        <div class="card">
+            <h3 style="margin-bottom:var(--sp-3)">{% trans 'Сохранить новый вид' %}</h3>
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                    <div class="field" style="margin-bottom:var(--sp-3)">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}
+                            <p class="field__error">{{ field.errors|join:" " }}</p>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+                <button class="button button--primary button--block" type="submit">{% trans 'Сохранить' %}</button>
+            </form>
+            <p class="small faint" style="margin-top:var(--sp-4)">{% trans 'Сохраняются условия отбора, а не сами данные: при открытии выборка выполняется заново и показывает актуальные значения.' %}</p>
+        </div>
+    </aside>
+</div>
+{% endblock %}

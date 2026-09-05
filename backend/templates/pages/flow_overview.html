@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% load ff i18n %}
+
+{% block page_header %}
+<header class="page-header">
+    <div class="page-header__row">
+        <div>
+            <h1>{{ page_title }}</h1>
+            <p class="lead">{{ page_lead }}</p>
+        </div>
+        <div class="page-header__actions">
+            {% include "partials/_export.html" %}
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<form class="filters" method="get" data-autosubmit>
+    <div class="filters__grid">
+        <div class="field">
+            <label for="f-district">{% trans 'Округ' %}</label>
+            <select id="f-district" name="district">
+                <option value="">{% trans 'Все округа' %}</option>
+                {% for district in districts %}
+                    <option value="{{ district.pk }}"
+                            {% if filters.district == district.pk %}selected{% endif %}>
+                        {{ district.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field">
+            <label for="f-category">{% trans 'Категория груза' %}</label>
+            <select id="f-category" name="category">
+                <option value="">{% trans 'Все категории' %}</option>
+                {% for row in categories %}
+                    <option value="{{ row.id }}" {% if filters.category == row.id %}selected{% endif %}>
+                        {{ row.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field">
+            <label for="f-direction">{% trans 'Направление' %}</label>
+            <select id="f-direction" name="direction">
+                <option value="">{% trans 'Все направления' %}</option>
+                <option value="in" {% if filters.direction == "in" %}selected{% endif %}>{% trans 'Ввоз' %}</option>
+                <option value="out" {% if filters.direction == "out" %}selected{% endif %}>{% trans 'Вывоз' %}</option>
+                <option value="transit" {% if filters.direction == "transit" %}selected{% endif %}>{% trans 'Транзит' %}</option>
+            </select>
+        </div>
+        <div class="row">
+            <button class="button button--primary" type="submit">{% trans 'Показать' %}</button>
+            <a class="button button--ghost" href="{% url 'core:flow_overview' %}">{% trans 'Очистить' %}</a>
+        </div>
+    </div>
+</form>
+
+<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+    <div class="metric metric--accent">
+        <span class="metric__label">{% trans 'Объём перевозок' %}</span>
+        <span class="metric__value">{{ total_volume|tons }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Число рейсов' %}</span>
+        <span class="metric__value">{{ total_vehicles|spaced }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric__label">{% trans 'Средняя загрузка рейса' %}</span>
+        <span class="metric__value">{{ avg_load|spaced:1 }}<small> т</small></span>
+    </div>
+    <div class="metric metric--{% if growth > 0 %}warn{% else %}ok{% endif %}">
+        <span class="metric__label">{% trans 'Изменение за период' %}</span>
+        <span class="metric__value">
+            {% if growth %}{% if growth > 0 %}+{% endif %}{{ growth|spaced:1 }}<small> %</small>
+            {% else %}—{% endif %}
+        </span>
+        <span class="metric__note">{% trans 'последний месяц к первому' %}</span>
+    </div>
+</div>
+
+<section class="section">
+    <article class="card card--flush">
+        <div class="card__head">
+            <div>
+                <p class="eyebrow">{% trans 'Помесячная динамика' %}</p>
+                <h3>{% trans 'Объём грузопотока, тонн' %}</h3>
+            </div>
+            <a class="small" href="{% url 'analytics:forecast' %}">{% trans 'Прогноз →' %}</a>
+        </div>
+        <div class="card__body">
+            {% if timeseries %}
+                {% chart_from timeseries "month" "volume" as flow_chart %}
+                <div data-chart='{{ flow_chart }}' data-height="280"></div>
+            {% else %}
+                <p class="muted small">{% trans 'Под заданные условия отбора данных нет.' %}</p>
+            {% endif %}
+        </div>
+    </article>
+</section>
+
+<section class="section">
+    <div class="grid grid--2">
+        <article class="card card--flush">
+            <div class="card__head">
+                <div>
+                    <p class="eyebrow">{% trans 'Структура' %}</p>
+                    <h3>{% trans 'Категории грузов' %}</h3>
+                </div>
+                <a class="small" href="{% url 'core:cargo_list' %}">{% trans 'Классификатор →' %}</a>
+            </div>
+            <div class="card__body stack stack--tight">
+                {% for row in by_category %}
+                    <div>
+                        <div class="row row--between small">
+                            <span>
+                                {{ row.name }}
+                                {% if row.hazard_class %}
+                                    <span class="badge badge--alert">класс {{ row.hazard_class }}</span>
+                                {% endif %}
+                            </span>
+                            <span class="mono">{{ row.volume|tons }}</span>
+                        </div>
+                        <div class="bar" style="margin-top:6px">
+                            <div class="bar__fill{% if row.hazard_class %} bar__fill--alert{% endif %}"
+                                 style="width:{{ row.volume|ratio:max_category_volume }}%"></div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="muted small">{% trans 'Нет данных.' %}</p>
+                {% endfor %}
+            </div>
+        </article>
+
+        <article class="card card--flush">
+            <div class="card__head">
+                <div>
+                    <p class="eyebrow">{% trans 'Направления' %}</p>
+                    <h3>{% trans 'Ввоз, вывоз и транзит' %}</h3>
+                </div>
+            </div>
+            <div class="card__body">
+                <div class="table-wrap" style="border:none">
+                    <table class="data">
+                        <thead>
+                            <tr><th>{% trans 'Направление' %}</th><th class="num">{% trans 'Объём' %}</th>
+                                <th class="num">{% trans 'Рейсов' %}</th><th class="num">{% trans 'Средняя загрузка' %}</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for row in by_direction %}
+                                <tr>
+                                    <td><span class="table-title">{{ row.label }}</span></td>
+                                    <td class="num">{{ row.volume|tons }}</td>
+                                    <td class="num">{{ row.vehicles|spaced }}</td>
+                                    <td class="num">
+                                        {% if row.vehicles %}
+                                            {{ row.volume|divide:row.vehicles|spaced:1 }} т
+                                        {% else %}—{% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </article>
+    </div>
+</section>
+{% endblock %}
