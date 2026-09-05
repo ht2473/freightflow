@@ -275,6 +275,23 @@ def users(db):
     return created
 
 
+@pytest.fixture(scope="session")
+def browser_type_launch_args(browser_type_launch_args):
+    """Запустить проверки в браузере, установленном на этой машине.
+
+    Playwright приносит свои сборки Chromium, Firefox и WebKit, а Chrome
+    и Edge берёт по каналу поставки. Яндекс.Браузер каналом не назван,
+    и его исполняемый файл указывается переменной ``FF_BROWSER_PATH``.
+    Проверять систему в нём приходится отдельно от Chromium: сборка
+    та же, но набор поставляемых шрифтов и заданные по умолчанию
+    настройки защиты у неё свои.
+    """
+    executable = os.environ.get("FF_BROWSER_PATH")
+    if not executable:
+        return browser_type_launch_args
+    return {**browser_type_launch_args, "executable_path": executable}
+
+
 @pytest.fixture(autouse=True)
 def neutralize_deployment_settings(settings):
     """Отключить настройки промышленного контура на время теста.

@@ -408,3 +408,77 @@ class TestAccessSection:
 
         assert "ТТК" in offline_page.content()
         assert console_errors == [], console_errors
+
+
+#: Три размера экрана, на которых система обязана оставаться работоспособной:
+#: телефон, планшет и рабочий стол. Ширины взяты по точкам переключения
+#: разметки, а не по конкретным устройствам.
+SCREENS = [
+    ("телефон", 390, 844),
+    ("планшет", 768, 1024),
+    ("рабочий стол", 1440, 900),
+]
+
+#: Разделы, на которых разметка нагружена сильнее всего: широкая таблица,
+#: лента отсчётов, карта и заголовок с действиями.
+RESPONSIVE_PAGES = ["/", "/objects/", "/districts/", "/analytics/", "/traffic/"]
+
+
+class TestScreenSizes:
+    """Поведение разметки на разных размерах экрана."""
+
+    @pytest.mark.parametrize("name,width,height", SCREENS)
+    @pytest.mark.parametrize("path", RESPONSIVE_PAGES)
+    def test_page_does_not_scroll_sideways(
+        self, live_server, offline_page, full_dataset, path, name, width, height
+    ):
+        """Раздел «{path}» на размере «{name}» не уезжает вбок.
+
+        Горизонтальная прокрутка страницы целиком означает, что часть
+        содержимого недоступна: широкое содержимое — таблицы, схемы —
+        прокручивается внутри своей области, а не выталкивает разметку.
+        """
+        offline_page.set_viewport_size({"width": width, "height": height})
+        offline_page.goto(f"{live_server.url}{path}", wait_until="networkidle")
+
+        overflow = offline_page.evaluate(
+            "() => document.documentElement.scrollWidth"
+            " - document.documentElement.clientWidth"
+        )
+        assert overflow <= 1, f"{path} на ширине {width}: вылет {overflow} пкс"
+
+    @pytest.mark.parametrize("name,width,height", SCREENS)
+    def test_navigation_stays_reachable(
+        self, live_server, offline_page, full_dataset, name, width, height
+    ):
+        """На размере «{name}» разделы доступны из шапки.
+
+        На узком экране меню убирается в выдвижную панель, и попасть в него
+        можно только через кнопку. Кнопка, оставшаяся скрытой вместе
+        с меню, отрезала бы навигацию целиком.
+        """
+        offline_page.set_viewport_size({"width": width, "height": height})
+        offline_page.goto(f"{live_server.url}/", wait_until="networkidle")
+
+        menu_shown = offline_page.locator(".nav__link").first.is_visible()
+        toggle_shown = offline_page.locator(".nav-toggle").is_visible()
+        assert menu_shown or toggle_shown, "ни меню, ни кнопки меню не видно"
+
+        if toggle_shown:
+            offline_page.click(".nav-toggle")
+            offline_page.wait_for_timeout(400)
+            assert offline_page.locator(".nav__link").first.is_visible()
+
+    @pytest.mark.parametrize("name,width,height", SCREENS)
+    def test_wide_table_scrolls_within_its_own_area(
+        self, live_server, offline_page, full_dataset, name, width, height
+    ):
+        """На размере «{name}» широкая таблица прокручивается сама."""
+        offline_page.set_viewport_size({"width": width, "height": height})
+        offline_page.goto(f"{live_server.url}/objects/", wait_until="networkidle")
+
+        wrapped = offline_page.evaluate(
+            "() => [...document.querySelectorAll('table.data')]"
+            ".every(t => t.closest('.table-wrap') !== null)"
+        )
+        assert wrapped, "таблица выведена без области прокрутки"
