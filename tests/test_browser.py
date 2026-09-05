@@ -54,13 +54,38 @@ def offline_page(page):
     return page
 
 
+def describe(message) -> str:
+    """Развернуть сообщение консоли до пригодного к разбору вида.
+
+    Библиотека карты передаёт в консоль объект ошибки, и его текстовое
+    представление после сжатия сценария сводится к имени класса вроде
+    «dt». Аргументы разворачиваются по значениям: без них отказ проверки
+    не сообщает, что именно произошло.
+    """
+    parts = []
+    for argument in message.args:
+        try:
+            value = argument.json_value()
+        except Exception:  # noqa: BLE001 — значение может быть несериализуемым
+            value = None
+        if isinstance(value, dict):
+            parts.append(
+                ", ".join(f"{key}={item}" for key, item in value.items() if item)
+                or repr(value)
+            )
+        elif value not in (None, ""):
+            parts.append(str(value))
+    detail = " | ".join(parts) or message.text
+    return f"console.{message.type}: {detail}"
+
+
 @pytest.fixture
 def console_errors(offline_page):
     """Собрать сообщения об ошибках, возникшие на странице."""
     collected: list[str] = []
     offline_page.on(
         "console",
-        lambda message: collected.append(f"console.{message.type}: {message.text}")
+        lambda message: collected.append(describe(message))
         if message.type == "error"
         else None,
     )
