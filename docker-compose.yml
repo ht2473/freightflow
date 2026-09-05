@@ -29,7 +29,7 @@ services:
       - db_data:/var/lib/postgresql/data
       # Сценарии из этого каталога выполняются при первом создании базы.
       - ./db/001_schema.sql:/docker-entrypoint-initdb.d/10-schema.sql:ro
-      - ./db/003_views.sql:/docker-entrypoint-initdb.d/20-views.sql:ro
+      - ./db/002_views.sql:/docker-entrypoint-initdb.d/20-views.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${FF_DB_USER:-freightflow}"]
       interval: 10s

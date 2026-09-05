@@ -9,8 +9,8 @@
 --
 --  Порядок применения:
 --      psql -d freightflow -f db/001_schema.sql              (схема)
---      psql -d freightflow -f db/003_views.sql               (представления)
---      psql -d freightflow -f db/004_district_centers.sql    (центры округов)
+--      psql -d freightflow -f db/002_views.sql               (представления)
+--      psql -d freightflow -f db/003_district_centers.sql    (центры округов)
 --
 --  Данными база наполняется загрузкой из источников, а не поставляемым
 --  набором: python backend/manage.py etl --all
