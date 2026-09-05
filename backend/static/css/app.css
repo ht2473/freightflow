@@ -66,11 +66,14 @@
     --series-5: #e2504a;
     --series-6: #d9c04a;
 
-    /* Шрифты. Узкий гротеск в заголовках отсылает к дорожным указателям,
-       моноширинный — к телеметрии; основной текст остаётся нейтральным. */
-    --font-display: "Oswald", "PT Sans Narrow", "Arial Narrow", system-ui, sans-serif;
-    --font-body: "Inter", -apple-system, "Segoe UI", "Roboto", "Helvetica Neue", sans-serif;
-    --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Mono", "Consolas", monospace;
+    /* Шрифты — одно семейство PT в трёх гарнитурах: узкая держит заголовки
+       и шапки таблиц, обычная — текст, моноширинная — числовые ряды
+       и машинные значения. Родство рисунка связывает их между собой,
+       а разница ширины и постановки разделяет уровни изложения.
+       Замыкающие в списках начертания подставляются, пока грузятся свои. */
+    --font-display: "PT Sans Narrow", "Arial Narrow", system-ui, sans-serif;
+    --font-body: "PT Sans", system-ui, "Segoe UI", sans-serif;
+    --font-mono: "PT Mono", "Consolas", "DejaVu Sans Mono", monospace;
 
     /* Модульная шкала кегля с шагом 1,2. */
     --fs-xs: 0.75rem;
@@ -191,7 +194,7 @@ body {
 
 h1, h2, h3, h4, h5 {
     font-family: var(--font-display);
-    font-weight: 500;
+    font-weight: 700;
     line-height: 1.15;
     letter-spacing: 0.01em;
 }
@@ -233,7 +236,7 @@ code, kbd, .mono, .num {
 .eyebrow {
     font-family: var(--font-display);
     font-size: var(--fs-xs);
-    font-weight: 500;
+    font-weight: 700;
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--text-faint);
@@ -391,7 +394,7 @@ code, kbd, .mono, .num {
 .brand__name {
     font-family: var(--font-display);
     font-size: var(--fs-md);
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     line-height: 1;
@@ -499,7 +502,7 @@ code, kbd, .mono, .num {
 .nav__menu strong {
     display: block;
     font-family: var(--font-display);
-    font-weight: 500;
+    font-weight: 700;
     font-size: var(--fs-sm);
     letter-spacing: 0.02em;
 }
@@ -635,7 +638,7 @@ html:not([data-theme-choice]) [data-theme-icon="dark"] { display: block; }
 
 .footer__author strong {
     color: var(--text);
-    font-weight: 500;
+    font-weight: 700;
 }
 
 /* --------------------------------------------------------------------------
@@ -708,7 +711,7 @@ html:not([data-theme-choice]) [data-theme-icon="dark"] { display: block; }
 .metric__value {
     font-family: var(--font-display);
     font-size: var(--fs-xl);
-    font-weight: 500;
+    font-weight: 700;
     line-height: 1.05;
     font-variant-numeric: tabular-nums;
 }
@@ -737,7 +740,7 @@ a.metric:hover { border-color: var(--accent-line); }
     padding: 2px 8px;
     border-radius: 100px;
     font-size: var(--fs-xs);
-    font-weight: 500;
+    font-weight: 700;
     line-height: 1.6;
     white-space: nowrap;
     background: var(--tone-muted-bg);
@@ -942,7 +945,7 @@ a.metric:hover { border-color: var(--accent-line); }
     padding: 8px 16px;
     font-family: var(--font-display);
     font-size: var(--fs-sm);
-    font-weight: 500;
+    font-weight: 700;
     letter-spacing: 0.04em;
     line-height: 1.4;
     color: var(--text);
@@ -1180,7 +1183,7 @@ table.data th {
     text-align: left;
     font-family: var(--font-display);
     font-size: var(--fs-xs);
-    font-weight: 500;
+    font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-faint);
@@ -1220,7 +1223,7 @@ table.data td.num,
 table.data th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .table-title {
-    font-weight: 500;
+    font-weight: 700;
     color: var(--text);
 }
 
@@ -1383,7 +1386,7 @@ table.data th.num { text-align: right; font-variant-numeric: tabular-nums; }
    ради двенадцати подписей. */
 .map-label {
     font-size: var(--fs-sm);
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: 0.04em;
     color: var(--text);
     text-shadow: 0 0 4px var(--surface), 0 0 8px var(--surface);

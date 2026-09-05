@@ -11,13 +11,15 @@
     <meta name="author" content="{{ PROJECT_AUTHOR }}">
     <meta name="theme-color" content="#0e1216">
 
-    {# Шрифты подключаются с преднастройкой соединения; при недоступности   #}
-    {# внешнего источника применяется системный набор из переменных CSS.    #}
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+    {# Начертания, которыми набрана русскоязычная страница, запрашиваются      #}
+    {# заранее: объявление @font-face само по себе загрузку не начинает —      #}
+    {# браузер откладывает её до разбора разметки и встречи первого знака.     #}
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+          href="{% static 'fonts/pt-sans-400-cyrillic.woff2' %}">
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+          href="{% static 'fonts/pt-sans-narrow-700-cyrillic.woff2' %}">
 
+    <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
     <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
 

@@ -35,22 +35,27 @@ pytest.importorskip("playwright", reason="Playwright не установлен")
 
 pytestmark = [pytest.mark.django_db, pytest.mark.browser]
 
-#: Адреса, которые страница запрашивает у сторонних служб.
-EXTERNAL_PATTERNS = (
-    "**/fonts.googleapis.com/**",
-    "**/fonts.gstatic.com/**",
-)
-
-
 @pytest.fixture
-def offline_page(page):
-    """Страница браузера, отрезанная от внешних служб."""
+def offline_page(page, live_server):
+    """Страница браузера, которой доступен только собственный сервер.
 
-    def stub_text(route):
-        route.fulfill(status=200, content_type="text/css", body="")
+    Система рассчитана на работу без выхода в интернет: шрифты, библиотеки,
+    тайлы и подложка карты отдаются с её же домена. Обращение наружу здесь
+    не подменяется заглушкой, а прерывается и запоминается — иначе внешняя
+    зависимость, добавленная в разметку, осталась бы незамеченной, пока
+    сеть у проверяющего есть.
+    """
+    external: list[str] = []
 
-    for pattern in EXTERNAL_PATTERNS:
-        page.route(pattern, stub_text)
+    def gate(route, request):
+        if request.url.startswith(live_server.url) or request.url.startswith("data:"):
+            route.continue_()
+        else:
+            external.append(request.url)
+            route.abort()
+
+    page.route("**/*", gate)
+    page.external_requests = external
     return page
 
 
@@ -114,6 +119,18 @@ PAGES = [
     ("/zones/", "зоны ограничения"),
     ("/methodology/", "методология"),
 ]
+
+
+@pytest.mark.parametrize("path,title", PAGES)
+def test_page_requests_nothing_external(
+    live_server, offline_page, full_dataset, path, title
+):
+    """Раздел «{title}» обслуживается собственным доменом целиком."""
+    offline_page.goto(f"{live_server.url}{path}", wait_until="networkidle")
+    assert offline_page.external_requests == [], (
+        f"страница {path} ({title}) обращается наружу: "
+        f"{offline_page.external_requests}"
+    )
 
 
 @pytest.mark.parametrize("path,title", PAGES)
