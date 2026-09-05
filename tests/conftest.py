@@ -292,36 +292,45 @@ def browser_type_launch_args(browser_type_launch_args):
     return {**browser_type_launch_args, "executable_path": executable}
 
 
-@pytest.fixture(autouse=True)
-def neutralize_deployment_settings(settings):
-    """Отключить настройки промышленного контура на время теста.
+@pytest.fixture(autouse=True, scope="session")
+def neutralize_deployment_settings():
+    """Отключить настройки промышленного контура на время прогона.
 
     Обе настройки включаются автоматически вместе с отключением режима
     отладки и относятся к развёртыванию, а не к поведению системы:
 
-    * **перенаправление на HTTPS** — тестовый клиент Django обращается по
-      протоколу HTTP, и при включённом перенаправлении каждый запрос
-      возвращал бы код 301 вместо ожидаемого ответа;
+    * **перенаправление на HTTPS** — и тестовый клиент, и управляемый
+      браузер обращаются по протоколу HTTP. При включённом перенаправлении
+      клиент получал бы код 301 вместо ответа, а браузер — отказ
+      согласования TLS: сервер проверки шифрование не обслуживает;
     * **хранилище статики с манифестом** — оно требует файла
       ``staticfiles.json``, создаваемого командой ``collectstatic``. Набор
-      проверок не должен зависеть от наличия артефакта сборки: в среде
-      непрерывной интеграции сборка статики не выполняется.
+      проверок не должен зависеть от наличия артефакта сборки.
 
-    Значения переопределяются на время теста, а не в самих настройках:
+    Область — весь прогон, а не отдельная проверка. Сервер для проверок
+    в браузере поднимается один раз и составляет цепочку обработчиков при
+    старте, считывая перенаправление тогда же; переопределение, сделанное
+    внутри проверки, к этому моменту уже опоздало бы.
+
+    Значения переопределяются на время прогона, а не в самих настройках:
     настройки должны оставаться включёнными, чтобы их проверяло задание
     ``manage.py check --deploy``.
-
-    Без этого приспособления результат прогона зависел бы от значения
-    переменной окружения ``FF_DEBUG`` — на машине разработчика проверки
-    проходили бы, а в среде непрерывной интеграции отказывали.
     """
-    settings.SECURE_SSL_REDIRECT = False
-    settings.STORAGES = {
-        **settings.STORAGES,
-        "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+    from django.conf import settings as configured
+    from django.test.utils import override_settings
+
+    patch = override_settings(
+        SECURE_SSL_REDIRECT=False,
+        STORAGES={
+            **configured.STORAGES,
+            "staticfiles": {
+                "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+            },
         },
-    }
+    )
+    patch.enable()
+    yield
+    patch.disable()
 
 
 @pytest.fixture(autouse=True)

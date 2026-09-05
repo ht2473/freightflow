@@ -15,6 +15,9 @@ import json
 
 import pytest
 from config import checks
+from django.http import HttpResponse
+from django.test import RequestFactory
+from whitenoise.middleware import WhiteNoiseMiddleware
 
 
 class TestSecretKey:
@@ -207,15 +210,27 @@ class TestStaticCacheHeaders:
             "django.contrib.staticfiles"
         )
 
-    @pytest.mark.django_db
-    def test_static_response_carries_cache_control(self, client):
+    def test_static_response_carries_cache_control(self, settings, tmp_path):
         """Статика отдаётся с явным заголовком кеширования.
 
         Существенно само наличие заголовка: именно его отсутствие
         передавало решение браузеру, и тот кешировал файл на своё
         усмотрение.
+
+        Проверка обходится своим каталогом с единственным файлом, а не
+        собранной статикой проекта: сборка статики выполняется при
+        развёртывании, и на свежей выгрузке её ещё нет. Список файлов
+        обработчик составляет при создании, поэтому создаётся он здесь же,
+        после подмены каталога.
         """
-        response = client.get("/static/js/ff-map.js")
+        root = tmp_path / "static"
+        root.mkdir()
+        (root / "probe.js").write_text("// проверка заголовков", encoding="utf-8")
+        settings.STATIC_ROOT = str(root)
+
+        serve = WhiteNoiseMiddleware(lambda request: HttpResponse(status=404))
+        response = serve(RequestFactory().get("/static/probe.js"))
+
         assert response.status_code == 200
         assert "Cache-Control" in response.headers
 
