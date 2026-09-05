@@ -14,6 +14,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
 from django.conf import settings
 
 STATIC_DIR = Path(settings.STATICFILES_DIRS[0])
@@ -132,3 +133,123 @@ def _is_plain_link(text: str, url: str) -> bool:
             continue
         return False
     return True
+
+
+# --------------------------------------------------------------------------
+# Контрастность палитры
+# --------------------------------------------------------------------------
+
+APP_CSS = STATIC_DIR / "css" / "app.css"
+
+#: Объявление цвета в блоке переменных оформления.
+COLOUR = re.compile(r"(--[\w-]+):\s*(#[0-9a-fA-F]{6})\s*;")
+
+#: Пары «что на чём стоит» и требуемое отношение яркостей.
+#:
+#: 4,5 — порог WCAG 2.1 AA для текста обычного кегля; 3,0 — для границ
+#: и заливок, по которым читается состояние, но не читается текст;
+#: 1,5 — для волосяных линеек, которые лишь разделяют, ничего не сообщая.
+CONTRAST_PAIRS = (
+    ("--text", "--bg", 4.5),
+    ("--text", "--surface", 4.5),
+    ("--text-dim", "--bg", 4.5),
+    ("--text-dim", "--surface", 4.5),
+    ("--text-faint", "--bg", 4.5),
+    ("--text-faint", "--surface", 4.5),
+    ("--accent", "--bg", 4.5),
+    ("--accent", "--surface", 4.5),
+    ("--accent-strong", "--surface", 4.5),
+    ("--tone-ok", "--bg", 4.5),
+    ("--tone-ok", "--surface", 4.5),
+    ("--tone-warn", "--bg", 4.5),
+    ("--tone-warn", "--surface", 4.5),
+    ("--tone-alert", "--bg", 4.5),
+    ("--tone-alert", "--surface", 4.5),
+    ("--tone-muted", "--surface", 4.5),
+    # Крайняя ступень шкалы служит заливкой сегмента и полосы, а не цветом
+    # текста: значок этой ступени набирается цветом предыдущей.
+    ("--tone-crit", "--bg", 3.0),
+    ("--tone-crit", "--surface", 3.0),
+    ("--border-strong", "--surface", 3.0),
+    ("--border", "--surface", 1.5),
+    ("--series-1", "--surface", 3.0),
+    ("--series-2", "--surface", 3.0),
+    ("--series-3", "--surface", 3.0),
+    ("--series-4", "--surface", 3.0),
+    ("--series-5", "--surface", 3.0),
+    ("--series-6", "--surface", 3.0),
+)
+
+
+def _channel(value: int) -> float:
+    """Снять гамма-коррекцию с одного канала."""
+    part = value / 255
+    return part / 12.92 if part <= 0.04045 else ((part + 0.055) / 1.055) ** 2.4
+
+
+def _luminance(colour: str) -> float:
+    """Относительная яркость цвета по определению WCAG."""
+    digits = colour.lstrip("#")
+    red, green, blue = (int(digits[i : i + 2], 16) for i in (0, 2, 4))
+    return (
+        0.2126 * _channel(red)
+        + 0.7152 * _channel(green)
+        + 0.0722 * _channel(blue)
+    )
+
+
+def contrast(first: str, second: str) -> float:
+    """Отношение яркостей двух цветов: от 1 (неразличимы) до 21."""
+    light, dark = sorted((_luminance(first), _luminance(second)), reverse=True)
+    return (light + 0.05) / (dark + 0.05)
+
+
+def palette(selector: str) -> dict[str, str]:
+    """Собрать переменные цвета из блока правил с заданным заголовком."""
+    text = APP_CSS.read_text(encoding="utf-8")
+    pattern = re.compile(
+        re.escape(selector) + r"\s*\{(?P<body>.*?)^\}", re.M | re.S
+    )
+    found = pattern.search(text)
+    assert found, f"в таблице стилей нет блока {selector}"
+    return dict(COLOUR.findall(found.group("body")))
+
+
+class TestContrast:
+    """Палитра различима при дневном свете и на проекторе."""
+
+    def test_contrast_computation_is_sound(self):
+        """Крайние случаи отношения яркостей считаются верно."""
+        assert contrast("#000000", "#ffffff") == pytest.approx(21.0, abs=0.01)
+        assert contrast("#7a7a7a", "#7a7a7a") == pytest.approx(1.0, abs=0.01)
+
+    @pytest.mark.parametrize(
+        "theme", ["светлое", "тёмное"], ids=["light", "dark"]
+    )
+    def test_palette_meets_the_threshold(self, theme):
+        """Оформление «{theme}» выдерживает пороги WCAG 2.1 AA."""
+        selector = ":root" if theme == "светлое" else '[data-theme="dark"]'
+        colours = palette(selector)
+        weak = []
+        for foreground, background, required in CONTRAST_PAIRS:
+            assert foreground in colours, f"{foreground} не задан в теме"
+            assert background in colours, f"{background} не задан в теме"
+            found = contrast(colours[foreground], colours[background])
+            if found < required:
+                weak.append(
+                    f"{foreground} на {background}: "
+                    f"{found:.2f} при пороге {required}"
+                )
+        assert weak == [], "; ".join(weak)
+
+    def test_accent_is_outside_the_signal_scale(self):
+        """Цвет действия отличим от каждой ступени шкалы состояний.
+
+        Совпадение сделало бы ссылку неотличимой от оценки обстановки.
+        """
+        for selector in (":root", '[data-theme="dark"]'):
+            colours = palette(selector)
+            for tone in ("--tone-ok", "--tone-warn", "--tone-alert", "--tone-crit"):
+                assert colours["--accent"] != colours[tone], (
+                    f"цвет действия совпал со ступенью {tone}"
+                )

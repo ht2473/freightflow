@@ -54,29 +54,29 @@
 </form>
 
 {% if latest %}
-    <div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-        <div class="metric metric--accent">
-            <span class="metric__label">{% trans 'Перевезено грузов' %}</span>
-            <span class="metric__value">{{ latest.volume|tons }}</span>
-            <span class="metric__note">{{ latest.period|date:"Y" }} {% trans 'год' %} · {% trans 'измерено' %}</span>
+    <div class="readout">
+        <div class="readout__item readout__item--accent">
+            <span class="readout__label">{% trans 'Перевезено грузов' %}</span>
+            <span class="readout__value">{{ latest.volume|tons }}</span>
+            <span class="readout__note">{{ latest.period|date:"Y" }} {% trans 'год' %} · {% trans 'измерено' %}</span>
         </div>
-        <div class="metric">
-            <span class="metric__label">{% trans 'Грузооборот' %}</span>
-            <span class="metric__value">{{ latest.turnover|divide:1000000|spaced:0 }}<small> млн т·км</small></span>
-            <span class="metric__note">{% trans 'масса на расстояние перевозки' %}</span>
+        <div class="readout__item">
+            <span class="readout__label">{% trans 'Грузооборот' %}</span>
+            <span class="readout__value">{{ latest.turnover|divide:1000000|spaced:0 }}<small> млн т·км</small></span>
+            <span class="readout__note">{% trans 'масса на расстояние перевозки' %}</span>
         </div>
-        <div class="metric">
-            <span class="metric__label">{% trans 'Среднее плечо доставки' %}</span>
-            <span class="metric__value">{{ latest.haul|spaced:1|dash }}<small> км</small></span>
-            <span class="metric__note">{% trans 'грузооборот на тонну груза' %} · {% trans 'рассчитано' %}</span>
+        <div class="readout__item">
+            <span class="readout__label">{% trans 'Среднее плечо доставки' %}</span>
+            <span class="readout__value">{{ latest.haul|spaced:1|dash }}<small> км</small></span>
+            <span class="readout__note">{% trans 'грузооборот на тонну груза' %} · {% trans 'рассчитано' %}</span>
         </div>
-        <div class="metric metric--{% if change > 0 %}ok{% elif change < 0 %}warn{% endif %}">
-            <span class="metric__label">{% trans 'Изменение за год' %}</span>
-            <span class="metric__value">
+        <div class="readout__item readout__item--{% if change > 0 %}ok{% elif change < 0 %}warn{% endif %}">
+            <span class="readout__label">{% trans 'Изменение за год' %}</span>
+            <span class="readout__value">
                 {% if change %}{% if change > 0 %}+{% endif %}{{ change|spaced:1 }}<small> %</small>
                 {% else %}—{% endif %}
             </span>
-            <span class="metric__note">{% trans 'к предыдущему наблюдению' %}</span>
+            <span class="readout__note">{% trans 'к предыдущему наблюдению' %}</span>
         </div>
     </div>
 {% endif %}

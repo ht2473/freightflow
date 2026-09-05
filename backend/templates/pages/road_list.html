@@ -52,18 +52,18 @@
     </div>
 </form>
 
-<div class="grid grid--3" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Участков под мониторингом' %}</span>
-        <span class="metric__value">{{ total_count }}</span>
+<div class="readout">
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Участков под мониторингом' %}</span>
+        <span class="readout__value">{{ total_count }}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Суммарная протяжённость' %}</span>
-        <span class="metric__value">{{ total_length|spaced:1 }}<small> км</small></span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Суммарная протяжённость' %}</span>
+        <span class="readout__value">{{ total_length|spaced:1 }}<small> км</small></span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Оперативная обстановка' %}</span>
-        <span class="metric__value" style="font-size:var(--fs-md)">
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Оперативная обстановка' %}</span>
+        <span class="readout__value" style="font-size:var(--fs-md)">
             <a href="{% url 'core:traffic' %}">{% trans 'Сводка загруженности →' %}</a>
         </span>
     </div>

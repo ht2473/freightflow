@@ -29,24 +29,24 @@
 </section>
 
 <section class="section">
-    <div class="grid grid--4">
-        <div class="metric metric--ok">
-            <span class="metric__label">{% trans 'Создано' %}</span>
-            <span class="metric__value">{{ run.records_created|spaced }}</span>
+    <div class="readout">
+        <div class="readout__item readout__item--ok">
+            <span class="readout__label">{% trans 'Создано' %}</span>
+            <span class="readout__value">{{ run.records_created|spaced }}</span>
         </div>
-        <div class="metric metric--accent">
-            <span class="metric__label">{% trans 'Обновлено' %}</span>
-            <span class="metric__value">{{ run.records_updated|spaced }}</span>
+        <div class="readout__item readout__item--accent">
+            <span class="readout__label">{% trans 'Обновлено' %}</span>
+            <span class="readout__value">{{ run.records_updated|spaced }}</span>
         </div>
-        <div class="metric">
-            <span class="metric__label">{% trans 'Без изменений' %}</span>
-            <span class="metric__value">{{ run.records_unchanged|spaced }}</span>
-            <span class="metric__note">{% trans 'в источнике не менялись' %}</span>
+        <div class="readout__item">
+            <span class="readout__label">{% trans 'Без изменений' %}</span>
+            <span class="readout__value">{{ run.records_unchanged|spaced }}</span>
+            <span class="readout__note">{% trans 'в источнике не менялись' %}</span>
         </div>
-        <div class="metric metric--{% if run.records_errors %}warn{% else %}ok{% endif %}">
-            <span class="metric__label">{% trans 'Отклонено' %}</span>
-            <span class="metric__value">{{ run.records_errors|spaced }}</span>
-            <span class="metric__note">{{ run.error_rate|spaced:1 }} % от прошедших</span>
+        <div class="readout__item readout__item--{% if run.records_errors %}warn{% else %}ok{% endif %}">
+            <span class="readout__label">{% trans 'Отклонено' %}</span>
+            <span class="readout__value">{{ run.records_errors|spaced }}</span>
+            <span class="readout__note">{{ run.error_rate|spaced:1 }} % от прошедших</span>
         </div>
     </div>
 </section>

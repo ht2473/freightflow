@@ -50,7 +50,7 @@
            data-theme-choice: управлять видимостью <svg> через свойство hidden
            нельзя — оно определено для элементов HTML, а не SVG. */
 
-        var label = THEME_LABELS[theme] || THEME_LABELS.dark;
+        var label = THEME_LABELS[theme] || THEME_LABELS.light;
         document.querySelectorAll("[data-action='theme']").forEach(function (node) {
             node.setAttribute("aria-label", label);
             node.setAttribute("title", label);
@@ -59,8 +59,8 @@
 
     /** Переключить оформление по кругу: тёмное → светлое → системное. */
     function cycleTheme() {
-        var order = ["dark", "light", "auto"];
-        var current = root.getAttribute("data-theme-choice") || "dark";
+        var order = ["light", "dark", "auto"];
+        var current = root.getAttribute("data-theme-choice") || "light";
         applyTheme(order[(order.indexOf(current) + 1) % order.length]);
     }
 
@@ -70,7 +70,7 @@
     } catch (error) {
         stored = null;
     }
-    applyTheme(stored || root.dataset.themeDefault || "dark");
+    applyTheme(stored || root.dataset.themeDefault || "light");
 
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
         if (root.getAttribute("data-theme-choice") === "auto") {

@@ -4,41 +4,41 @@
 {% block content %}
 {% include "partials/_tabs.html" %}
 
-<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
+<div class="readout">
     {% if can_administer %}
-        <div class="metric metric--accent">
-            <span class="metric__label">{% trans 'Пользователей' %}</span>
-            <span class="metric__value">{{ users.total }}</span>
-            <span class="metric__note">{% blocktrans with active=users.active recent=users.recent %}активных {{ active }}, за неделю входили {{ recent }}{% endblocktrans %}</span>
+        <div class="readout__item readout__item--accent">
+            <span class="readout__label">{% trans 'Пользователей' %}</span>
+            <span class="readout__value">{{ users.total }}</span>
+            <span class="readout__note">{% blocktrans with active=users.active recent=users.recent %}активных {{ active }}, за неделю входили {{ recent }}{% endblocktrans %}</span>
         </div>
-        <a class="metric metric--{% if feedback_new %}warn{% else %}ok{% endif %}"
+        <a class="readout__item readout__item--{% if feedback_new %}warn{% else %}ok{% endif %}"
            href="{% url 'console:feedback' %}">
-            <span class="metric__label">{% trans 'Новых обращений' %}</span>
-            <span class="metric__value">{{ feedback_new }}</span>
-            <span class="metric__note">{% blocktrans with total=feedback_total %}всего в системе {{ total }}{% endblocktrans %}</span>
+            <span class="readout__label">{% trans 'Новых обращений' %}</span>
+            <span class="readout__value">{{ feedback_new }}</span>
+            <span class="readout__note">{% blocktrans with total=feedback_total %}всего в системе {{ total }}{% endblocktrans %}</span>
         </a>
     {% else %}
-        <a class="metric metric--accent" href="{% url 'console:etl' %}">
-            <span class="metric__label">{% trans 'Записей в реестрах' %}</span>
-            <span class="metric__value">{{ records_total|spaced }}</span>
-            <span class="metric__note">{% blocktrans with loaded=etl.total_loaded %}загружено за всё время {{ loaded }}{% endblocktrans %}</span>
+        <a class="readout__item readout__item--accent" href="{% url 'console:etl' %}">
+            <span class="readout__label">{% trans 'Записей в реестрах' %}</span>
+            <span class="readout__value">{{ records_total|spaced }}</span>
+            <span class="readout__note">{% blocktrans with loaded=etl.total_loaded %}загружено за всё время {{ loaded }}{% endblocktrans %}</span>
         </a>
-        <a class="metric metric--{% if quarantine_open %}warn{% else %}ok{% endif %}"
+        <a class="readout__item readout__item--{% if quarantine_open %}warn{% else %}ok{% endif %}"
            href="{% url 'console:quarantine' %}">
-            <span class="metric__label">{% trans 'В карантине' %}</span>
-            <span class="metric__value">{{ quarantine_open }}</span>
-            <span class="metric__note">{% trans 'записей ожидают разбора' %}</span>
+            <span class="readout__label">{% trans 'В карантине' %}</span>
+            <span class="readout__value">{{ quarantine_open }}</span>
+            <span class="readout__note">{% trans 'записей ожидают разбора' %}</span>
         </a>
     {% endif %}
-    <a class="metric metric--{% if incidents_open %}alert{% else %}ok{% endif %}"
+    <a class="readout__item readout__item--{% if incidents_open %}alert{% else %}ok{% endif %}"
        href="{% url 'core:incident_list' %}?state=open">
-        <span class="metric__label">{% trans 'Открытых инцидентов' %}</span>
-        <span class="metric__value">{{ incidents_open }}</span>
+        <span class="readout__label">{% trans 'Открытых инцидентов' %}</span>
+        <span class="readout__value">{{ incidents_open }}</span>
     </a>
-    <div class="metric metric--{% if etl.failed_runs %}alert{% else %}ok{% endif %}">
-        <span class="metric__label">{% trans 'Успешность загрузок' %}</span>
-        <span class="metric__value">{{ etl.success_rate|spaced:1 }}<small> %</small></span>
-        <span class="metric__note">{% blocktrans with runs=etl.total_runs failed=etl.failed_runs %}запусков {{ runs }}, сбоев {{ failed }}{% endblocktrans %}</span>
+    <div class="readout__item readout__item--{% if etl.failed_runs %}alert{% else %}ok{% endif %}">
+        <span class="readout__label">{% trans 'Успешность загрузок' %}</span>
+        <span class="readout__value">{{ etl.success_rate|spaced:1 }}<small> %</small></span>
+        <span class="readout__note">{% blocktrans with runs=etl.total_runs failed=etl.failed_runs %}запусков {{ runs }}, сбоев {{ failed }}{% endblocktrans %}</span>
     </div>
 </div>
 

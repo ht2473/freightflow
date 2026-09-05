@@ -73,24 +73,24 @@
     </div>
 </form>
 
-<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Найдено событий' %}</span>
-        <span class="metric__value">{{ total_count }}</span>
+<div class="readout">
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Найдено событий' %}</span>
+        <span class="readout__value">{{ total_count }}</span>
     </div>
-    <div class="metric metric--alert">
-        <span class="metric__label">{% trans 'Открыто сейчас' %}</span>
-        <span class="metric__value">{{ statistics.open }}</span>
-        <span class="metric__note">за последние {{ statistics.days }} суток</span>
+    <div class="readout__item readout__item--alert">
+        <span class="readout__label">{% trans 'Открыто сейчас' %}</span>
+        <span class="readout__value">{{ statistics.open }}</span>
+        <span class="readout__note">за последние {{ statistics.days }} суток</span>
     </div>
-    <div class="metric metric--warn">
-        <span class="metric__label">{% trans 'Влияют на грузовой транспорт' %}</span>
-        <span class="metric__value">{{ statistics.cargo }}</span>
+    <div class="readout__item readout__item--warn">
+        <span class="readout__label">{% trans 'Влияют на грузовой транспорт' %}</span>
+        <span class="readout__value">{{ statistics.cargo }}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Всего за период' %}</span>
-        <span class="metric__value">{{ statistics.total }}</span>
-        <span class="metric__note">последние {{ statistics.days }} суток</span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Всего за период' %}</span>
+        <span class="readout__value">{{ statistics.total }}</span>
+        <span class="readout__note">последние {{ statistics.days }} суток</span>
     </div>
 </div>
 

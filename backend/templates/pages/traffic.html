@@ -24,29 +24,29 @@
     </div>
 </form>
 
-<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--{{ average|tone }}">
-        <span class="metric__label">{% trans 'Средняя загруженность' %}</span>
-        <span class="metric__value">{{ average|spaced:1 }}<small>/10</small></span>
-        <span class="metric__note">{{ average_label }}</span>
+<div class="readout">
+    <div class="readout__item readout__item--{{ average|tone }}">
+        <span class="readout__label">{% trans 'Средняя загруженность' %}</span>
+        <span class="readout__value">{{ average|spaced:1 }}<small>/10</small></span>
+        <span class="readout__note">{{ average_label }}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Участков в сводке' %}</span>
-        <span class="metric__value">{{ conditions|length }}</span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Участков в сводке' %}</span>
+        <span class="readout__value">{{ conditions|length }}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Час максимальной нагрузки' %}</span>
-        <span class="metric__value">
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Час максимальной нагрузки' %}</span>
+        <span class="readout__value">
             {% if peak %}{{ peak.hour }}:00{% else %}—{% endif %}
         </span>
-        <span class="metric__note">
+        <span class="readout__note">
             {% if peak %}средний балл {{ peak.avg|spaced:1 }}{% endif %}
         </span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Средняя скорость за неделю' %}</span>
-        <span class="metric__value">{{ weekly.avg_speed|spaced:0 }}<small>{% trans 'км/ч' %}</small></span>
-        <span class="metric__note">{{ weekly.samples|spaced }} замеров</span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Средняя скорость за неделю' %}</span>
+        <span class="readout__value">{{ weekly.avg_speed|spaced:0 }}<small>{% trans 'км/ч' %}</small></span>
+        <span class="readout__note">{{ weekly.samples|spaced }} замеров</span>
     </div>
 </div>
 

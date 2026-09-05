@@ -1,5 +1,5 @@
 {% load static i18n humanize %}<!DOCTYPE html>
-<html lang="{{ LANGUAGE_CODE|default:'ru' }}" data-theme="dark" data-theme-default="dark"
+<html lang="{{ LANGUAGE_CODE|default:'ru' }}" data-theme="light" data-theme-default="light"
       data-theme-label-dark="{% trans 'Оформление: тёмное' %}"
       data-theme-label-light="{% trans 'Оформление: светлое' %}"
       data-theme-label-auto="{% trans 'Оформление: как в системе' %}">
@@ -9,7 +9,8 @@
     <title>{% block title %}{{ page_title }}{% endblock %} — {{ PROJECT_NAME }}</title>
     <meta name="description" content="{% block description %}{{ page_lead|default:'Информационная система по логистической инфраструктуре города Москвы' }}{% endblock %}">
     <meta name="author" content="{{ PROJECT_AUTHOR }}">
-    <meta name="theme-color" content="#0e1216">
+    <meta name="theme-color" content="#eceeed">
+    <meta name="theme-color" content="#0f1417" media="(prefers-color-scheme: dark)">
 
     {# Начертания, которыми набрана русскоязычная страница, запрашиваются      #}
     {# заранее: объявление @font-face само по себе загрузку не начинает —      #}
@@ -37,7 +38,7 @@
                 choice = null;
             }
             if (choice !== "dark" && choice !== "light" && choice !== "auto") {
-                choice = root.dataset.themeDefault || "dark";
+                choice = root.dataset.themeDefault || "light";
             }
             var applied = choice;
             if (choice === "auto") {
@@ -87,8 +88,8 @@
             {# совпадает с текущим. Иконка привязана к выбору пользователя      #}
             {# (data-theme-choice), а не к применённому оформлению.             #}
             <button class="icon-button" type="button" data-action="theme"
-                    aria-label="{% trans 'Оформление: тёмное' %}"
-                    title="{% trans 'Оформление: тёмное' %}">
+                    aria-label="{% trans 'Оформление: светлое' %}"
+                    title="{% trans 'Оформление: светлое' %}">
                 <svg data-theme-icon="dark" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                      stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
                      aria-hidden="true">

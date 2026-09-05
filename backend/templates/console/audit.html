@@ -41,11 +41,11 @@
     </div>
 </form>
 
-<div class="grid grid--2" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Событий за период' %}</span>
-        <span class="metric__value">{{ total_count|spaced }}</span>
-        <span class="metric__note">последние {{ filters.days }} суток</span>
+<div class="readout">
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Событий за период' %}</span>
+        <span class="readout__value">{{ total_count|spaced }}</span>
+        <span class="readout__note">последние {{ filters.days }} суток</span>
     </div>
     <div class="card">
         <p class="eyebrow" style="margin-bottom:var(--sp-3)">{% trans 'Распределение по типам' %}</p>

@@ -42,36 +42,36 @@
 </form>
 
 {% if result.available %}
-    <div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-        <div class="metric metric--accent">
-            <span class="metric__label">{% trans 'Модель ряда' %}</span>
-            <span class="metric__value" style="font-size:var(--fs-md);line-height:1.4">
+    <div class="readout">
+        <div class="readout__item readout__item--accent">
+            <span class="readout__label">{% trans 'Модель ряда' %}</span>
+            <span class="readout__value" style="font-size:var(--fs-md);line-height:1.4">
                 {{ result.model.title }}
             </span>
-            <span class="metric__note">{{ result.model.note }}</span>
+            <span class="readout__note">{{ result.model.note }}</span>
         </div>
-        <div class="metric metric--{% if result.beats_baseline %}ok{% else %}warn{% endif %}">
-            <span class="metric__label">{% trans 'Точнее наивной модели' %}</span>
-            <span class="metric__value">
+        <div class="readout__item readout__item--{% if result.beats_baseline %}ok{% else %}warn{% endif %}">
+            <span class="readout__label">{% trans 'Точнее наивной модели' %}</span>
+            <span class="readout__value">
                 {% if result.gain != None %}{% if result.gain > 0 %}+{% endif %}{{ result.gain|spaced:1 }}<small> %</small>
                 {% else %}—{% endif %}
             </span>
-            <span class="metric__note">
+            <span class="readout__note">
                 {% if result.beats_baseline %}{% trans 'превосходит продолжение последним значением' %}
                 {% else %}{% trans 'продолжение последним значением не хуже' %}{% endif %}
             </span>
         </div>
-        <div class="metric metric--{% if result.mape < 10 %}ok{% elif result.mape < 20 %}warn{% else %}alert{% endif %}">
-            <span class="metric__label">{% trans 'Ошибка на отложенной выборке' %}</span>
-            <span class="metric__value">{{ result.mape|spaced:1 }}<small> %</small></span>
-            <span class="metric__note">
+        <div class="readout__item readout__item--{% if result.mape < 10 %}ok{% elif result.mape < 20 %}warn{% else %}alert{% endif %}">
+            <span class="readout__label">{% trans 'Ошибка на отложенной выборке' %}</span>
+            <span class="readout__value">{{ result.mape|spaced:1 }}<small> %</small></span>
+            <span class="readout__note">
                 {% trans 'проверено на' %} {{ result.holdout }}
                 {{ result.holdout|plural:"наблюдении,наблюдениях,наблюдениях" }}</span>
         </div>
-        <div class="metric">
-            <span class="metric__label">{% trans 'Наблюдений в ряду' %}</span>
-            <span class="metric__value">{{ result.history|length }}</span>
-            <span class="metric__note">
+        <div class="readout__item">
+            <span class="readout__label">{% trans 'Наблюдений в ряду' %}</span>
+            <span class="readout__value">{{ result.history|length }}</span>
+            <span class="readout__note">
                 {% trans 'прогноз на' %} {{ result.forecast|length }}
                 {{ result.forecast|length|plural:"шаг,шага,шагов" }} {% trans 'ряда' %}</span>
         </div>

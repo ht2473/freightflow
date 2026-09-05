@@ -2,22 +2,22 @@
 {% load ff i18n %}
 
 {% block content %}
-<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Всего загрузок' %}</span>
-        <span class="metric__value">{{ aggregates.total|default:0 }}</span>
+<div class="readout">
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Всего загрузок' %}</span>
+        <span class="readout__value">{{ aggregates.total|default:0 }}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Загружено записей' %}</span>
-        <span class="metric__value">{{ aggregates.loaded|spaced }}</span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Загружено записей' %}</span>
+        <span class="readout__value">{{ aggregates.loaded|spaced }}</span>
     </div>
-    <div class="metric metric--{% if aggregates.errors %}warn{% else %}ok{% endif %}">
-        <span class="metric__label">{% trans 'Отклонено записей' %}</span>
-        <span class="metric__value">{{ aggregates.errors|spaced }}</span>
+    <div class="readout__item readout__item--{% if aggregates.errors %}warn{% else %}ok{% endif %}">
+        <span class="readout__label">{% trans 'Отклонено записей' %}</span>
+        <span class="readout__value">{{ aggregates.errors|spaced }}</span>
     </div>
-    <div class="metric metric--{% if source.is_active %}ok{% else %}muted{% endif %}">
-        <span class="metric__label">{% trans 'Состояние источника' %}</span>
-        <span class="metric__value" style="font-size:var(--fs-lg)">
+    <div class="readout__item readout__item--{% if source.is_active %}ok{% else %}muted{% endif %}">
+        <span class="readout__label">{% trans 'Состояние источника' %}</span>
+        <span class="readout__value" style="font-size:var(--fs-lg)">
             {% if source.is_active %}Активен{% else %}Отключён{% endif %}
         </span>
     </div>

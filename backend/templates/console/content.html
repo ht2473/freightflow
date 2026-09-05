@@ -4,23 +4,23 @@
 {% block content %}
 {% include "partials/_tabs.html" %}
 
-<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--ok">
-        <span class="metric__label">{% trans 'Опубликовано' %}</span>
-        <span class="metric__value">{{ published }}</span>
+<div class="readout">
+    <div class="readout__item readout__item--ok">
+        <span class="readout__label">{% trans 'Опубликовано' %}</span>
+        <span class="readout__value">{{ published }}</span>
     </div>
-    <div class="metric metric--warn">
-        <span class="metric__label">{% trans 'Черновиков' %}</span>
-        <span class="metric__value">{{ drafts }}</span>
+    <div class="readout__item readout__item--warn">
+        <span class="readout__label">{% trans 'Черновиков' %}</span>
+        <span class="readout__value">{{ drafts }}</span>
     </div>
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Просмотров всего' %}</span>
-        <span class="metric__value">{{ total_views|spaced }}</span>
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Просмотров всего' %}</span>
+        <span class="readout__value">{{ total_views|spaced }}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Рубрик' %}</span>
-        <span class="metric__value">{{ categories|length }}</span>
-        <span class="metric__note">
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Рубрик' %}</span>
+        <span class="readout__value">{{ categories|length }}</span>
+        <span class="readout__note">
             <a href="/django-admin/content/article/add/">{% trans 'Создать материал →' %}</a>
         </span>
     </div>

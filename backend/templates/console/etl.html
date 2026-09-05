@@ -116,23 +116,23 @@
         </div>
     </div>
 
-    <div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-        <div class="metric metric--accent">
-            <span class="metric__label">{% trans 'Запусков всего' %}</span>
-            <span class="metric__value">{{ health.total_runs|spaced }}</span>
+    <div class="readout">
+        <div class="readout__item readout__item--accent">
+            <span class="readout__label">{% trans 'Запусков всего' %}</span>
+            <span class="readout__value">{{ health.total_runs|spaced }}</span>
         </div>
-        <div class="metric metric--{% if health.failed_runs %}alert{% else %}ok{% endif %}">
-            <span class="metric__label">{% trans 'Доля успешных' %}</span>
-            <span class="metric__value">{{ health.success_rate|spaced:1 }}<small> %</small></span>
-            <span class="metric__note">сбоев: {{ health.failed_runs }}</span>
+        <div class="readout__item readout__item--{% if health.failed_runs %}alert{% else %}ok{% endif %}">
+            <span class="readout__label">{% trans 'Доля успешных' %}</span>
+            <span class="readout__value">{{ health.success_rate|spaced:1 }}<small> %</small></span>
+            <span class="readout__note">сбоев: {{ health.failed_runs }}</span>
         </div>
-        <div class="metric">
-            <span class="metric__label">{% trans 'Записано' %}</span>
-            <span class="metric__value">{{ health.total_loaded|spaced }}</span>
+        <div class="readout__item">
+            <span class="readout__label">{% trans 'Записано' %}</span>
+            <span class="readout__value">{{ health.total_loaded|spaced }}</span>
         </div>
-        <div class="metric metric--{% if health.total_errors %}warn{% else %}ok{% endif %}">
-            <span class="metric__label">{% trans 'Отклонено записей' %}</span>
-            <span class="metric__value">{{ health.total_errors|spaced }}</span>
+        <div class="readout__item readout__item--{% if health.total_errors %}warn{% else %}ok{% endif %}">
+            <span class="readout__label">{% trans 'Отклонено записей' %}</span>
+            <span class="readout__value">{{ health.total_errors|spaced }}</span>
         </div>
     </div>
 

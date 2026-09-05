@@ -61,24 +61,24 @@
 {# Ключевые показатели                                                     #}
 {# ---------------------------------------------------------------------- #}
 <section class="section">
-    <div class="grid grid--5">
-        <a class="metric metric--accent" href="{% url 'core:object_list' %}">
-            <span class="metric__label">{% trans 'Объектов инфраструктуры' %}</span>
-            <span class="metric__value">{{ summary.object_count|spaced }}</span>
-            <span class="metric__note">в {{ summary.district_count }} округах города</span>
+    <div class="readout">
+        <a class="readout__item readout__item--accent" href="{% url 'core:object_list' %}">
+            <span class="readout__label">{% trans 'Объектов инфраструктуры' %}</span>
+            <span class="readout__value">{{ summary.object_count|spaced }}</span>
+            <span class="readout__note">в {{ summary.district_count }} округах города</span>
         </a>
 
-        <a class="metric metric--accent" href="{% url 'core:district_list' %}">
-            <span class="metric__label">{% trans 'Площадь территорий' %}</span>
-            <span class="metric__value">
+        <a class="readout__item readout__item--accent" href="{% url 'core:district_list' %}">
+            <span class="readout__label">{% trans 'Площадь территорий' %}</span>
+            <span class="readout__value">
                 {{ summary.area_sq_m|divide:1000000|spaced:1 }}<small> км²</small></span>
-            <span class="metric__note">{% trans 'по размеченным контурам объектов' %}</span>
+            <span class="readout__note">{% trans 'по размеченным контурам объектов' %}</span>
         </a>
 
-        <a class="metric metric--accent" href="{% url 'core:flow_overview' %}">
-            <span class="metric__label">{% trans 'Перевезено грузов' %}</span>
-            <span class="metric__value">{{ summary.volume_tons|tons }}</span>
-            <span class="metric__note">
+        <a class="readout__item readout__item--accent" href="{% url 'core:flow_overview' %}">
+            <span class="readout__label">{% trans 'Перевезено грузов' %}</span>
+            <span class="readout__value">{{ summary.volume_tons|tons }}</span>
+            <span class="readout__note">
                 {% if summary.volume_period %}
                     {% if summary.volume_period_type == 'year' %}
                         {% blocktrans with period=summary.volume_period|date:"Y" %}Москва, {{ period }} год{% endblocktrans %}
@@ -89,19 +89,19 @@
             </span>
         </a>
 
-        <a class="metric metric--{{ summary.congestion_avg|tone }}" href="{% url 'core:traffic' %}">
-            <span class="metric__label">{% trans 'Загруженность сети' %}</span>
-            <span class="metric__value">
+        <a class="readout__item readout__item--{{ summary.congestion_avg|tone }}" href="{% url 'core:traffic' %}">
+            <span class="readout__label">{% trans 'Загруженность сети' %}</span>
+            <span class="readout__value">
                 {{ summary.congestion_avg|spaced:1 }}<small>/10</small>
             </span>
-            <span class="metric__note">{{ summary.congestion_label }}</span>
+            <span class="readout__note">{{ summary.congestion_label }}</span>
         </a>
 
-        <a class="metric metric--{% if summary.incidents_open %}alert{% else %}ok{% endif %}"
+        <a class="readout__item readout__item--{% if summary.incidents_open %}alert{% else %}ok{% endif %}"
            href="{% url 'core:incident_list' %}?state=open">
-            <span class="metric__label">{% trans 'Открытых инцидентов' %}</span>
-            <span class="metric__value">{{ summary.incidents_open }}</span>
-            <span class="metric__note">
+            <span class="readout__label">{% trans 'Открытых инцидентов' %}</span>
+            <span class="readout__value">{{ summary.incidents_open }}</span>
+            <span class="readout__note">
                 {% blocktrans with count=summary.incidents_cargo %}{{ count }} влияют на грузовой транспорт{% endblocktrans %}
             </span>
         </a>

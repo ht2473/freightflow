@@ -5,26 +5,26 @@
 {% include "partials/_tabs.html" %}
 
 <section class="section">
-    <div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-        <a class="metric metric--accent" href="?state=pending">
-            <span class="metric__label">{% trans 'Не осмотрено' %}</span>
-            <span class="metric__value">{{ summary.pending|spaced }}</span>
-            <span class="metric__note">{% blocktrans with total=summary.total %}из {{ total }} записей реестра{% endblocktrans %}</span>
+    <div class="readout">
+        <a class="readout__item readout__item--accent" href="?state=pending">
+            <span class="readout__label">{% trans 'Не осмотрено' %}</span>
+            <span class="readout__value">{{ summary.pending|spaced }}</span>
+            <span class="readout__note">{% blocktrans with total=summary.total %}из {{ total }} записей реестра{% endblocktrans %}</span>
         </a>
-        <a class="metric metric--ok" href="?state=confirmed">
-            <span class="metric__label">{% trans 'Подтверждено' %}</span>
-            <span class="metric__value">{{ summary.confirmed|spaced }}</span>
+        <a class="readout__item readout__item--ok" href="?state=confirmed">
+            <span class="readout__label">{% trans 'Подтверждено' %}</span>
+            <span class="readout__value">{{ summary.confirmed|spaced }}</span>
         </a>
-        <a class="metric metric--{% if summary.disputed %}warn{% else %}ok{% endif %}"
+        <a class="readout__item readout__item--{% if summary.disputed %}warn{% else %}ok{% endif %}"
            href="?state=disputed">
-            <span class="metric__label">{% trans 'Требует уточнения' %}</span>
-            <span class="metric__value">{{ summary.disputed|spaced }}</span>
+            <span class="readout__label">{% trans 'Требует уточнения' %}</span>
+            <span class="readout__value">{{ summary.disputed|spaced }}</span>
         </a>
-        <a class="metric metric--{% if summary.stale %}warn{% else %}ok{% endif %}"
+        <a class="readout__item readout__item--{% if summary.stale %}warn{% else %}ok{% endif %}"
            href="?state=stale">
-            <span class="metric__label">{% trans 'Осмотр устарел' %}</span>
-            <span class="metric__value">{{ summary.stale|spaced }}</span>
-            <span class="metric__note">{% trans 'источник обновил запись позже' %}</span>
+            <span class="readout__label">{% trans 'Осмотр устарел' %}</span>
+            <span class="readout__value">{{ summary.stale|spaced }}</span>
+            <span class="readout__note">{% trans 'источник обновил запись позже' %}</span>
         </a>
     </div>
 </section>

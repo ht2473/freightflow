@@ -32,32 +32,32 @@
 </form>
 
 {% if result.available %}
-    <div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-        <div class="metric metric--{% if result.subject.delta > 0 %}alert{% elif result.subject.delta < 0 %}ok{% else %}accent{% endif %}">
-            <span class="metric__label">{% trans 'Индекс выбранного округа' %}</span>
-            <span class="metric__value">
+    <div class="readout">
+        <div class="readout__item readout__item--{% if result.subject.delta > 0 %}alert{% elif result.subject.delta < 0 %}ok{% else %}accent{% endif %}">
+            <span class="readout__label">{% trans 'Индекс выбранного округа' %}</span>
+            <span class="readout__value">
                 {% if result.subject.delta > 0 %}+{% endif %}{{ result.subject.delta|spaced:1 }}
             </span>
-            <span class="metric__note">
+            <span class="readout__note">
                 {{ result.subject.base_score|spaced:1 }} → {{ result.subject.score|spaced:1 }}
             </span>
         </div>
-        <div class="metric metric--alert">
-            <span class="metric__label">{% trans 'Округов с ростом нагрузки' %}</span>
-            <span class="metric__value">{{ result.worsened }}</span>
-            <span class="metric__note">{% trans 'нормирование относительное' %}</span>
+        <div class="readout__item readout__item--alert">
+            <span class="readout__label">{% trans 'Округов с ростом нагрузки' %}</span>
+            <span class="readout__value">{{ result.worsened }}</span>
+            <span class="readout__note">{% trans 'нормирование относительное' %}</span>
         </div>
-        <div class="metric metric--ok">
-            <span class="metric__label">{% trans 'Округов со снижением' %}</span>
-            <span class="metric__value">{{ result.improved }}</span>
-            <span class="metric__note">{% trans 'сдвиг шкалы затрагивает всех' %}</span>
+        <div class="readout__item readout__item--ok">
+            <span class="readout__label">{% trans 'Округов со снижением' %}</span>
+            <span class="readout__value">{{ result.improved }}</span>
+            <span class="readout__note">{% trans 'сдвиг шкалы затрагивает всех' %}</span>
         </div>
-        <div class="metric metric--accent">
-            <span class="metric__label">{{ result.district.short_name }}</span>
-            <span class="metric__value">
+        <div class="readout__item readout__item--accent">
+            <span class="readout__label">{{ result.district.short_name }}</span>
+            <span class="readout__value">
                 {{ result.subject.base_rank }} → {{ result.subject.rank }}
             </span>
-            <span class="metric__note">{% trans 'место в ранжировании' %}</span>
+            <span class="readout__note">{% trans 'место в ранжировании' %}</span>
         </div>
     </div>
 

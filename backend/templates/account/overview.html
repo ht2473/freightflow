@@ -4,28 +4,28 @@
 {% block content %}
 {% include "partials/_tabs.html" %}
 
-<div class="grid grid--5" style="margin-bottom:var(--sp-5)">
-    <a class="metric metric--accent" href="{% url 'accounts:favorites' %}">
-        <span class="metric__label">{% trans 'Избранное' %}</span>
-        <span class="metric__value">{{ counters.favorites }}</span>
+<div class="readout">
+    <a class="readout__item readout__item--accent" href="{% url 'accounts:favorites' %}">
+        <span class="readout__label">{% trans 'Избранное' %}</span>
+        <span class="readout__value">{{ counters.favorites }}</span>
     </a>
-    <a class="metric metric--accent" href="{% url 'accounts:saved_views' %}">
-        <span class="metric__label">{% trans 'Сохранённые виды' %}</span>
-        <span class="metric__value">{{ counters.views }}</span>
+    <a class="readout__item readout__item--accent" href="{% url 'accounts:saved_views' %}">
+        <span class="readout__label">{% trans 'Сохранённые виды' %}</span>
+        <span class="readout__value">{{ counters.views }}</span>
     </a>
-    <a class="metric metric--accent" href="{% url 'accounts:comparisons' %}">
-        <span class="metric__label">{% trans 'Наборы сравнения' %}</span>
-        <span class="metric__value">{{ counters.comparisons }}</span>
+    <a class="readout__item readout__item--accent" href="{% url 'accounts:comparisons' %}">
+        <span class="readout__label">{% trans 'Наборы сравнения' %}</span>
+        <span class="readout__value">{{ counters.comparisons }}</span>
     </a>
-    <a class="metric metric--accent" href="{% url 'accounts:exports' %}">
-        <span class="metric__label">{% trans 'Выгрузки' %}</span>
-        <span class="metric__value">{{ counters.exports }}</span>
+    <a class="readout__item readout__item--accent" href="{% url 'accounts:exports' %}">
+        <span class="readout__label">{% trans 'Выгрузки' %}</span>
+        <span class="readout__value">{{ counters.exports }}</span>
     </a>
-    <a class="metric metric--{% if unread %}warn{% else %}accent{% endif %}"
+    <a class="readout__item readout__item--{% if unread %}warn{% else %}accent{% endif %}"
        href="{% url 'accounts:notifications' %}">
-        <span class="metric__label">{% trans 'Непрочитанные' %}</span>
-        <span class="metric__value">{{ unread }}</span>
-        <span class="metric__note">{% blocktrans with count=counters.subscriptions %}подписок: {{ count }}{% endblocktrans %}</span>
+        <span class="readout__label">{% trans 'Непрочитанные' %}</span>
+        <span class="readout__value">{{ unread }}</span>
+        <span class="readout__note">{% blocktrans with count=counters.subscriptions %}подписок: {{ count }}{% endblocktrans %}</span>
     </a>
 </div>
 

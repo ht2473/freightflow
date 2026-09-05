@@ -5,19 +5,19 @@
 {% include "partials/_tabs.html" %}
 
 <section class="section">
-    <div class="grid grid--3" style="margin-bottom:var(--sp-5)">
-        <div class="metric metric--{% if open_total %}warn{% else %}ok{% endif %}">
-            <span class="metric__label">{% trans 'В очереди на разбор' %}</span>
-            <span class="metric__value">{{ open_total|spaced }}</span>
+    <div class="readout">
+        <div class="readout__item readout__item--{% if open_total %}warn{% else %}ok{% endif %}">
+            <span class="readout__label">{% trans 'В очереди на разбор' %}</span>
+            <span class="readout__value">{{ open_total|spaced }}</span>
         </div>
-        <div class="metric">
-            <span class="metric__label">{% trans 'Разобрано' %}</span>
-            <span class="metric__value">{{ reviewed_total|spaced }}</span>
+        <div class="readout__item">
+            <span class="readout__label">{% trans 'Разобрано' %}</span>
+            <span class="readout__value">{{ reviewed_total|spaced }}</span>
         </div>
-        <div class="metric metric--accent">
-            <span class="metric__label">{% trans 'Проверок сработало' %}</span>
-            <span class="metric__value">{{ by_check|length }}</span>
-            <span class="metric__note">{% trans 'различных причин отклонения' %}</span>
+        <div class="readout__item readout__item--accent">
+            <span class="readout__label">{% trans 'Проверок сработало' %}</span>
+            <span class="readout__value">{{ by_check|length }}</span>
+            <span class="readout__note">{% trans 'различных причин отклонения' %}</span>
         </div>
     </div>
 </section>

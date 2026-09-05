@@ -2,24 +2,24 @@
 {% load ff i18n %}
 
 {% block content %}
-<div class="grid grid--3" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Базовый адрес' %}</span>
-        <span class="metric__value mono" style="font-size:var(--fs-base)" id="api-base">{{ base_url }}</span>
-        <span class="metric__note">
+<div class="readout">
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Базовый адрес' %}</span>
+        <span class="readout__value readout__value--sm mono" id="api-base">{{ base_url }}</span>
+        <span class="readout__note">
             <button class="button button--sm" type="button" data-copy="#api-base">{% trans 'Скопировать' %}</button>
         </span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Спецификация' %}</span>
-        <span class="metric__value" style="font-size:var(--fs-md)">
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Спецификация' %}</span>
+        <span class="readout__value" style="font-size:var(--fs-md)">
             <a href="/api/v1/schema/">OpenAPI 3 →</a>
         </span>
-        <span class="metric__note">{% trans 'машиночитаемое описание всех методов' %}</span>
+        <span class="readout__note">{% trans 'машиночитаемое описание всех методов' %}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Интерактивная документация' %}</span>
-        <span class="metric__value" style="font-size:var(--fs-md)">
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Интерактивная документация' %}</span>
+        <span class="readout__value" style="font-size:var(--fs-md)">
             <a href="/api/v1/docs/">Swagger UI →</a> · <a href="/api/v1/redoc/">ReDoc →</a>
         </span>
     </div>

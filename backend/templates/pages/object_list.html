@@ -74,23 +74,23 @@
     </div>
 </form>
 
-<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Найдено объектов' %}</span>
-        <span class="metric__value">{{ total_count|spaced }}</span>
+<div class="readout">
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Найдено объектов' %}</span>
+        <span class="readout__value">{{ total_count|spaced }}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Суммарная мощность' %}</span>
-        <span class="metric__value">{{ total_capacity|tons }}</span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Суммарная мощность' %}</span>
+        <span class="readout__value">{{ total_capacity|tons }}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Суммарная площадь' %}</span>
-        <span class="metric__value">{{ total_area|spaced }}<small> м²</small></span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Суммарная площадь' %}</span>
+        <span class="readout__value">{{ total_area|spaced }}<small> м²</small></span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Показано на странице' %}</span>
-        <span class="metric__value">{{ page_obj.object_list|length }}</span>
-        <span class="metric__note">{% blocktrans with page=page_obj.number total=page_obj.paginator.num_pages %}страница {{ page }} из {{ total }}{% endblocktrans %}</span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Показано на странице' %}</span>
+        <span class="readout__value">{{ page_obj.object_list|length }}</span>
+        <span class="readout__note">{% blocktrans with page=page_obj.number total=page_obj.paginator.num_pages %}страница {{ page }} из {{ total }}{% endblocktrans %}</span>
     </div>
 </div>
 

@@ -101,31 +101,31 @@
 
 {% if coverage.available %}
 <section class="section">
-    <div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-        <div class="metric metric--{% if coverage.share >= 75 %}ok{% elif coverage.share >= 50 %}warn{% else %}alert{% endif %}">
-            <span class="metric__label">{% trans 'Территория в пределах радиуса' %}</span>
-            <span class="metric__value">{{ coverage.share|spaced:1 }}<small> %</small></span>
-            <span class="metric__note">
+    <div class="readout">
+        <div class="readout__item readout__item--{% if coverage.share >= 75 %}ok{% elif coverage.share >= 50 %}warn{% else %}alert{% endif %}">
+            <span class="readout__label">{% trans 'Территория в пределах радиуса' %}</span>
+            <span class="readout__value">{{ coverage.share|spaced:1 }}<small> %</small></span>
+            <span class="readout__note">
                 {{ coverage.radius_km|spaced:0 }} км {% trans 'до ближайшего объекта' %}
             </span>
         </div>
-        <div class="metric">
-            <span class="metric__label">{% trans 'Среднее расстояние' %}</span>
-            <span class="metric__value">{{ coverage.mean_distance|spaced:2 }}<small> км</small></span>
-            <span class="metric__note">{% trans 'по прямой, от центра ячейки' %}</span>
+        <div class="readout__item">
+            <span class="readout__label">{% trans 'Среднее расстояние' %}</span>
+            <span class="readout__value">{{ coverage.mean_distance|spaced:2 }}<small> км</small></span>
+            <span class="readout__note">{% trans 'по прямой, от центра ячейки' %}</span>
         </div>
-        <div class="metric metric--alert">
-            <span class="metric__label">{% trans 'Вне радиуса' %}</span>
-            <span class="metric__value">{{ coverage.gap_area_sq_km|spaced:0 }}<small> км²</small></span>
-            <span class="metric__note">
+        <div class="readout__item readout__item--alert">
+            <span class="readout__label">{% trans 'Вне радиуса' %}</span>
+            <span class="readout__value">{{ coverage.gap_area_sq_km|spaced:0 }}<small> км²</small></span>
+            <span class="readout__note">
                 {{ coverage.gap_count }} {{ coverage.gap_count|plural:"ячейка,ячейки,ячеек" }}
                 {% trans 'сетки' %}
             </span>
         </div>
-        <div class="metric">
-            <span class="metric__label">{% trans 'Разрешение сетки' %}</span>
-            <span class="metric__value">{{ coverage.step_km|spaced:0 }}<small> км</small></span>
-            <span class="metric__note">
+        <div class="readout__item">
+            <span class="readout__label">{% trans 'Разрешение сетки' %}</span>
+            <span class="readout__value">{{ coverage.step_km|spaced:0 }}<small> км</small></span>
+            <span class="readout__note">
                 {{ coverage.cells }} {{ coverage.cells|plural:"ячейка,ячейки,ячеек" }},
                 {{ coverage.area_sq_km|spaced:0 }} км²
             </span>

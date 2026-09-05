@@ -22,16 +22,16 @@
 </form>
 
 {% if result.available %}
-    <div class="grid grid--2" style="margin-bottom:var(--sp-5)">
-        <div class="metric metric--alert">
-            <span class="metric__label">{% trans 'Наибольший индекс' %}</span>
-            <span class="metric__value">{{ result.best.district.short_name }} · {{ result.best.score|spaced:1 }}</span>
-            <span class="metric__note">{% trans 'из 100 по шкале индекса' %}</span>
+    <div class="readout">
+        <div class="readout__item readout__item--alert">
+            <span class="readout__label">{% trans 'Наибольший индекс' %}</span>
+            <span class="readout__value">{{ result.best.district.short_name }} · {{ result.best.score|spaced:1 }}</span>
+            <span class="readout__note">{% trans 'из 100 по шкале индекса' %}</span>
         </div>
-        <div class="metric metric--ok">
-            <span class="metric__label">{% trans 'Наименьший индекс' %}</span>
-            <span class="metric__value">{{ result.worst.district.short_name }} · {{ result.worst.score|spaced:1 }}</span>
-            <span class="metric__note">{% trans 'из 100 по шкале индекса' %}</span>
+        <div class="readout__item readout__item--ok">
+            <span class="readout__label">{% trans 'Наименьший индекс' %}</span>
+            <span class="readout__value">{{ result.worst.district.short_name }} · {{ result.worst.score|spaced:1 }}</span>
+            <span class="readout__note">{% trans 'из 100 по шкале индекса' %}</span>
         </div>
     </div>
 

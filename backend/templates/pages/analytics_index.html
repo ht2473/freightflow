@@ -3,26 +3,26 @@
 
 {% block content %}
 {% if summary.count %}
-<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--alert">
-        <span class="metric__label">{% trans 'Наибольшая нагрузка' %}</span>
-        <span class="metric__value">{{ summary.max.district.short_name }}</span>
-        <span class="metric__note">индекс {{ summary.max.score|spaced:1 }} из 100</span>
+<div class="readout">
+    <div class="readout__item readout__item--alert">
+        <span class="readout__label">{% trans 'Наибольшая нагрузка' %}</span>
+        <span class="readout__value">{{ summary.max.district.short_name }}</span>
+        <span class="readout__note">индекс {{ summary.max.score|spaced:1 }} из 100</span>
     </div>
-    <div class="metric metric--ok">
-        <span class="metric__label">{% trans 'Наименьшая нагрузка' %}</span>
-        <span class="metric__value">{{ summary.min.district.short_name }}</span>
-        <span class="metric__note">индекс {{ summary.min.score|spaced:1 }}</span>
+    <div class="readout__item readout__item--ok">
+        <span class="readout__label">{% trans 'Наименьшая нагрузка' %}</span>
+        <span class="readout__value">{{ summary.min.district.short_name }}</span>
+        <span class="readout__note">индекс {{ summary.min.score|spaced:1 }}</span>
     </div>
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Среднее по городу' %}</span>
-        <span class="metric__value">{{ summary.mean|spaced:1 }}</span>
-        <span class="metric__note">размах {{ summary.spread|spaced:1 }} балла</span>
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Среднее по городу' %}</span>
+        <span class="readout__value">{{ summary.mean|spaced:1 }}</span>
+        <span class="readout__note">размах {{ summary.spread|spaced:1 }} балла</span>
     </div>
-    <div class="metric metric--{% if summary.variation > 30 %}warn{% else %}ok{% endif %}">
-        <span class="metric__label">{% trans 'Коэффициент вариации' %}</span>
-        <span class="metric__value">{{ summary.variation|spaced:1 }}<small> %</small></span>
-        <span class="metric__note">
+    <div class="readout__item readout__item--{% if summary.variation > 30 %}warn{% else %}ok{% endif %}">
+        <span class="readout__label">{% trans 'Коэффициент вариации' %}</span>
+        <span class="readout__value">{{ summary.variation|spaced:1 }}<small> %</small></span>
+        <span class="readout__note">
             {% if summary.variation > 30 %}выраженная поляризация округов
             {% else %}округа относительно однородны{% endif %}
         </span>

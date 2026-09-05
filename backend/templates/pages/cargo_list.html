@@ -2,20 +2,20 @@
 {% load ff i18n %}
 
 {% block content %}
-<div class="grid grid--3" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Категорий в классификаторе' %}</span>
-        <span class="metric__value">{{ categories|length }}</span>
+<div class="readout">
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Категорий в классификаторе' %}</span>
+        <span class="readout__value">{{ categories|length }}</span>
     </div>
-    <div class="metric metric--warn">
-        <span class="metric__label">{% trans 'Опасных грузов' %}</span>
-        <span class="metric__value">{{ hazardous_count }}</span>
-        <span class="metric__note">{% trans 'требуют согласования маршрута и времени движения' %}</span>
+    <div class="readout__item readout__item--warn">
+        <span class="readout__label">{% trans 'Опасных грузов' %}</span>
+        <span class="readout__value">{{ hazardous_count }}</span>
+        <span class="readout__note">{% trans 'требуют согласования маршрута и времени движения' %}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Классификация' %}</span>
-        <span class="metric__value" style="font-size:var(--fs-md)">{% trans 'ДОПОГ / ADR' %}</span>
-        <span class="metric__note">{% trans 'классы опасности от 1 до 9' %}</span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Классификация' %}</span>
+        <span class="readout__value" style="font-size:var(--fs-md)">{% trans 'ДОПОГ / ADR' %}</span>
+        <span class="readout__note">{% trans 'классы опасности от 1 до 9' %}</span>
     </div>
 </div>
 

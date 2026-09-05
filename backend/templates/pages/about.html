@@ -2,23 +2,23 @@
 {% load ff i18n %}
 
 {% block content %}
-<div class="grid grid--4" style="margin-bottom:var(--sp-6)">
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Объектов в системе' %}</span>
-        <span class="metric__value">{{ summary.object_count|spaced }}</span>
+<div class="readout">
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Объектов в системе' %}</span>
+        <span class="readout__value">{{ summary.object_count|spaced }}</span>
     </div>
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Участков сети' %}</span>
-        <span class="metric__value">{{ summary.road_count }}</span>
-        <span class="metric__note">{% blocktrans with km=summary.road_length_km|spaced:1 %}{{ km }} км под наблюдением{% endblocktrans %}</span>
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Участков сети' %}</span>
+        <span class="readout__value">{{ summary.road_count }}</span>
+        <span class="readout__note">{% blocktrans with km=summary.road_length_km|spaced:1 %}{{ km }} км под наблюдением{% endblocktrans %}</span>
     </div>
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Грузовых маршрутов' %}</span>
-        <span class="metric__value">{{ summary.route_count }}</span>
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Грузовых маршрутов' %}</span>
+        <span class="readout__value">{{ summary.route_count }}</span>
     </div>
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Административных округов' %}</span>
-        <span class="metric__value">{{ summary.district_count }}</span>
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Административных округов' %}</span>
+        <span class="readout__value">{{ summary.district_count }}</span>
     </div>
 </div>
 

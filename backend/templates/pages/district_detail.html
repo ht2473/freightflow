@@ -2,26 +2,26 @@
 {% load ff i18n %}
 
 {% block content %}
-<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Объектов инфраструктуры' %}</span>
-        <span class="metric__value">{{ profile.object_count|default:0 }}</span>
-        <span class="metric__note">мощность {{ profile.capacity_tons|tons }}</span>
+<div class="readout">
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Объектов инфраструктуры' %}</span>
+        <span class="readout__value">{{ profile.object_count|default:0 }}</span>
+        <span class="readout__note">мощность {{ profile.capacity_tons|tons }}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Грузопоток за период' %}</span>
-        <span class="metric__value">{{ profile.volume_tons|tons }}</span>
-        <span class="metric__note">{{ profile.vehicle_count|spaced }} рейсов</span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Грузопоток за период' %}</span>
+        <span class="readout__value">{{ profile.volume_tons|tons }}</span>
+        <span class="readout__note">{{ profile.vehicle_count|spaced }} рейсов</span>
     </div>
-    <div class="metric metric--{{ profile.congestion_tone|default:'muted' }}">
-        <span class="metric__label">{% trans 'Загруженность сети' %}</span>
-        <span class="metric__value">{{ profile.congestion|spaced:1 }}<small>/10</small></span>
-        <span class="metric__note">{{ profile.congestion_label }}</span>
+    <div class="readout__item readout__item--{{ profile.congestion_tone|default:'muted' }}">
+        <span class="readout__label">{% trans 'Загруженность сети' %}</span>
+        <span class="readout__value">{{ profile.congestion|spaced:1 }}<small>/10</small></span>
+        <span class="readout__note">{{ profile.congestion_label }}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Плотность населения' %}</span>
-        <span class="metric__value">{{ district.density|spaced }}<small>{% trans 'чел/км²' %}</small></span>
-        <span class="metric__note">площадь {{ district.area_sq_km|spaced:1 }} км²</span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Плотность населения' %}</span>
+        <span class="readout__value">{{ district.density|spaced }}<small>{% trans 'чел/км²' %}</small></span>
+        <span class="readout__note">площадь {{ district.area_sq_km|spaced:1 }} км²</span>
     </div>
 </div>
 

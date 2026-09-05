@@ -2,21 +2,21 @@
 {% load ff i18n %}
 
 {% block content %}
-<div class="grid grid--3" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Источников данных' %}</span>
-        <span class="metric__value">{{ rows|length }}</span>
-        <span class="metric__note">активных: {{ active_count }}</span>
+<div class="readout">
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Источников данных' %}</span>
+        <span class="readout__value">{{ rows|length }}</span>
+        <span class="readout__note">активных: {{ active_count }}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Журнал загрузок' %}</span>
-        <span class="metric__value" style="font-size:var(--fs-md)">
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Журнал загрузок' %}</span>
+        <span class="readout__value" style="font-size:var(--fs-md)">
             <a href="{% url 'core:etl_log' %}">{% trans 'История обновлений →' %}</a>
         </span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Методика обработки' %}</span>
-        <span class="metric__value" style="font-size:var(--fs-md)">
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Методика обработки' %}</span>
+        <span class="readout__value" style="font-size:var(--fs-md)">
             <a href="{% url 'core:methodology' %}">{% trans 'Раздел «Методология» →' %}</a>
         </span>
     </div>
@@ -64,12 +64,12 @@
             <h2>{% trans 'Наполненность основных таблиц' %}</h2>
         </div>
     </div>
-    <div class="grid grid--3">
+    <div class="readout">
         {% for row in coverage %}
             <div class="card">
                 <p class="eyebrow">{{ row.title }}</p>
                 <h3 style="margin:var(--sp-2) 0">{{ row.title }}</h3>
-                <p class="metric__value" style="font-size:var(--fs-xl)">{{ row.count|spaced }}</p>
+                <p class="readout__value" style="font-size:var(--fs-xl)">{{ row.count|spaced }}</p>
                 {% if row.geo is not None %}
                     <p class="small muted" style="margin-top:var(--sp-2)">
                         с координатами: {{ row.geo|spaced }}

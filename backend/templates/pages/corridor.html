@@ -28,25 +28,25 @@
     {% include "partials/_empty.html" with empty_title="Разбор невозможен" empty_text=result.reason %}
 {% else %}
     <section class="section">
-        <div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-            <div class="metric metric--accent">
-                <span class="metric__label">{% trans 'Протяжённость в городе' %}</span>
-                <span class="metric__value">{{ result.length_km|spaced:1 }} <small>км</small></span>
+        <div class="readout">
+            <div class="readout__item readout__item--accent">
+                <span class="readout__label">{% trans 'Протяжённость в городе' %}</span>
+                <span class="readout__value">{{ result.length_km|spaced:1 }} <small>км</small></span>
             </div>
-            <div class="metric">
-                <span class="metric__label">{% trans 'Объектов в полосе' %}</span>
-                <span class="metric__value">{{ result.object_count }}</span>
-                <span class="metric__note">{% blocktrans with band=band_km|stringformat:".0f" %}в пределах {{ band }} км от оси{% endblocktrans %}</span>
+            <div class="readout__item">
+                <span class="readout__label">{% trans 'Объектов в полосе' %}</span>
+                <span class="readout__value">{{ result.object_count }}</span>
+                <span class="readout__note">{% blocktrans with band=band_km|stringformat:".0f" %}в пределах {{ band }} км от оси{% endblocktrans %}</span>
             </div>
-            <div class="metric">
-                <span class="metric__label">{% trans 'Площадь площадок' %}</span>
-                <span class="metric__value">
+            <div class="readout__item">
+                <span class="readout__label">{% trans 'Площадь площадок' %}</span>
+                <span class="readout__value">
                     {% if result.area_sq_m %}{{ result.area_sq_m|spaced }} <small>м²</small>{% else %}—{% endif %}
                 </span>
             </div>
-            <div class="metric metric--{% if result.incidents %}warn{% else %}ok{% endif %}">
-                <span class="metric__label">{% trans 'Открытых событий' %}</span>
-                <span class="metric__value">{{ result.incidents|length }}</span>
+            <div class="readout__item readout__item--{% if result.incidents %}warn{% else %}ok{% endif %}">
+                <span class="readout__label">{% trans 'Открытых событий' %}</span>
+                <span class="readout__value">{{ result.incidents|length }}</span>
             </div>
         </div>
     </section>

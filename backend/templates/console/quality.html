@@ -4,20 +4,20 @@
 {% block content %}
 {% include "partials/_tabs.html" %}
 
-<div class="grid grid--3" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--{% if issues_total %}warn{% else %}ok{% endif %}">
-        <span class="metric__label">{% trans 'Выявлено замечаний' %}</span>
-        <span class="metric__value">{{ issues_total|spaced }}</span>
-        <span class="metric__note">по {{ checks|length }} проверкам</span>
+<div class="readout">
+    <div class="readout__item readout__item--{% if issues_total %}warn{% else %}ok{% endif %}">
+        <span class="readout__label">{% trans 'Выявлено замечаний' %}</span>
+        <span class="readout__value">{{ issues_total|spaced }}</span>
+        <span class="readout__note">по {{ checks|length }} проверкам</span>
     </div>
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Проверок выполняется' %}</span>
-        <span class="metric__value">{{ checks|length }}</span>
-        <span class="metric__note">{% trans 'при каждом открытии раздела' %}</span>
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Проверок выполняется' %}</span>
+        <span class="readout__value">{{ checks|length }}</span>
+        <span class="readout__note">{% trans 'при каждом открытии раздела' %}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Методика' %}</span>
-        <span class="metric__value" style="font-size:var(--fs-md)">
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Методика' %}</span>
+        <span class="readout__value" style="font-size:var(--fs-md)">
             <a href="{% url 'core:methodology' %}">{% trans 'Раздел «Методология» →' %}</a>
         </span>
     </div>
@@ -47,7 +47,7 @@
                         <p class="small muted" style="margin-top:var(--sp-2)">{{ check.detail }}</p>
                     </div>
                     <div class="right" style="min-width:140px">
-                        <p class="metric__value" style="font-size:var(--fs-lg)">
+                        <p class="readout__value" style="font-size:var(--fs-lg)">
                             {{ check.count|spaced }}
                         </p>
                         <p class="small faint">

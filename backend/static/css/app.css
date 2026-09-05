@@ -1,12 +1,21 @@
 /* ==========================================================================
    ИС «ГрузПоток» — дизайн-система интерфейса
 
-   Оформление построено вокруг метафоры диспетчерского пульта: тёмная
-   поверхность как основной режим, янтарный акцент дорожных предупреждающих
-   знаков и семафорная шкала состояний (зелёный → янтарный → красный),
-   которой размечены и карта, и таблицы, и графики. Одна шкала на всю
-   систему означает, что пользователю достаточно один раз запомнить
-   соответствие цвета и состояния.
+   Оформление держится на трёх правилах.
+
+   Цвет несёт смысл и потому расходуется скупо. Семафорная шкала
+   (зелёный → янтарный → красный) размечает состояния — на карте, в таблицах,
+   на графиках; одна шкала на всю систему означает, что соответствие цвета
+   и состояния достаточно запомнить один раз. Действие обозначается синим,
+   которого в шкале нет. Остальное — типографика на бумажном фоне.
+
+   Место расходуется скупо тоже: диспетчерский инструмент показывает много
+   и сразу, поэтому величины стоят в сплошных лентах отсчётов, разделённых
+   волосяными линейками, а не в отдельных плитках с полями и тенями.
+
+   Происхождение величины видно на самой величине: подчёркивание сплошной,
+   штриховой или точечной линией отличает измеренное от рассчитанного
+   и смоделированного. Признак читается и на монохромной печати.
 
    Структура файла:
      1. Токены оформления          6. Формы и элементы управления
@@ -21,50 +30,57 @@
    -------------------------------------------------------------------------- */
 
 :root {
-    /* Тёмная тема — основной режим работы диспетчерского интерфейса. */
-    --bg: #0e1216;
-    --bg-deep: #090c0f;
-    --surface: #151b21;
-    --surface-raised: #1c242c;
-    --surface-sunken: #11161b;
-    --border: #26313a;
-    --border-strong: #35434f;
+    /* Светлое оформление — основное. Систему показывают с проектора и читают
+       при дневном свете, где тёмная поверхность теряет контраст; на печать
+       она уходит без отдельной вёрстки. */
+    --bg: #eceeed;
+    --bg-deep: #e0e4e3;
+    --surface: #ffffff;
+    --surface-raised: #f6f8f7;
+    --surface-sunken: #e7eae9;
+    --border: #ccd4d5;
+    --border-strong: #86959a;
 
-    --text: #e6edf3;
-    --text-dim: #9aa8b5;
-    --text-faint: #6b7885;
+    --text: #101619;
+    --text-dim: #47565f;
+    --text-faint: #5f6c74;
 
-    /* Акцент — янтарный, цвет предупреждающей дорожной разметки. */
-    --accent: #f2a03d;
-    --accent-strong: #ffb85c;
-    --accent-dim: rgba(242, 160, 61, 0.14);
-    --accent-line: rgba(242, 160, 61, 0.38);
+    /* Цвет, у которого есть значение, отдан состояниям: зелёный, янтарный
+       и красный заняты семафорной шкалой. Действие — ссылка, кнопка,
+       выбранный пункт — обозначается синим, которого в шкале нет, и потому
+       управляющий элемент нельзя принять за оценку обстановки. */
+    --accent: #0f5573;
+    --accent-strong: #093c53;
+    --accent-dim: rgba(15, 85, 115, 0.09);
+    --accent-line: rgba(15, 85, 115, 0.34);
 
     /* Семафорная шкала состояний: применяется везде, где есть оценка. */
-    --tone-ok: #3fbf6f;
-    --tone-warn: #f2a03d;
-    --tone-alert: #e2504a;
-    --tone-crit: #a32b26;
-    --tone-muted: #6b7885;
+    --tone-ok: #1d7a45;
+    --tone-warn: #8a5a06;
+    --tone-alert: #b8322b;
+    --tone-crit: #7d1c18;
+    --tone-muted: #5f6d76;
 
-    --tone-ok-bg: rgba(63, 191, 111, 0.14);
-    --tone-warn-bg: rgba(242, 160, 61, 0.14);
-    --tone-alert-bg: rgba(226, 80, 74, 0.15);
-    --tone-crit-bg: rgba(163, 43, 38, 0.22);
-    --tone-muted-bg: rgba(107, 120, 133, 0.14);
+    --tone-ok-bg: rgba(29, 122, 69, 0.1);
+    --tone-warn-bg: rgba(138, 90, 6, 0.1);
+    --tone-alert-bg: rgba(184, 50, 43, 0.1);
+    --tone-crit-bg: rgba(125, 28, 24, 0.12);
+    --tone-muted-bg: rgba(95, 109, 118, 0.1);
 
     /* Подложка карты: вода и зелёные массивы. Цвета приглушены — подложка
        служит для ориентации и не должна спорить с данными поверх неё. */
-    --map-water: #1d3a4d;
-    --map-green: #1e3328;
+    --map-water: #cfdfe8;
+    --map-green: #dae5d4;
 
-    /* Дополнительная палитра для рядов данных на графиках. */
-    --series-1: #f2a03d;
-    --series-2: #4aa3d9;
-    --series-3: #3fbf6f;
-    --series-4: #b57ede;
-    --series-5: #e2504a;
-    --series-6: #d9c04a;
+    /* Дополнительная палитра для рядов данных на графиках. Ряды различаются
+       и по светлоте: график, распечатанный в оттенках серого, остаётся
+       читаемым. */
+    --series-1: #0f5573;
+    --series-2: #b8322b;
+    --series-3: #1d7a45;
+    --series-4: #6c4a9e;
+    --series-5: #8a5a06;
+    --series-6: #2b7f8f;
 
     /* Шрифты — одно семейство PT в трёх гарнитурах: узкая держит заголовки
        и шапки таблиц, обычная — текст, моноширинная — числовые ряды
@@ -95,67 +111,70 @@
     --sp-7: 3rem;
     --sp-8: 4rem;
 
-    --radius-sm: 3px;
-    --radius: 6px;
-    --radius-lg: 10px;
+    --radius-sm: 2px;
+    --radius: 3px;
+    --radius-lg: 4px;
 
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.45);
+    --shadow-sm: 0 1px 2px rgba(16, 22, 25, 0.07);
+    --shadow: 0 4px 14px rgba(16, 22, 25, 0.08);
+    --shadow-lg: 0 12px 36px rgba(16, 22, 25, 0.13);
 
     --header-height: 60px;
     --content-max: 1440px;
 
     --transition: 160ms cubic-bezier(0.4, 0, 0.2, 1);
 
-    color-scheme: dark;
+    color-scheme: light;
 }
 
-/* Светлая тема — для работы при внешнем освещении и для печати. */
-[data-theme="light"] {
-    --bg: #eef1f0;
-    --bg-deep: #e3e8e7;
-    --surface: #ffffff;
-    --surface-raised: #f7f9f9;
-    --surface-sunken: #eaeeee;
-    --border: #d5dcdf;
-    --border-strong: #b9c3c8;
+/* Тёмное оформление — для работы в помещении диспетчерской и ночной смены.
+   Насыщенность красок здесь снижена: на тёмном фоне тот же цвет кажется
+   ярче, и шкала состояний начинала бы спорить с данными карты. */
+[data-theme="dark"] {
+    --bg: #0f1417;
+    --bg-deep: #0a0e10;
+    --surface: #161c20;
+    --surface-raised: #1e262b;
+    --surface-sunken: #12171a;
+    --border: #313d44;
+    --border-strong: #586a74;
 
-    --text: #121a20;
-    --text-dim: #4f5f6b;
-    --text-faint: #77858f;
+    --text: #e4ebef;
+    --text-dim: #97a5ad;
+    --text-faint: #77878f;
 
-    --accent: #b06f0f;
-    --accent-strong: #8f590a;
-    --accent-dim: rgba(176, 111, 15, 0.1);
-    --accent-line: rgba(176, 111, 15, 0.32);
+    --accent: #63b3d0;
+    --accent-strong: #8dcbe2;
+    --accent-dim: rgba(99, 179, 208, 0.13);
+    --accent-line: rgba(99, 179, 208, 0.36);
 
-    --tone-ok: #1f8a4c;
-    --tone-warn: #b06f0f;
-    --tone-alert: #c4342e;
-    --tone-crit: #8a201c;
-    --tone-muted: #6b7885;
+    --tone-ok: #48b878;
+    --tone-warn: #d99b3f;
+    --tone-alert: #dd5a52;
+    --tone-crit: #b83c33;
+    --tone-muted: #7a888f;
 
-    --tone-ok-bg: rgba(31, 138, 76, 0.1);
-    --tone-warn-bg: rgba(176, 111, 15, 0.1);
-    --tone-alert-bg: rgba(196, 52, 46, 0.1);
-    --tone-crit-bg: rgba(138, 32, 28, 0.12);
-    --tone-muted-bg: rgba(107, 120, 133, 0.1);
+    --tone-ok-bg: rgba(72, 184, 120, 0.14);
+    --tone-warn-bg: rgba(217, 155, 63, 0.14);
+    --tone-alert-bg: rgba(221, 90, 82, 0.15);
+    --tone-crit-bg: rgba(184, 60, 51, 0.22);
+    --tone-muted-bg: rgba(122, 136, 143, 0.14);
 
-    --map-water: #cfe0ea;
-    --map-green: #dbe7d5;
+    --map-water: #1b333f;
+    --map-green: #1c2f24;
 
-    --series-2: #1c6fa3;
-    --series-3: #1f8a4c;
-    --series-4: #7a49a8;
-    --series-5: #c4342e;
-    --series-6: #9a8410;
+    --series-1: #63b3d0;
+    --series-2: #dd5a52;
+    --series-3: #48b878;
+    --series-4: #a98cd8;
+    --series-5: #d99b3f;
+    --series-6: #55a8b5;
 
-    --shadow-sm: 0 1px 2px rgba(18, 26, 32, 0.08);
-    --shadow: 0 4px 16px rgba(18, 26, 32, 0.09);
-    --shadow-lg: 0 12px 40px rgba(18, 26, 32, 0.14);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.45);
 
-    color-scheme: light;
+    color-scheme: dark;
 }
 
 /* --------------------------------------------------------------------------
@@ -285,23 +304,61 @@ code, kbd, .mono, .num {
     padding-bottom: var(--sp-8);
 }
 
+/* Заголовок раздела — строка, а не блок в четыре яруса.
+
+   Рубрика, название и пояснение стоят в одной строке и переносятся только
+   тогда, когда не помещаются: на первый экран попадает содержимое раздела,
+   а не разбег к нему. Снизу строку закрывает жирная линейка — та же, что
+   открывает ленту отсчётов, и раздел читается как один разворот. */
 .page-header {
-    padding: var(--sp-6) 0 var(--sp-5);
-    border-bottom: 1px solid var(--border);
-    margin-bottom: var(--sp-6);
+    padding: var(--sp-5) 0 var(--sp-3);
+    border-bottom: 2px solid var(--text);
+    margin-bottom: var(--sp-5);
 }
 
 .page-header__row {
     display: flex;
-    align-items: flex-end;
+    align-items: baseline;
     justify-content: space-between;
-    gap: var(--sp-5);
+    gap: var(--sp-3) var(--sp-4);
     flex-wrap: wrap;
 }
 
+.page-header__row > div:first-child {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: var(--sp-2) var(--sp-3);
+    flex: 1 1 30ch;
+    min-width: 0;
+}
+
 .page-header h1 {
-    margin: var(--sp-2) 0 var(--sp-3);
-    max-width: 24ch;
+    margin: 0;
+    font-size: var(--fs-xl);
+    max-width: none;
+}
+
+/* Волосяная линейка отделяет пояснение от названия. Она набирается вместе
+   с текстом, а не рисуется рамкой: рамка тянулась бы во всю высоту строки
+   и расходилась бы с соседним названием, набранным крупнее. */
+.page-header .lead,
+.page-header__row > div:first-child > .small {
+    font-size: var(--fs-sm);
+    max-width: 68ch;
+    flex: 1 1 24ch;
+    min-width: 0;
+}
+
+.page-header .lead::before,
+.page-header__row > div:first-child > .small::before {
+    content: "";
+    display: inline-block;
+    width: 1px;
+    height: 1.1em;
+    margin-right: var(--sp-3);
+    vertical-align: -0.2em;
+    background: var(--border-strong);
 }
 
 .page-header__actions {
@@ -557,7 +614,7 @@ code, kbd, .mono, .num {
 
 /* Запасной вариант: если атрибут ещё не выставлен (сценарии отключены),
    показывается знак режима по умолчанию. */
-html:not([data-theme-choice]) [data-theme-icon="dark"] { display: block; }
+html:not([data-theme-choice]) [data-theme-icon="light"] { display: block; }
 
 .nav-toggle { display: none; }
 
@@ -680,57 +737,96 @@ html:not([data-theme-choice]) [data-theme-icon="dark"] { display: block; }
     transform: translateY(-2px);
 }
 
-/* Плитка ключевого показателя. Полоса слева окрашена по семафорной шкале —
-   состояние считывается периферийным зрением, без чтения подписи. */
-.metric {
-    position: relative;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--border-strong);
-    border-radius: var(--radius);
-    padding: var(--sp-4);
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-1);
-    transition: border-color var(--transition);
+/* Лента отсчётов — сводка величин в начале раздела.
+
+   Величины стоят подряд, разделённые волосяными линейками, и занимают одну
+   полосу вместо ряда отдельных плиток: на ту же высоту помещается вдвое
+   больше сведений, а взгляд читает их как строку приборной панели, а не как
+   набор не связанных между собой карточек.
+
+   Состояние несёт отрезок верхней линейки над самой величиной. Линейка
+   сплошная у всей ленты, поэтому цветной отрезок виден именно как отметка
+   на шкале, а не как рамка вокруг чего-то. */
+.readout {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    margin-bottom: var(--sp-5);
+    border-bottom: 1px solid var(--border);
 }
 
-.metric--ok { border-left-color: var(--tone-ok); }
-.metric--warn { border-left-color: var(--tone-warn); }
-.metric--alert { border-left-color: var(--tone-alert); }
-.metric--crit { border-left-color: var(--tone-crit); }
-.metric--accent { border-left-color: var(--accent); }
+.readout__item {
+    --rule: var(--border-strong);
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: var(--sp-3) var(--sp-4) var(--sp-3) 0;
+    border-top: 2px solid var(--rule);
+    color: inherit;
+}
 
-.metric__label {
+/* Разделитель ставится слева и снимается у первой величины в строке.
+   Строк в ленте может быть несколько: на узком экране колонки переносятся,
+   и рамка, поставленная по порядковому номеру, разошлась бы с разметкой. */
+.readout__item + .readout__item {
+    padding-left: var(--sp-4);
+    border-left: 1px solid var(--border);
+}
+
+.readout__item--ok { --rule: var(--tone-ok); }
+.readout__item--warn { --rule: var(--tone-warn); }
+.readout__item--alert { --rule: var(--tone-alert); }
+.readout__item--crit { --rule: var(--tone-crit); }
+.readout__item--accent { --rule: var(--accent); }
+
+.readout__label {
+    font-family: var(--font-display);
     font-size: var(--fs-xs);
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--text-faint);
 }
 
-.metric__value {
+.readout__value {
     font-family: var(--font-display);
     font-size: var(--fs-xl);
     font-weight: 700;
-    line-height: 1.05;
+    line-height: 1.1;
     font-variant-numeric: tabular-nums;
 }
 
-.metric__value small {
+.readout__value--sm {
+    font-size: var(--fs-base);
+    font-weight: 400;
+}
+
+.readout__value small {
+    font-family: var(--font-body);
     font-size: var(--fs-sm);
     font-weight: 400;
     color: var(--text-dim);
-    margin-left: 2px;
+    margin-left: 3px;
 }
 
-.metric__note {
+.readout__note {
     font-size: var(--fs-xs);
     color: var(--text-dim);
     margin-top: auto;
     padding-top: var(--sp-2);
+    line-height: 1.4;
 }
 
-a.metric:hover { border-color: var(--accent-line); }
+a.readout__item {
+    text-decoration: none;
+    transition: background var(--transition);
+}
+
+a.readout__item:hover {
+    background: var(--accent-dim);
+}
+
+a.readout__item:hover .readout__value {
+    color: var(--accent);
+}
 
 /* Значки состояний. */
 .badge {
@@ -1368,8 +1464,7 @@ table.data th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* Значки элементов управления нарисованы тёмными: на светлой теме они
    читаются как есть, на тёмной — обращаются. */
-.maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
-[data-theme="light"] .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: none; }
+[data-theme="dark"] .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
 
 .maplibregl-ctrl-attrib,
 .maplibregl-ctrl-scale {

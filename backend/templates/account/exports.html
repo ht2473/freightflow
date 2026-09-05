@@ -4,25 +4,25 @@
 {% block content %}
 {% include "partials/_tabs.html" %}
 
-<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Всего выгрузок' %}</span>
-        <span class="metric__value">{{ page_obj.paginator.count }}</span>
+<div class="readout">
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Всего выгрузок' %}</span>
+        <span class="readout__value">{{ page_obj.paginator.count }}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Суммарный объём' %}</span>
-        <span class="metric__value">{{ total_size|filesizeformat }}</span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Суммарный объём' %}</span>
+        <span class="readout__value">{{ total_size|filesizeformat }}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Выгружено строк' %}</span>
-        <span class="metric__value">{{ total_rows|spaced }}</span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Выгружено строк' %}</span>
+        <span class="readout__value">{{ total_rows|spaced }}</span>
     </div>
-    <div class="metric metric--{% if can_export %}ok{% else %}muted{% endif %}">
-        <span class="metric__label">{% trans 'Право на выгрузку' %}</span>
-        <span class="metric__value" style="font-size:var(--fs-lg)">
+    <div class="readout__item readout__item--{% if can_export %}ok{% else %}muted{% endif %}">
+        <span class="readout__label">{% trans 'Право на выгрузку' %}</span>
+        <span class="readout__value" style="font-size:var(--fs-lg)">
             {% if can_export %}Есть{% else %}Нет{% endif %}
         </span>
-        <span class="metric__note">
+        <span class="readout__note">
             {% if can_export %}хранение {{ retention }} суток
             {% else %}требуется роль «Аналитик»{% endif %}
         </span>

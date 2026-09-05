@@ -16,22 +16,22 @@
 {% endblock %}
 
 {% block content %}
-<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Округов' %}</span>
-        <span class="metric__value">{{ profiles|length }}</span>
+<div class="readout">
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Округов' %}</span>
+        <span class="readout__value">{{ profiles|length }}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Объектов инфраструктуры' %}</span>
-        <span class="metric__value">{{ totals.objects|spaced }}</span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Объектов инфраструктуры' %}</span>
+        <span class="readout__value">{{ totals.objects|spaced }}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Мощность хранения' %}</span>
-        <span class="metric__value">{{ totals.capacity|tons }}</span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Мощность хранения' %}</span>
+        <span class="readout__value">{{ totals.capacity|tons }}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Протяжённость сети' %}</span>
-        <span class="metric__value">{{ totals.roads|spaced:1 }}<small> км</small></span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Протяжённость сети' %}</span>
+        <span class="readout__value">{{ totals.roads|spaced:1 }}<small> км</small></span>
     </div>
 </div>
 

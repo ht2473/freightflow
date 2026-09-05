@@ -2,30 +2,30 @@
 {% load ff i18n static %}
 
 {% block content %}
-<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--{{ incident.severity|severity_tone }}">
-        <span class="metric__label">{% trans 'Уровень серьёзности' %}</span>
-        <span class="metric__value">{{ incident.severity }}<small>/5</small></span>
-        <span class="metric__note">{{ incident.severity_state.0 }}</span>
+<div class="readout">
+    <div class="readout__item readout__item--{{ incident.severity|severity_tone }}">
+        <span class="readout__label">{% trans 'Уровень серьёзности' %}</span>
+        <span class="readout__value">{{ incident.severity }}<small>/5</small></span>
+        <span class="readout__note">{{ incident.severity_state.0 }}</span>
     </div>
-    <div class="metric metric--{% if incident.is_open %}alert{% else %}ok{% endif %}">
-        <span class="metric__label">{% trans 'Состояние' %}</span>
-        <span class="metric__value" style="font-size:var(--fs-lg)">
+    <div class="readout__item readout__item--{% if incident.is_open %}alert{% else %}ok{% endif %}">
+        <span class="readout__label">{% trans 'Состояние' %}</span>
+        <span class="readout__value" style="font-size:var(--fs-lg)">
             {% if incident.is_open %}Открыт{% else %}Устранён{% endif %}
         </span>
-        <span class="metric__note">
+        <span class="readout__note">
             {% if incident.resolved_at %}{{ incident.resolved_at|date:"d.m.Y H:i" }}
             {% else %}устранение не зафиксировано{% endif %}
         </span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Длительность' %}</span>
-        <span class="metric__value">{{ incident.duration_hours|spaced:1 }}<small> ч</small></span>
-        <span class="metric__note">с {{ incident.reported_at|date:"d.m.Y H:i" }}</span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Длительность' %}</span>
+        <span class="readout__value">{{ incident.duration_hours|spaced:1 }}<small> ч</small></span>
+        <span class="readout__note">с {{ incident.reported_at|date:"d.m.Y H:i" }}</span>
     </div>
-    <div class="metric metric--{% if incident.affects_cargo %}warn{% else %}muted{% endif %}">
-        <span class="metric__label">{% trans 'Грузовой транспорт' %}</span>
-        <span class="metric__value" style="font-size:var(--fs-lg)">
+    <div class="readout__item readout__item--{% if incident.affects_cargo %}warn{% else %}muted{% endif %}">
+        <span class="readout__label">{% trans 'Грузовой транспорт' %}</span>
+        <span class="readout__value" style="font-size:var(--fs-lg)">
             {% if incident.affects_cargo %}Затронут{% else %}Не затронут{% endif %}
         </span>
     </div>

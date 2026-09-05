@@ -2,36 +2,36 @@
 {% load ff i18n static %}
 
 {% block content %}
-<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--{% if current %}{{ current.congestion_level|tone }}{% else %}muted{% endif %}">
-        <span class="metric__label">{% trans 'Текущая загруженность' %}</span>
-        <span class="metric__value">
+<div class="readout">
+    <div class="readout__item readout__item--{% if current %}{{ current.congestion_level|tone }}{% else %}muted{% endif %}">
+        <span class="readout__label">{% trans 'Текущая загруженность' %}</span>
+        <span class="readout__value">
             {% if current %}{{ current.congestion_level }}<small>/10</small>{% else %}—{% endif %}
         </span>
-        <span class="metric__note">
+        <span class="readout__note">
             {% if current %}{{ current.state.1 }} · {{ current.recorded_at|date:"d.m H:i" }}
             {% else %}замеры отсутствуют{% endif %}
         </span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Скорость потока' %}</span>
-        <span class="metric__value">
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Скорость потока' %}</span>
+        <span class="readout__value">
             {% if current %}{{ current.avg_speed_kmh|spaced:0 }}<small>{% trans 'км/ч' %}</small>{% else %}—{% endif %}
         </span>
-        <span class="metric__note">
+        <span class="readout__note">
             при разрешённой {{ road.speed_limit_kmh|dash }} км/ч
             {% if current.speed_ratio %}· {{ current.speed_ratio|ratio:1|percent:0 }} от нормы{% endif %}
         </span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Средний балл за период' %}</span>
-        <span class="metric__value">{{ stats.avg_level|spaced:2 }}</span>
-        <span class="metric__note">максимум {{ stats.max_level }}, замеров {{ stats.samples }}</span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Средний балл за период' %}</span>
+        <span class="readout__value">{{ stats.avg_level|spaced:2 }}</span>
+        <span class="readout__note">максимум {{ stats.max_level }}, замеров {{ stats.samples }}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Пропускная способность' %}</span>
-        <span class="metric__value">{{ road.capacity_index|spaced:0 }}</span>
-        <span class="metric__note">{{ road.lanes|dash }} полос × {{ road.speed_limit_kmh|dash }} км/ч</span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Пропускная способность' %}</span>
+        <span class="readout__value">{{ road.capacity_index|spaced:0 }}</span>
+        <span class="readout__note">{{ road.lanes|dash }} полос × {{ road.speed_limit_kmh|dash }} км/ч</span>
     </div>
 </div>
 

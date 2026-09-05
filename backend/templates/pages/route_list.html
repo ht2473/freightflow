@@ -40,22 +40,22 @@
     </div>
 </form>
 
-<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Маршрутов' %}</span>
-        <span class="metric__value">{{ total_count }}</span>
+<div class="readout">
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Маршрутов' %}</span>
+        <span class="readout__value">{{ total_count }}</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Суммарная протяжённость' %}</span>
-        <span class="metric__value">{{ total_distance|spaced:0 }}<small> км</small></span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Суммарная протяжённость' %}</span>
+        <span class="readout__value">{{ total_distance|spaced:0 }}<small> км</small></span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Интенсивность движения' %}</span>
-        <span class="metric__value">{{ total_trucks|spaced }}<small>{% trans 'ТС/сут' %}</small></span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Интенсивность движения' %}</span>
+        <span class="readout__value">{{ total_trucks|spaced }}<small>{% trans 'ТС/сут' %}</small></span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Структура по типам' %}</span>
-        <span class="metric__value" style="font-size:var(--fs-base);line-height:1.5">
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Структура по типам' %}</span>
+        <span class="readout__value" style="font-size:var(--fs-base);line-height:1.5">
             {% for row in by_type %}
                 <span class="small">{{ row.route_type }}: {{ row.count }}</span><br>
             {% endfor %}

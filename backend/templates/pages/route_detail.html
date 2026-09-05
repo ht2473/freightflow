@@ -2,24 +2,24 @@
 {% load ff i18n static %}
 
 {% block content %}
-<div class="grid grid--4" style="margin-bottom:var(--sp-5)">
-    <div class="metric metric--accent">
-        <span class="metric__label">{% trans 'Протяжённость' %}</span>
-        <span class="metric__value">{{ route.distance_km|spaced:1 }}<small> км</small></span>
+<div class="readout">
+    <div class="readout__item readout__item--accent">
+        <span class="readout__label">{% trans 'Протяжённость' %}</span>
+        <span class="readout__value">{{ route.distance_km|spaced:1 }}<small> км</small></span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Время в пути' %}</span>
-        <span class="metric__value">{{ route.avg_duration_h|spaced:1 }}<small> ч</small></span>
-        <span class="metric__note">средняя скорость {{ route.avg_speed_kmh|spaced:0 }} км/ч</span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Время в пути' %}</span>
+        <span class="readout__value">{{ route.avg_duration_h|spaced:1 }}<small> ч</small></span>
+        <span class="readout__note">средняя скорость {{ route.avg_speed_kmh|spaced:0 }} км/ч</span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Интенсивность' %}</span>
-        <span class="metric__value">{{ route.truck_count_day|spaced }}<small>{% trans 'ТС/сут' %}</small></span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Интенсивность' %}</span>
+        <span class="readout__value">{{ route.truck_count_day|spaced }}<small>{% trans 'ТС/сут' %}</small></span>
     </div>
-    <div class="metric">
-        <span class="metric__label">{% trans 'Транспортная работа' %}</span>
-        <span class="metric__value">{{ route.daily_load_index|spaced:0 }}<small>{% trans 'ТС·км' %}</small></span>
-        <span class="metric__note">{% trans 'суточная, по маршруту' %}</span>
+    <div class="readout__item">
+        <span class="readout__label">{% trans 'Транспортная работа' %}</span>
+        <span class="readout__value">{{ route.daily_load_index|spaced:0 }}<small>{% trans 'ТС·км' %}</small></span>
+        <span class="readout__note">{% trans 'суточная, по маршруту' %}</span>
     </div>
 </div>
 
