@@ -8,7 +8,8 @@
 from __future__ import annotations
 
 import pytest
-from core.templatetags.ff import lookup, plural
+from core.templatetags.ff import lookup, origin, plural
+from django.template import Context, Template
 
 
 class TestPlural:
@@ -63,3 +64,39 @@ class TestLookup:
     def test_non_mapping(self):
         """Обращение не к словарю не роняет страницу."""
         assert lookup(None, "storage") is None
+
+
+class TestOriginMark:
+    """Отметка происхождения величины."""
+
+    def test_known_kind_gets_a_mark(self):
+        """Известное происхождение даёт код, подпись и пояснение."""
+
+        mark = origin("modelled")
+        assert mark["code"] == "modelled"
+        assert str(mark["label"]) == "Смоделировано"
+        assert "имитационной" in mark["meaning"]
+
+    def test_unknown_kind_gets_no_mark(self):
+        """Неизвестное происхождение отметки не даёт.
+
+        Ложное указание на источник хуже отсутствия указания: читатель
+        принимает решение, полагаясь на отметку.
+        """
+
+        assert origin("guessed") == {"code": "", "label": "", "meaning": ""}
+
+    def test_mark_is_rendered_by_its_kind(self):
+        """Разметка отметки несёт признак происхождения."""
+
+        rendered = Template(
+            "{% load ff %}{% origin 'measured' %}"
+        ).render(Context({}))
+        assert 'class="origin origin--measured"' in rendered
+        assert "Измерено" in rendered
+
+    def test_unknown_kind_renders_nothing(self):
+        """Неизвестное происхождение не выводит ничего."""
+
+        rendered = Template("{% load ff %}{% origin 'guessed' %}").render(Context({}))
+        assert rendered.strip() == ""

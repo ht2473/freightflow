@@ -50,7 +50,7 @@
             <h3>{{ section.title }}</h3>
             <div class="stack stack--tight" style="margin-bottom:var(--sp-5)">
                 {% for item in section.metrics %}
-                    {% include "partials/_metric_note.html" with value=item.origin_label %}
+                    {% include "partials/_metric_note.html" with value=item.unit %}
                 {% endfor %}
             </div>
         {% endfor %}

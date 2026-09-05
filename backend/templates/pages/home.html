@@ -65,6 +65,7 @@
         <a class="readout__item readout__item--accent" href="{% url 'core:object_list' %}">
             <span class="readout__label">{% trans 'Объектов инфраструктуры' %}</span>
             <span class="readout__value">{{ summary.object_count|spaced }}</span>
+            {% origin 'measured' %}
             <span class="readout__note">в {{ summary.district_count }} округах города</span>
         </a>
 
@@ -72,12 +73,14 @@
             <span class="readout__label">{% trans 'Площадь территорий' %}</span>
             <span class="readout__value">
                 {{ summary.area_sq_m|divide:1000000|spaced:1 }}<small> км²</small></span>
+            {% origin 'measured' %}
             <span class="readout__note">{% trans 'по размеченным контурам объектов' %}</span>
         </a>
 
         <a class="readout__item readout__item--accent" href="{% url 'core:flow_overview' %}">
             <span class="readout__label">{% trans 'Перевезено грузов' %}</span>
             <span class="readout__value">{{ summary.volume_tons|tons }}</span>
+            {% origin 'measured' %}
             <span class="readout__note">
                 {% if summary.volume_period %}
                     {% if summary.volume_period_type == 'year' %}
@@ -94,6 +97,7 @@
             <span class="readout__value">
                 {{ summary.congestion_avg|spaced:1 }}<small>/10</small>
             </span>
+            {% origin 'modelled' %}
             <span class="readout__note">{{ summary.congestion_label }}</span>
         </a>
 
@@ -101,11 +105,23 @@
            href="{% url 'core:incident_list' %}?state=open">
             <span class="readout__label">{% trans 'Открытых инцидентов' %}</span>
             <span class="readout__value">{{ summary.incidents_open }}</span>
+            {% origin 'measured' %}
             <span class="readout__note">
                 {% blocktrans with count=summary.incidents_cargo %}{{ count }} влияют на грузовой транспорт{% endblocktrans %}
             </span>
         </a>
     </div>
+
+    {# Отметка под величиной сообщает, чем величина подкреплена. Пояснение   #}
+    {# приводится там, где отметки встречаются впервые: дальше по разделам   #}
+    {# читатель уже знает начертание.                                        #}
+    <p class="origin-legend">
+        {% trans 'Отметка под величиной сообщает её происхождение:' %}
+        {% origin 'measured' %} — {% trans 'значение из источника' %};
+        {% origin 'derived' %} — {% trans 'выведено расчётом' %};
+        {% origin 'modelled' %} — {% trans 'получено имитационной моделью' %}.
+        <a href="{% url 'core:methodology' %}">{% trans 'Методика расчёта' %}</a>
+    </p>
 </section>
 
 {# ---------------------------------------------------------------------- #}

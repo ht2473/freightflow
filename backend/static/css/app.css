@@ -828,6 +828,42 @@ a.readout__item:hover .readout__value {
     color: var(--accent);
 }
 
+/* Отметка происхождения величины.
+
+   Система соединяет сведения трёх родов: измеренные, выведенные расчётом
+   и полученные имитационной моделью там, где наблюдений не существует.
+   Смешивать их молча нельзя — читатель принимает решение по числу и должен
+   видеть, чем оно подкреплено.
+
+   Род различается начертанием подчёркивания: сплошное, штриховое, точечное.
+   Признак сохраняется при монохромной печати и не расходует цвет, отданный
+   шкале состояний; порядок начертаний соответствует убыванию опоры
+   на наблюдение. */
+.origin {
+    font-family: var(--font-body);
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+    white-space: nowrap;
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    cursor: help;
+}
+
+/* В ленте отсчётов отметка стоит под самой величиной. */
+.readout__item > .origin { margin-top: 1px; }
+
+.origin-legend {
+    margin-top: var(--sp-2);
+    font-size: var(--fs-xs);
+    color: var(--text-dim);
+    max-width: none;
+}
+
+.origin--measured { text-decoration-style: solid; }
+.origin--derived { text-decoration-style: dashed; }
+.origin--modelled { text-decoration-style: dotted; }
+
 /* Значки состояний. */
 .badge {
     display: inline-flex;

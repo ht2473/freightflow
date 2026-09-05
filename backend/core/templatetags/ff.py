@@ -126,6 +126,37 @@ def severity_tone(value) -> str:
     return "ok"
 
 
+@register.inclusion_tag("partials/_origin.html")
+def origin(value: str) -> dict:
+    """Отметка происхождения величины: измерена, рассчитана или получена моделью.
+
+    Отметка ставится у самого числа, а не в пояснении к нему: читатель
+    принимает решение, глядя на величину, и должен видеть здесь же, чем
+    она подкреплена. Начертание отметки различает три случая линией
+    подчёркивания — сплошной, штриховой и точечной, — поэтому признак
+    сохраняется на монохромной печати и не расходует цвет, отданный
+    шкале состояний.
+    """
+    from core.choices import DataOrigin
+
+    try:
+        kind = DataOrigin(value)
+    except ValueError:
+        return {"code": "", "label": "", "meaning": ""}
+    meanings = {
+        DataOrigin.MEASURED: gettext(
+            "Значение получено из источника без преобразований"
+        ),
+        DataOrigin.DERIVED: gettext(
+            "Значение выведено расчётом из измеренных величин"
+        ),
+        DataOrigin.MODELLED: gettext(
+            "Значение получено имитационной моделью: наблюдений не существует"
+        ),
+    }
+    return {"code": kind.value, "label": kind.label, "meaning": meanings[kind]}
+
+
 @register.filter
 def field_class(field, css: str = "") -> str:
     """Добавить класс к виджету поля формы прямо в шаблоне."""
