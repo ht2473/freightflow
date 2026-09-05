@@ -42,8 +42,8 @@
     <div class="table-wrap">
         <table class="data">
             <thead>
-                <tr><th>{% trans 'Колонка' %}</th><th>{% trans 'Обязательна' %}</th>
-                    <th>{% trans 'Что содержит' %}</th><th>{% trans 'Другие написания' %}</th></tr>
+                <tr><th scope="col">{% trans 'Колонка' %}</th><th scope="col">{% trans 'Обязательна' %}</th>
+                    <th scope="col">{% trans 'Что содержит' %}</th><th scope="col">{% trans 'Другие написания' %}</th></tr>
             </thead>
             <tbody>
                 {% for column in columns %}

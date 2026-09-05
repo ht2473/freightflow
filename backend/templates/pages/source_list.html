@@ -27,15 +27,15 @@
     <div class="table-wrap">
         <table class="data">
             <thead>
-                <tr><th>{% trans 'Источник' %}</th><th>{% trans 'Тип' %}</th><th>{% trans 'Периодичность' %}</th>
-                    <th class="num">{% trans 'Загрузок' %}</th><th class="num">{% trans 'Записей' %}</th>
-                    <th class="num">{% trans 'Отклонено' %}</th><th>{% trans 'Последняя загрузка' %}</th><th>{% trans 'Состояние' %}</th></tr>
+                <tr><th scope="col">{% trans 'Источник' %}</th><th scope="col">{% trans 'Тип' %}</th><th scope="col">{% trans 'Периодичность' %}</th>
+                    <th scope="col" class="num">{% trans 'Загрузок' %}</th><th scope="col" class="num">{% trans 'Записей' %}</th>
+                    <th scope="col" class="num">{% trans 'Отклонено' %}</th><th scope="col">{% trans 'Последняя загрузка' %}</th><th scope="col">{% trans 'Состояние' %}</th></tr>
             </thead>
             <tbody>
                 {% for row in rows %}
                     <tr data-href="{{ row.source.get_absolute_url }}">
                         <td>
-                            <span class="table-title">{{ row.source.name }}</span>
+                            <a class="table-title" href="{{ row.source.get_absolute_url }}">{{ row.source.name }}</a>
                         </td>
                         <td class="small">{{ row.source.get_source_type_display }}</td>
                         <td class="small muted">{{ row.source.get_update_frequency_display|dash }}</td>

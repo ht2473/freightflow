@@ -113,11 +113,11 @@
             <table class="data">
                 <thead>
                     <tr>
-                        <th>{% trans 'Период' %}</th>
-                        <th class="num">{% trans 'Перевезено, т' %}</th>
-                        <th class="num">{% trans 'Грузооборот, млн т·км' %}</th>
-                        <th class="num">{% trans 'Среднее плечо, км' %}</th>
-                        <th class="num">{% trans 'Изменение' %}</th>
+                        <th scope="col">{% trans 'Период' %}</th>
+                        <th scope="col" class="num">{% trans 'Перевезено, т' %}</th>
+                        <th scope="col" class="num">{% trans 'Грузооборот, млн т·км' %}</th>
+                        <th scope="col" class="num">{% trans 'Среднее плечо, км' %}</th>
+                        <th scope="col" class="num">{% trans 'Изменение' %}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -157,8 +157,8 @@
                 <div class="table-wrap" style="border:none">
                     <table class="data">
                         <thead>
-                            <tr><th>{% trans 'Территория' %}</th><th class="num">{% trans 'Перевезено' %}</th>
-                                <th class="num">{% trans 'Плечо' %}</th><th class="num">{% trans 'Доля Москвы' %}</th></tr>
+                            <tr><th scope="col">{% trans 'Территория' %}</th><th scope="col" class="num">{% trans 'Перевезено' %}</th>
+                                <th scope="col" class="num">{% trans 'Плечо' %}</th><th scope="col" class="num">{% trans 'Доля Москвы' %}</th></tr>
                         </thead>
                         <tbody>
                             {% for row in comparison %}
@@ -196,7 +196,7 @@
                     <div class="table-wrap" style="border:none; margin-top:var(--sp-3)">
                         <table class="data">
                             <thead>
-                                <tr><th>{% trans 'Направление' %}</th><th class="num">{% trans 'Объём' %}</th></tr>
+                                <tr><th scope="col">{% trans 'Направление' %}</th><th scope="col" class="num">{% trans 'Объём' %}</th></tr>
                             </thead>
                             <tbody>
                                 {% for row in by_direction %}

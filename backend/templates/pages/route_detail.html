@@ -42,8 +42,8 @@
             <div class="table-wrap" style="border:none">
                 <table class="data">
                     <thead>
-                        <tr><th>{% trans 'Период' %}</th><th>{% trans 'Направление' %}</th><th>{% trans 'Категория' %}</th>
-                            <th class="num">{% trans 'Объём, т' %}</th><th class="num">{% trans 'Рейсов' %}</th></tr>
+                        <tr><th scope="col">{% trans 'Период' %}</th><th scope="col">{% trans 'Направление' %}</th><th scope="col">{% trans 'Категория' %}</th>
+                            <th scope="col" class="num">{% trans 'Объём, т' %}</th><th scope="col" class="num">{% trans 'Рейсов' %}</th></tr>
                     </thead>
                     <tbody>
                         {% for flow in flows %}

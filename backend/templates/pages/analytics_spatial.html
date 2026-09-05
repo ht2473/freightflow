@@ -142,19 +142,19 @@
         <table class="data">
             <thead>
                 <tr>
-                    <th>{% trans 'Округ' %}</th>
-                    <th class="num">{% trans 'Площадь, км²' %}</th>
-                    <th class="num">{% trans 'В пределах радиуса' %}</th>
-                    <th>{% trans 'Доля' %}</th>
-                    <th class="num">{% trans 'Среднее расстояние, км' %}</th>
-                    <th class="num">{% trans 'Наибольшее, км' %}</th>
+                    <th scope="col">{% trans 'Округ' %}</th>
+                    <th scope="col" class="num">{% trans 'Площадь, км²' %}</th>
+                    <th scope="col" class="num">{% trans 'В пределах радиуса' %}</th>
+                    <th scope="col">{% trans 'Доля' %}</th>
+                    <th scope="col" class="num">{% trans 'Среднее расстояние, км' %}</th>
+                    <th scope="col" class="num">{% trans 'Наибольшее, км' %}</th>
                 </tr>
             </thead>
             <tbody>
                 {% for row in coverage.districts %}
                     <tr data-href="{{ row.district.get_absolute_url }}">
                         <td>
-                            <span class="table-title">{{ row.district.short_name }}</span>
+                            <a class="table-title" href="{{ row.district.get_absolute_url }}">{{ row.district.short_name }}</a>
                             <span class="table-sub">{{ row.district.name }}</span>
                         </td>
                         <td class="num">{{ row.area_sq_km|spaced:0 }}</td>
@@ -180,8 +180,8 @@
             <div class="table-wrap" style="border:none">
                 <table class="data">
                     <thead>
-                        <tr><th>{% trans 'Округ' %}</th><th class="num">{% trans 'Расстояние, км' %}</th>
-                            <th class="num">{% trans 'Координаты' %}</th></tr>
+                        <tr><th scope="col">{% trans 'Округ' %}</th><th scope="col" class="num">{% trans 'Расстояние, км' %}</th>
+                            <th scope="col" class="num">{% trans 'Координаты' %}</th></tr>
                     </thead>
                     <tbody>
                         {% for gap in coverage.gaps %}

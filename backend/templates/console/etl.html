@@ -24,11 +24,11 @@
         <table class="data">
             <thead>
                 <tr>
-                    <th>{% trans 'Набор данных' %}</th>
-                    <th>{% trans 'Таблица' %}</th>
-                    <th>{% trans 'Проверок' %}</th>
-                    <th>{% trans 'Регламент' %}</th>
-                    <th>{% trans 'Последняя загрузка' %}</th>
+                    <th scope="col">{% trans 'Набор данных' %}</th>
+                    <th scope="col">{% trans 'Таблица' %}</th>
+                    <th scope="col">{% trans 'Проверок' %}</th>
+                    <th scope="col">{% trans 'Регламент' %}</th>
+                    <th scope="col">{% trans 'Последняя загрузка' %}</th>
                 </tr>
             </thead>
             <tbody>
@@ -177,10 +177,10 @@
     <div class="table-wrap">
         <table class="data">
             <thead>
-                <tr><th>{% trans 'Начало' %}</th><th>{% trans 'Набор' %}</th><th>{% trans 'Начало загрузки' %}</th>
-                    <th class="num">{% trans 'Создано' %}</th><th class="num">{% trans 'Обновлено' %}</th>
-                    <th class="num">{% trans 'Без изменений' %}</th><th class="num">{% trans 'Отклонено' %}</th>
-                    <th>{% trans 'Итог' %}</th></tr>
+                <tr><th scope="col">{% trans 'Начало' %}</th><th scope="col">{% trans 'Набор' %}</th><th scope="col">{% trans 'Начало загрузки' %}</th>
+                    <th scope="col" class="num">{% trans 'Создано' %}</th><th scope="col" class="num">{% trans 'Обновлено' %}</th>
+                    <th scope="col" class="num">{% trans 'Без изменений' %}</th><th scope="col" class="num">{% trans 'Отклонено' %}</th>
+                    <th scope="col">{% trans 'Итог' %}</th></tr>
             </thead>
             <tbody>
                 {% for run in page_obj.object_list %}

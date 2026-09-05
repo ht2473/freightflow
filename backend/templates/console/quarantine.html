@@ -34,8 +34,8 @@
         <div class="table-wrap">
             <table class="data">
                 <thead>
-                    <tr><th>{% trans 'Проверка' %}</th><th class="num">{% trans 'Записей' %}</th>
-                        <th>{% trans 'Действие' %}</th></tr>
+                    <tr><th scope="col">{% trans 'Проверка' %}</th><th scope="col" class="num">{% trans 'Записей' %}</th>
+                        <th scope="col">{% trans 'Действие' %}</th></tr>
                 </thead>
                 <tbody>
                     {% for row in by_check %}
@@ -98,12 +98,12 @@
             <table class="data">
                 <thead>
                     <tr>
-                        <th></th>
-                        <th>{% trans 'Отложено' %}</th>
-                        <th>{% trans 'Набор' %}</th>
-                        <th>{% trans 'Положение' %}</th>
-                        <th>{% trans 'Причина' %}</th>
-                        <th>{% trans 'Исходная запись' %}</th>
+                        <th scope="col"></th>
+                        <th scope="col">{% trans 'Отложено' %}</th>
+                        <th scope="col">{% trans 'Набор' %}</th>
+                        <th scope="col">{% trans 'Положение' %}</th>
+                        <th scope="col">{% trans 'Причина' %}</th>
+                        <th scope="col">{% trans 'Исходная запись' %}</th>
                     </tr>
                 </thead>
                 <tbody>

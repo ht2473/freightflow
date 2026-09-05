@@ -26,7 +26,7 @@
     <div class="table-wrap">
         <table class="data">
             <thead>
-                <tr><th>{% trans 'Объект' %}</th><th>{% trans 'Тип' %}</th><th>{% trans 'Заметка' %}</th><th>{% trans 'Добавлено' %}</th><th></th></tr>
+                <tr><th scope="col">{% trans 'Объект' %}</th><th scope="col">{% trans 'Тип' %}</th><th scope="col">{% trans 'Заметка' %}</th><th scope="col">{% trans 'Добавлено' %}</th><th scope="col"></th></tr>
             </thead>
             <tbody>
                 {% for item in page_obj.object_list %}

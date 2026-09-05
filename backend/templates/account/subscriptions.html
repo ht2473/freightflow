@@ -10,9 +10,9 @@
             <div class="table-wrap">
                 <table class="data">
                     <thead>
-                        <tr><th>{% trans 'Территория' %}</th><th class="num">{% trans 'Порог серьёзности' %}</th>
-                            <th>{% trans 'Только грузовые' %}</th><th class="num">{% trans 'Событий сейчас' %}</th>
-                            <th>{% trans 'Состояние' %}</th><th>{% trans 'Создана' %}</th><th></th></tr>
+                        <tr><th scope="col">{% trans 'Территория' %}</th><th scope="col" class="num">{% trans 'Порог серьёзности' %}</th>
+                            <th scope="col">{% trans 'Только грузовые' %}</th><th scope="col" class="num">{% trans 'Событий сейчас' %}</th>
+                            <th scope="col">{% trans 'Состояние' %}</th><th scope="col">{% trans 'Создана' %}</th><th scope="col"></th></tr>
                     </thead>
                     <tbody>
                         {% for row in items %}

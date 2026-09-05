@@ -48,20 +48,20 @@
         <table class="data">
             <thead>
                 <tr>
-                    <th>{% trans 'Округ' %}</th>
-                    <th class="num">{% trans 'Объектов' %}</th>
-                    <th class="num">{% trans 'Мощность' %}</th>
-                    <th class="num">{% trans 'Грузопоток' %}</th>
-                    <th>{% trans 'Доля грузопотока' %}</th>
-                    <th class="num">{% trans 'Дороги, км' %}</th>
-                    <th>{% trans 'Обстановка' %}</th>
+                    <th scope="col">{% trans 'Округ' %}</th>
+                    <th scope="col" class="num">{% trans 'Объектов' %}</th>
+                    <th scope="col" class="num">{% trans 'Мощность' %}</th>
+                    <th scope="col" class="num">{% trans 'Грузопоток' %}</th>
+                    <th scope="col">{% trans 'Доля грузопотока' %}</th>
+                    <th scope="col" class="num">{% trans 'Дороги, км' %}</th>
+                    <th scope="col">{% trans 'Обстановка' %}</th>
                 </tr>
             </thead>
             <tbody>
                 {% for profile in profiles %}
                     <tr data-href="{{ profile.district.get_absolute_url }}">
                         <td>
-                            <span class="table-title">{{ profile.district.short_name }}</span>
+                            <a class="table-title" href="{{ profile.district.get_absolute_url }}">{{ profile.district.short_name }}</a>
                             <span class="table-sub">{{ profile.district.name }}</span>
                         </td>
                         <td class="num">{{ profile.object_count }}</td>

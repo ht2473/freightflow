@@ -40,11 +40,11 @@
             <table class="data">
                 <thead>
                     <tr>
-                        <th>{% trans 'Показатель' %}</th>
+                        <th scope="col">{% trans 'Показатель' %}</th>
                         {% for row in result.rows %}
-                            <th class="num">{{ row.district.short_name }}</th>
+                            <th scope="col" class="num">{{ row.district.short_name }}</th>
                         {% endfor %}
-                        <th>{% trans 'Наибольший вклад' %}</th>
+                        <th scope="col">{% trans 'Наибольший вклад' %}</th>
                     </tr>
                 </thead>
                 <tbody>

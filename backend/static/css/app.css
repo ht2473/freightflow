@@ -279,6 +279,9 @@ code, kbd, .mono, .num {
 .right { text-align: right; }
 .center { text-align: center; }
 
+/* Содержимое, доступное программе чтения с экрана, но не занимающее места.
+   Приём годится для подписей, которые дублируются рисунком; для ссылок он
+   не годится — см. переход к содержанию ниже. */
 .visually-hidden {
     position: absolute;
     width: 1px;
@@ -286,6 +289,32 @@ code, kbd, .mono, .num {
     overflow: hidden;
     clip: rect(0 0 0 0);
     white-space: nowrap;
+}
+
+/* Переход к содержанию — первое, что получает фокус на странице.
+
+   Ссылка убрана за верхнюю кромку окна и возвращается, когда до неё доходят
+   клавишей Tab: работающий с клавиатуры должен видеть, где находится фокус,
+   иначе первое нажатие уводит его в никуда. */
+.skip-link {
+    position: absolute;
+    top: 0;
+    left: var(--sp-4);
+    z-index: 100;
+    padding: var(--sp-2) var(--sp-4);
+    background: var(--accent);
+    color: var(--surface);
+    font-family: var(--font-display);
+    font-size: var(--fs-sm);
+    letter-spacing: 0.04em;
+    border-radius: 0 0 var(--radius) var(--radius);
+    transform: translateY(-100%);
+    transition: transform var(--transition);
+}
+
+.skip-link:focus {
+    transform: translateY(0);
+    color: var(--surface);
 }
 
 /* --------------------------------------------------------------------------
@@ -1357,9 +1386,25 @@ table.data tbody tr.is-subject {
 table.data td.num,
 table.data th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
+/* Наименование записи — ссылка на её карточку.
+
+   Строка реестра открывается и нажатием по любому её месту, но переход
+   к записи не может держаться на одном этом: работающий с клавиатуры
+   до строки не добирается, а программа чтения с экрана не находит,
+   куда строка ведёт. Ссылка набрана как заголовок и подчёркивается
+   при наведении и получении фокуса. */
+a.table-title,
 .table-title {
+    display: inline-block;
     font-weight: 700;
     color: var(--text);
+}
+
+a.table-title:hover,
+a.table-title:focus-visible {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
 }
 
 .table-sub {

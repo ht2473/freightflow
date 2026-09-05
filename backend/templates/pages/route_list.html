@@ -67,18 +67,18 @@
     <table class="data">
         <thead>
             <tr>
-                <th>{% sort_link request "name" filters.sort _("Маршрут") %}</th>
-                <th>{% trans 'Тип' %}</th><th>{% trans 'Отправление → Назначение' %}</th>
-                <th class="num">{% sort_link request "distance" filters.sort _("Длина, км") %}</th>
-                <th class="num">{% sort_link request "duration" filters.sort _("Время, ч") %}</th>
-                <th class="num">{% trans 'Скорость' %}</th>
-                <th class="num">{% sort_link request "trucks" filters.sort _("ТС/сут") %}</th>
+                <th scope="col">{% sort_link request "name" filters.sort _("Маршрут") %}</th>
+                <th scope="col">{% trans 'Тип' %}</th><th scope="col">{% trans 'Отправление → Назначение' %}</th>
+                <th scope="col" class="num">{% sort_link request "distance" filters.sort _("Длина, км") %}</th>
+                <th scope="col" class="num">{% sort_link request "duration" filters.sort _("Время, ч") %}</th>
+                <th scope="col" class="num">{% trans 'Скорость' %}</th>
+                <th scope="col" class="num">{% sort_link request "trucks" filters.sort _("ТС/сут") %}</th>
             </tr>
         </thead>
         <tbody>
             {% for route in page_obj.object_list %}
                 <tr data-href="{{ route.get_absolute_url }}">
-                    <td><span class="table-title">{{ route.name }}</span></td>
+                    <td><a class="table-title" href="{{ route.get_absolute_url }}">{{ route.name }}</a></td>
                     <td><span class="badge badge--plain">{{ route.get_route_type_display }}</span></td>
                     <td class="small muted">
                         {{ route.origin_region|dash }} → {{ route.destination|dash }}

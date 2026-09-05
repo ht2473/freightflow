@@ -55,8 +55,8 @@
             <div class="table-wrap" style="border:none">
                 <table class="data">
                     <thead>
-                        <tr><th>{% trans 'Таблица' %}</th><th>{% trans 'Наименование' %}</th>
-                            <th class="num">{% trans 'Записей' %}</th><th>{% trans 'Геокодирование' %}</th></tr>
+                        <tr><th scope="col">{% trans 'Таблица' %}</th><th scope="col">{% trans 'Наименование' %}</th>
+                            <th scope="col" class="num">{% trans 'Записей' %}</th><th scope="col">{% trans 'Геокодирование' %}</th></tr>
                     </thead>
                     <tbody>
                         {% for row in coverage %}
@@ -92,7 +92,7 @@
             </div>
             <div class="table-wrap" style="border:none">
                 <table class="data">
-                    <thead><tr><th>{% trans 'Время' %}</th><th>{% trans 'Пользователь' %}</th><th>{% trans 'Действие' %}</th><th>{% trans 'Описание' %}</th></tr></thead>
+                    <thead><tr><th scope="col">{% trans 'Время' %}</th><th scope="col">{% trans 'Пользователь' %}</th><th scope="col">{% trans 'Действие' %}</th><th scope="col">{% trans 'Описание' %}</th></tr></thead>
                     <tbody>
                         {% for event in recent_events %}
                             <tr>

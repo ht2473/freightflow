@@ -83,12 +83,12 @@
                 <div class="table-wrap" style="border:none">
                     <table class="data">
                         <thead>
-                            <tr><th>{% trans 'Объект' %}</th><th>{% trans 'Тип' %}</th><th>{% trans 'Округ' %}</th></tr>
+                            <tr><th scope="col">{% trans 'Объект' %}</th><th scope="col">{% trans 'Тип' %}</th><th scope="col">{% trans 'Округ' %}</th></tr>
                         </thead>
                         <tbody>
                             {% for item in inside %}
                                 <tr data-href="{{ item.get_absolute_url }}">
-                                    <td><span class="table-title">{{ item.name }}</span></td>
+                                    <td><a class="table-title" href="{{ item.get_absolute_url }}">{{ item.name }}</a></td>
                                     <td class="small muted">{{ item.type.name }}</td>
                                     <td class="small">{{ item.district.short_name }}</td>
                                 </tr>

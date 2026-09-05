@@ -73,19 +73,19 @@
     <table class="data">
         <thead>
             <tr>
-                <th>{% sort_link request "name" filters.sort _("Участок") %}</th>
-                <th>{% trans 'Класс' %}</th>
-                <th>{% trans 'Округ' %}</th>
-                <th class="num">{% sort_link request "length" filters.sort _("Длина, км") %}</th>
-                <th class="num">{% sort_link request "lanes" filters.sort _("Полос") %}</th>
-                <th class="num">{% sort_link request "speed" filters.sort _("Скорость") %}</th>
-                <th>{% trans 'Текущее состояние' %}</th>
+                <th scope="col">{% sort_link request "name" filters.sort _("Участок") %}</th>
+                <th scope="col">{% trans 'Класс' %}</th>
+                <th scope="col">{% trans 'Округ' %}</th>
+                <th scope="col" class="num">{% sort_link request "length" filters.sort _("Длина, км") %}</th>
+                <th scope="col" class="num">{% sort_link request "lanes" filters.sort _("Полос") %}</th>
+                <th scope="col" class="num">{% sort_link request "speed" filters.sort _("Скорость") %}</th>
+                <th scope="col">{% trans 'Текущее состояние' %}</th>
             </tr>
         </thead>
         <tbody>
             {% for road in page_obj.object_list %}
                 <tr data-href="{{ road.get_absolute_url }}">
-                    <td><span class="table-title">{{ road.name }}</span></td>
+                    <td><a class="table-title" href="{{ road.get_absolute_url }}">{{ road.name }}</a></td>
                     <td class="small muted">{{ road.get_road_class_display }}</td>
                     <td>
                         {% if road.district %}

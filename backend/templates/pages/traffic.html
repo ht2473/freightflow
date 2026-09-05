@@ -95,16 +95,16 @@
         <table class="data">
             <thead>
                 <tr>
-                    <th>{% trans 'Участок' %}</th><th>{% trans 'Округ' %}</th><th class="num">{% trans 'Балл' %}</th>
-                    <th class="num">{% trans 'Скорость' %}</th><th class="num">{% trans 'Время проезда' %}</th>
-                    <th class="num">{% trans 'Плотность' %}</th><th>{% trans 'Состояние' %}</th><th>{% trans 'Замер' %}</th>
+                    <th scope="col">{% trans 'Участок' %}</th><th scope="col">{% trans 'Округ' %}</th><th scope="col" class="num">{% trans 'Балл' %}</th>
+                    <th scope="col" class="num">{% trans 'Скорость' %}</th><th scope="col" class="num">{% trans 'Время проезда' %}</th>
+                    <th scope="col" class="num">{% trans 'Плотность' %}</th><th scope="col">{% trans 'Состояние' %}</th><th scope="col">{% trans 'Замер' %}</th>
                 </tr>
             </thead>
             <tbody>
                 {% for condition in conditions %}
                     <tr data-href="{{ condition.road.get_absolute_url }}">
                         <td>
-                            <span class="table-title">{{ condition.road.name }}</span>
+                            <a class="table-title" href="{{ condition.road.get_absolute_url }}">{{ condition.road.name }}</a>
                             <span class="table-sub">{{ condition.road.get_road_class_display }}</span>
                         </td>
                         <td>{% if condition.road.district %}

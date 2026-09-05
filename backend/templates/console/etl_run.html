@@ -79,7 +79,7 @@
         <div class="table-wrap">
             <table class="data">
                 <thead>
-                    <tr><th>{% trans 'Проверка' %}</th><th class="num">{% trans 'Записей' %}</th></tr>
+                    <tr><th scope="col">{% trans 'Проверка' %}</th><th scope="col" class="num">{% trans 'Записей' %}</th></tr>
                 </thead>
                 <tbody>
                     {% for row in by_check %}
@@ -95,8 +95,8 @@
         <div class="table-wrap" style="margin-top:var(--sp-4)">
             <table class="data">
                 <thead>
-                    <tr><th>{% trans 'Положение в источнике' %}</th><th>{% trans 'Ключ' %}</th>
-                        <th>{% trans 'Причина' %}</th><th>{% trans 'Разобрано' %}</th></tr>
+                    <tr><th scope="col">{% trans 'Положение в источнике' %}</th><th scope="col">{% trans 'Ключ' %}</th>
+                        <th scope="col">{% trans 'Причина' %}</th><th scope="col">{% trans 'Разобрано' %}</th></tr>
                 </thead>
                 <tbody>
                     {% for reject in rejects %}

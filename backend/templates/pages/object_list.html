@@ -99,19 +99,19 @@
         <table class="data">
             <thead>
                 <tr>
-                    <th>{% sort_link request "name" filters.sort _("Наименование") %}</th>
-                    <th>{% sort_link request "type" filters.sort _("Тип") %}</th>
-                    <th>{% sort_link request "district" filters.sort _("Округ") %}</th>
-                    <th class="num">{% sort_link request "capacity" filters.sort _("Мощность, т") %}</th>
-                    <th class="num">{% sort_link request "area" filters.sort _("Площадь, м²") %}</th>
-                    <th>{% trans 'Режим работы' %}</th>
+                    <th scope="col">{% sort_link request "name" filters.sort _("Наименование") %}</th>
+                    <th scope="col">{% sort_link request "type" filters.sort _("Тип") %}</th>
+                    <th scope="col">{% sort_link request "district" filters.sort _("Округ") %}</th>
+                    <th scope="col" class="num">{% sort_link request "capacity" filters.sort _("Мощность, т") %}</th>
+                    <th scope="col" class="num">{% sort_link request "area" filters.sort _("Площадь, м²") %}</th>
+                    <th scope="col">{% trans 'Режим работы' %}</th>
                 </tr>
             </thead>
             <tbody>
                 {% for object in page_obj.object_list %}
                     <tr data-href="{{ object.get_absolute_url }}">
                         <td>
-                            <span class="table-title">{{ object.name }}</span>
+                            <a class="table-title" href="{{ object.get_absolute_url }}">{{ object.name }}</a>
                             <span class="table-sub">{{ object.address|dash }}</span>
                         </td>
                         <td>{{ object.type.name }}</td>

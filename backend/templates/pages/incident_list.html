@@ -98,16 +98,16 @@
     <table class="data">
         <thead>
             <tr>
-                <th>{% trans 'Событие' %}</th><th>{% trans 'Участок' %}</th><th>{% trans 'Округ' %}</th>
-                <th>{% trans 'Серьёзность' %}</th><th>{% trans 'Зарегистрировано' %}</th>
-                <th class="num">{% trans 'Длительность' %}</th><th>{% trans 'Состояние' %}</th>
+                <th scope="col">{% trans 'Событие' %}</th><th scope="col">{% trans 'Участок' %}</th><th scope="col">{% trans 'Округ' %}</th>
+                <th scope="col">{% trans 'Серьёзность' %}</th><th scope="col">{% trans 'Зарегистрировано' %}</th>
+                <th scope="col" class="num">{% trans 'Длительность' %}</th><th scope="col">{% trans 'Состояние' %}</th>
             </tr>
         </thead>
         <tbody>
             {% for incident in page_obj.object_list %}
                 <tr data-href="{{ incident.get_absolute_url }}">
                     <td>
-                        <span class="table-title">{{ incident.get_incident_type_display }}</span>
+                        <a class="table-title" href="{{ incident.get_absolute_url }}">{{ incident.get_incident_type_display }}</a>
                         <span class="table-sub">{{ incident.description|truncatechars:70|dash }}</span>
                     </td>
                     <td class="small">{{ incident.road.name|dash }}</td>

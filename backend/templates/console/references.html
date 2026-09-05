@@ -12,8 +12,8 @@
         </div>
         <div class="table-wrap" style="border:none">
             <table class="data">
-                <thead><tr><th>{% trans 'Округ' %}</th><th class="num">{% trans 'Площадь' %}</th>
-                    <th class="num">{% trans 'Население' %}</th><th class="num">{% trans 'Объектов' %}</th><th>{% trans 'Координаты' %}</th></tr></thead>
+                <thead><tr><th scope="col">{% trans 'Округ' %}</th><th scope="col" class="num">{% trans 'Площадь' %}</th>
+                    <th scope="col" class="num">{% trans 'Население' %}</th><th scope="col" class="num">{% trans 'Объектов' %}</th><th scope="col">{% trans 'Координаты' %}</th></tr></thead>
                 <tbody>
                     {% for item in districts %}
                         <tr>
@@ -45,7 +45,7 @@
         </div>
         <div class="table-wrap" style="border:none">
             <table class="data">
-                <thead><tr><th>{% trans 'Код' %}</th><th>{% trans 'Наименование' %}</th><th class="num">{% trans 'Объектов' %}</th></tr></thead>
+                <thead><tr><th scope="col">{% trans 'Код' %}</th><th scope="col">{% trans 'Наименование' %}</th><th scope="col" class="num">{% trans 'Объектов' %}</th></tr></thead>
                 <tbody>
                     {% for item in types %}
                         <tr>
@@ -69,8 +69,8 @@
         </div>
         <div class="table-wrap" style="border:none">
             <table class="data">
-                <thead><tr><th>{% trans 'Код' %}</th><th>{% trans 'Наименование' %}</th>
-                    <th>{% trans 'Класс опасности' %}</th><th class="num">{% trans 'Записей' %}</th></tr></thead>
+                <thead><tr><th scope="col">{% trans 'Код' %}</th><th scope="col">{% trans 'Наименование' %}</th>
+                    <th scope="col">{% trans 'Класс опасности' %}</th><th scope="col" class="num">{% trans 'Записей' %}</th></tr></thead>
                 <tbody>
                     {% for item in categories %}
                         <tr>
@@ -98,8 +98,8 @@
         </div>
         <div class="table-wrap" style="border:none">
             <table class="data">
-                <thead><tr><th>{% trans 'Код' %}</th><th>{% trans 'Наименование' %}</th>
-                    <th>{% trans 'Тип' %}</th><th class="num">{% trans 'Загрузок' %}</th><th>{% trans 'Состояние' %}</th></tr></thead>
+                <thead><tr><th scope="col">{% trans 'Код' %}</th><th scope="col">{% trans 'Наименование' %}</th>
+                    <th scope="col">{% trans 'Тип' %}</th><th scope="col" class="num">{% trans 'Загрузок' %}</th><th scope="col">{% trans 'Состояние' %}</th></tr></thead>
                 <tbody>
                     {% for item in sources %}
                         <tr>

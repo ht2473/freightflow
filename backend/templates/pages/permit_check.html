@@ -131,15 +131,15 @@
                     <div class="table-wrap" style="border:none">
                         <table class="data">
                             <thead>
-                                <tr><th>{% trans 'Зона' %}</th><th class="num">{% trans 'Пропуск от, т' %}</th>
-                                    <th class="num">{% trans 'Экокласс не ниже' %}</th>
-                                    <th class="num">{% trans 'Сезонное ограничение от, т' %}</th>
-                                    <th class="num">{% trans 'Штраф, ₽' %}</th></tr>
+                                <tr><th scope="col">{% trans 'Зона' %}</th><th scope="col" class="num">{% trans 'Пропуск от, т' %}</th>
+                                    <th scope="col" class="num">{% trans 'Экокласс не ниже' %}</th>
+                                    <th scope="col" class="num">{% trans 'Сезонное ограничение от, т' %}</th>
+                                    <th scope="col" class="num">{% trans 'Штраф, ₽' %}</th></tr>
                             </thead>
                             <tbody>
                                 {% for zone in verdict.zones %}
                                     <tr data-href="{% url 'core:zone_detail' zone.pk %}">
-                                        <td><span class="table-title">{{ zone.short_name }}</span>
+                                        <td><a class="table-title" href="{% url 'core:zone_detail' zone.pk %}">{{ zone.short_name }}</a>
                                             <span class="table-sub">{{ zone.name }}</span></td>
                                         <td class="num">{{ zone.permit_required_from_tons|spaced:1 }}</td>
                                         <td class="num">{{ zone.min_ecological_class|dash }}</td>

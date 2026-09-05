@@ -40,8 +40,8 @@
     <div class="table-wrap">
         <table class="data">
             <thead>
-                <tr><th>{% trans 'Отчёт' %}</th><th>{% trans 'Формат' %}</th><th class="num">{% trans 'Строк' %}</th>
-                    <th class="num">{% trans 'Размер' %}</th><th>{% trans 'Создан' %}</th><th>{% trans 'Состояние' %}</th><th></th></tr>
+                <tr><th scope="col">{% trans 'Отчёт' %}</th><th scope="col">{% trans 'Формат' %}</th><th scope="col" class="num">{% trans 'Строк' %}</th>
+                    <th scope="col" class="num">{% trans 'Размер' %}</th><th scope="col">{% trans 'Создан' %}</th><th scope="col">{% trans 'Состояние' %}</th><th scope="col"></th></tr>
             </thead>
             <tbody>
                 {% for job in page_obj.object_list %}

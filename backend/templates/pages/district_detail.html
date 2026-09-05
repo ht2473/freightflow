@@ -53,14 +53,14 @@
             <div class="table-wrap" style="border:none">
                 <table class="data">
                     <thead>
-                        <tr><th>{% trans 'Объект' %}</th><th>{% trans 'Тип' %}</th><th class="num">{% trans 'Мощность, т' %}</th>
-                            <th class="num">{% trans 'Площадь, м²' %}</th></tr>
+                        <tr><th scope="col">{% trans 'Объект' %}</th><th scope="col">{% trans 'Тип' %}</th><th scope="col" class="num">{% trans 'Мощность, т' %}</th>
+                            <th scope="col" class="num">{% trans 'Площадь, м²' %}</th></tr>
                     </thead>
                     <tbody>
                         {% for object in largest_objects %}
                             <tr data-href="{{ object.get_absolute_url }}">
                                 <td>
-                                    <span class="table-title">{{ object.name }}</span>
+                                    <a class="table-title" href="{{ object.get_absolute_url }}">{{ object.name }}</a>
                                     <span class="table-sub">{{ object.address|dash }}</span>
                                 </td>
                                 <td class="small muted">{{ object.type.name }}</td>

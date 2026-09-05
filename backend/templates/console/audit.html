@@ -63,8 +63,8 @@
 <div class="table-wrap">
     <table class="data">
         <thead>
-            <tr><th>{% trans 'Время' %}</th><th>{% trans 'Пользователь' %}</th><th>{% trans 'Действие' %}</th>
-                <th>{% trans 'Описание' %}</th><th>{% trans 'Адрес' %}</th><th>IP</th><th>{% trans 'Запрос' %}</th></tr>
+            <tr><th scope="col">{% trans 'Время' %}</th><th scope="col">{% trans 'Пользователь' %}</th><th scope="col">{% trans 'Действие' %}</th>
+                <th scope="col">{% trans 'Описание' %}</th><th scope="col">{% trans 'Адрес' %}</th><th scope="col">IP</th><th scope="col">{% trans 'Запрос' %}</th></tr>
         </thead>
         <tbody>
             {% for event in page_obj.object_list %}

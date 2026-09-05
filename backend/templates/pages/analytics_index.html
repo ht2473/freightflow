@@ -46,10 +46,10 @@
         <table class="data">
             <thead>
                 <tr>
-                    <th class="num">№</th><th>{% trans 'Округ' %}</th><th class="num">{% trans 'Индекс' %}</th>
-                    <th>{% trans 'Профиль составляющих' %}</th>
+                    <th scope="col" class="num">№</th><th scope="col">{% trans 'Округ' %}</th><th scope="col" class="num">{% trans 'Индекс' %}</th>
+                    <th scope="col">{% trans 'Профиль составляющих' %}</th>
                     {% for item in components %}
-                        <th class="num" title="{{ item.unit }}">{{ item.title }}</th>
+                        <th scope="col" class="num" title="{{ item.unit }}">{{ item.title }}</th>
                     {% endfor %}
                 </tr>
             </thead>
@@ -58,7 +58,7 @@
                     <tr data-href="{{ row.district.get_absolute_url }}">
                         <td class="num faint">{{ row.rank }}</td>
                         <td>
-                            <span class="table-title">{{ row.district.short_name }}</span>
+                            <a class="table-title" href="{{ row.district.get_absolute_url }}">{{ row.district.short_name }}</a>
                             <span class="table-sub">{{ row.district.name }}</span>
                         </td>
                         <td class="num">

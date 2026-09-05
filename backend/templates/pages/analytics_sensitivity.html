@@ -58,11 +58,11 @@
         <table class="data">
             <thead>
                 <tr>
-                    <th>{% trans 'Набор весов' %}</th>
-                    {% for item in components %}<th class="num">{{ item.title }}</th>{% endfor %}
-                    <th class="num">ρ</th>
-                    <th class="num">{% trans 'Смещение' %}</th>
-                    <th>{% trans 'Первое место' %}</th>
+                    <th scope="col">{% trans 'Набор весов' %}</th>
+                    {% for item in components %}<th scope="col" class="num">{{ item.title }}</th>{% endfor %}
+                    <th scope="col" class="num">ρ</th>
+                    <th scope="col" class="num">{% trans 'Смещение' %}</th>
+                    <th scope="col">{% trans 'Первое место' %}</th>
                 </tr>
             </thead>
             <tbody>
@@ -129,12 +129,12 @@
         <table class="data">
             <thead>
                 <tr>
-                    <th>{% trans 'Составляющая' %}</th>
-                    <th>{% trans 'Отклонение' %}</th>
-                    <th class="num">{% trans 'Вес' %}</th>
-                    <th class="num">ρ</th>
-                    <th class="num">{% trans 'Смещение' %}</th>
-                    <th>{% trans 'Первое место' %}</th>
+                    <th scope="col">{% trans 'Составляющая' %}</th>
+                    <th scope="col">{% trans 'Отклонение' %}</th>
+                    <th scope="col" class="num">{% trans 'Вес' %}</th>
+                    <th scope="col" class="num">ρ</th>
+                    <th scope="col" class="num">{% trans 'Смещение' %}</th>
+                    <th scope="col">{% trans 'Первое место' %}</th>
                 </tr>
             </thead>
             <tbody>
@@ -166,8 +166,8 @@
         <div class="table-wrap">
             <table class="data">
                 <thead>
-                    <tr><th>{% trans 'Пара составляющих' %}</th><th class="num">r</th>
-                        <th>{% trans 'Связь' %}</th></tr>
+                    <tr><th scope="col">{% trans 'Пара составляющих' %}</th><th scope="col" class="num">r</th>
+                        <th scope="col">{% trans 'Связь' %}</th></tr>
                 </thead>
                 <tbody>
                     {% for pair in result.correlations %}

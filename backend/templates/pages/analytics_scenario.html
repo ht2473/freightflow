@@ -71,10 +71,10 @@
         <div class="table-wrap">
             <table class="data">
                 <thead>
-                    <tr><th class="num">№</th><th>{% trans 'Округ' %}</th>
-                        <th class="num">{% trans 'Базовый индекс' %}</th><th class="num">{% trans 'Сценарный индекс' %}</th>
-                        <th class="num">{% trans 'Изменение' %}</th>
-                        <th class="num">{% trans 'Место' %}</th><th>{% trans 'Направление' %}</th></tr>
+                    <tr><th scope="col" class="num">№</th><th scope="col">{% trans 'Округ' %}</th>
+                        <th scope="col" class="num">{% trans 'Базовый индекс' %}</th><th scope="col" class="num">{% trans 'Сценарный индекс' %}</th>
+                        <th scope="col" class="num">{% trans 'Изменение' %}</th>
+                        <th scope="col" class="num">{% trans 'Место' %}</th><th scope="col">{% trans 'Направление' %}</th></tr>
                 </thead>
                 <tbody>
                     {% for row in result.rows %}
@@ -125,10 +125,10 @@
             <div class="table-wrap">
                 <table class="data">
                     <thead>
-                        <tr><th>{% trans 'Условие' %}</th><th class="num">{% trans 'Изменение' %}</th>
-                            <th class="num">{% trans 'Индекс округа' %}</th>
-                            <th class="num">{% trans 'Сдвиг индекса' %}</th>
-                            <th class="num">{% trans 'Место' %}</th></tr>
+                        <tr><th scope="col">{% trans 'Условие' %}</th><th scope="col" class="num">{% trans 'Изменение' %}</th>
+                            <th scope="col" class="num">{% trans 'Индекс округа' %}</th>
+                            <th scope="col" class="num">{% trans 'Сдвиг индекса' %}</th>
+                            <th scope="col" class="num">{% trans 'Место' %}</th></tr>
                     </thead>
                     <tbody>
                         {% for item in result.variants %}

@@ -111,13 +111,13 @@
                 <div class="table-wrap" style="border:none">
                     <table class="data">
                         <thead>
-                            <tr><th>{% trans 'Объект' %}</th><th>{% trans 'Тип' %}</th><th class="num">{% trans 'Расстояние' %}</th>
-                                <th class="num">{% trans 'Мощность' %}</th></tr>
+                            <tr><th scope="col">{% trans 'Объект' %}</th><th scope="col">{% trans 'Тип' %}</th><th scope="col" class="num">{% trans 'Расстояние' %}</th>
+                                <th scope="col" class="num">{% trans 'Мощность' %}</th></tr>
                         </thead>
                         <tbody>
                             {% for item in neighbours %}
                                 <tr data-href="{{ item.object.get_absolute_url }}">
-                                    <td><span class="table-title">{{ item.object.name }}</span></td>
+                                    <td><a class="table-title" href="{{ item.object.get_absolute_url }}">{{ item.object.name }}</a></td>
                                     <td class="small muted">{{ item.object.type.name }}</td>
                                     <td class="num">{{ item.distance_km|spaced:2 }} км</td>
                                     <td class="num">{{ item.object.capacity_tons|spaced }} т</td>

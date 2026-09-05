@@ -19,8 +19,8 @@
     <div class="table-wrap">
         <table class="data">
             <thead>
-                <tr><th>{% trans 'Раздел' %}</th><th>{% trans 'Условия отбора' %}</th>
-                    <th class="num">{% trans 'Обращений' %}</th><th>{% trans 'Последнее' %}</th><th></th></tr>
+                <tr><th scope="col">{% trans 'Раздел' %}</th><th scope="col">{% trans 'Условия отбора' %}</th>
+                    <th scope="col" class="num">{% trans 'Обращений' %}</th><th scope="col">{% trans 'Последнее' %}</th><th scope="col"></th></tr>
             </thead>
             <tbody>
                 {% for item in page_obj.object_list %}

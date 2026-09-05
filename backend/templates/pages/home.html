@@ -201,17 +201,17 @@
                 <table class="data">
                     <thead>
                         <tr>
-                            <th>{% trans 'Округ' %}</th>
-                            <th class="num">{% trans 'Объектов' %}</th>
-                            <th class="num">{% if ranked_by_flow %}{% trans 'Грузопоток' %}{% else %}{% trans 'Площадь, км²' %}{% endif %}</th>
-                            <th>{% trans 'Обстановка' %}</th>
+                            <th scope="col">{% trans 'Округ' %}</th>
+                            <th scope="col" class="num">{% trans 'Объектов' %}</th>
+                            <th scope="col" class="num">{% if ranked_by_flow %}{% trans 'Грузопоток' %}{% else %}{% trans 'Площадь, км²' %}{% endif %}</th>
+                            <th scope="col">{% trans 'Обстановка' %}</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for profile in top_districts %}
                             <tr data-href="{{ profile.district.get_absolute_url }}">
                                 <td>
-                                    <span class="table-title">{{ profile.district.short_name }}</span>
+                                    <a class="table-title" href="{{ profile.district.get_absolute_url }}">{{ profile.district.short_name }}</a>
                                     <span class="table-sub">{{ profile.district.name }}</span>
                                 </td>
                                 <td class="num">{{ profile.object_count }}</td>
@@ -243,17 +243,17 @@
                 <table class="data">
                     <thead>
                         <tr>
-                            <th>{% trans 'Участок' %}</th>
-                            <th class="num">{% trans 'Балл' %}</th>
-                            <th class="num">{% trans 'Скорость' %}</th>
-                            <th>{% trans 'Состояние' %}</th>
+                            <th scope="col">{% trans 'Участок' %}</th>
+                            <th scope="col" class="num">{% trans 'Балл' %}</th>
+                            <th scope="col" class="num">{% trans 'Скорость' %}</th>
+                            <th scope="col">{% trans 'Состояние' %}</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for condition in congested %}
                             <tr data-href="{{ condition.road.get_absolute_url }}">
                                 <td>
-                                    <span class="table-title">{{ condition.road.name }}</span>
+                                    <a class="table-title" href="{{ condition.road.get_absolute_url }}">{{ condition.road.name }}</a>
                                     <span class="table-sub">
                                         {{ condition.road.get_road_class_display }}
                                     </span>

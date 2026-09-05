@@ -53,9 +53,9 @@
 <div class="table-wrap">
     <table class="data">
         <thead>
-            <tr><th>{% trans 'Начало' %}</th><th>{% trans 'Источник' %}</th><th>{% trans 'Целевая таблица' %}</th>
-                <th class="num">{% trans 'Загружено' %}</th><th class="num">{% trans 'Ошибок' %}</th>
-                <th class="num">{% trans 'Длительность' %}</th><th>{% trans 'Итог' %}</th><th>{% trans 'Сообщение' %}</th></tr>
+            <tr><th scope="col">{% trans 'Начало' %}</th><th scope="col">{% trans 'Источник' %}</th><th scope="col">{% trans 'Целевая таблица' %}</th>
+                <th scope="col" class="num">{% trans 'Загружено' %}</th><th scope="col" class="num">{% trans 'Ошибок' %}</th>
+                <th scope="col" class="num">{% trans 'Длительность' %}</th><th scope="col">{% trans 'Итог' %}</th><th scope="col">{% trans 'Сообщение' %}</th></tr>
         </thead>
         <tbody>
             {% for run in page_obj.object_list %}

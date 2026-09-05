@@ -122,12 +122,12 @@
             <table class="data">
                 <thead>
                     <tr>
-                        <th class="num">№</th>
-                        <th>{% trans 'Модель' %}</th>
-                        <th class="num">MAE, т</th>
-                        <th class="num">RMSE, т</th>
-                        <th class="num">MAPE, %</th>
-                        <th class="num">{% trans 'Против наивной' %}</th>
+                        <th scope="col" class="num">№</th>
+                        <th scope="col">{% trans 'Модель' %}</th>
+                        <th scope="col" class="num">MAE, т</th>
+                        <th scope="col" class="num">RMSE, т</th>
+                        <th scope="col" class="num">MAPE, %</th>
+                        <th scope="col" class="num">{% trans 'Против наивной' %}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -178,8 +178,8 @@
                 <div class="table-wrap" style="border:none">
                     <table class="data">
                         <thead>
-                            <tr><th>{% trans 'Период' %}</th>
-                                <th class="num">{% trans 'Прогноз, т' %}</th></tr>
+                            <tr><th scope="col">{% trans 'Период' %}</th>
+                                <th scope="col" class="num">{% trans 'Прогноз, т' %}</th></tr>
                         </thead>
                         <tbody>
                             {% for row in result.forecast %}

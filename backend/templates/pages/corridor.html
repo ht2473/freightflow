@@ -64,13 +64,13 @@
                     <div class="table-wrap" style="border:none">
                         <table class="data">
                             <thead>
-                                <tr><th>{% trans 'Округ' %}</th><th class="num">{% trans 'Протяжённость, км' %}</th>
-                                    <th class="num">{% trans 'Объектов в полосе' %}</th><th>{% trans 'Доля пути' %}</th></tr>
+                                <tr><th scope="col">{% trans 'Округ' %}</th><th scope="col" class="num">{% trans 'Протяжённость, км' %}</th>
+                                    <th scope="col" class="num">{% trans 'Объектов в полосе' %}</th><th scope="col">{% trans 'Доля пути' %}</th></tr>
                             </thead>
                             <tbody>
                                 {% for reach in result.reaches %}
                                     <tr data-href="{{ reach.district.get_absolute_url }}">
-                                        <td><span class="table-title">{{ reach.district.name }}</span></td>
+                                        <td><a class="table-title" href="{{ reach.district.get_absolute_url }}">{{ reach.district.name }}</a></td>
                                         <td class="num">{{ reach.length_km|spaced:1 }}</td>
                                         <td class="num">{{ reach.object_count }}</td>
                                         <td style="min-width:120px">
@@ -96,14 +96,14 @@
                     <div class="table-wrap" style="border:none">
                         <table class="data">
                             <thead>
-                                <tr><th>{% trans 'Объект' %}</th><th>{% trans 'Тип' %}</th>
-                                    <th class="num">{% trans 'До оси, км' %}</th>
-                                    <th class="num">{% trans 'Площадь, м²' %}</th></tr>
+                                <tr><th scope="col">{% trans 'Объект' %}</th><th scope="col">{% trans 'Тип' %}</th>
+                                    <th scope="col" class="num">{% trans 'До оси, км' %}</th>
+                                    <th scope="col" class="num">{% trans 'Площадь, м²' %}</th></tr>
                             </thead>
                             <tbody>
                                 {% for item in result.objects|slice:":30" %}
                                     <tr data-href="{{ item.get_absolute_url }}">
-                                        <td><span class="table-title">{{ item.name }}</span>
+                                        <td><a class="table-title" href="{{ item.get_absolute_url }}">{{ item.name }}</a>
                                             <span class="table-sub">{{ item.district.short_name }}</span></td>
                                         <td class="small muted">{{ item.type.name }}</td>
                                         <td class="num">{{ item.corridor_distance_km|spaced:2 }}</td>
@@ -133,13 +133,13 @@
                     <div class="table-wrap" style="border:none">
                         <table class="data">
                             <thead>
-                                <tr><th>{% trans 'Событие' %}</th><th class="num">{% trans 'Серьёзность' %}</th>
-                                    <th class="num">{% trans 'До оси, км' %}</th><th>{% trans 'Грузовое движение' %}</th></tr>
+                                <tr><th scope="col">{% trans 'Событие' %}</th><th scope="col" class="num">{% trans 'Серьёзность' %}</th>
+                                    <th scope="col" class="num">{% trans 'До оси, км' %}</th><th scope="col">{% trans 'Грузовое движение' %}</th></tr>
                             </thead>
                             <tbody>
                                 {% for item in result.incidents|slice:":15" %}
                                     <tr data-href="{{ item.get_absolute_url }}">
-                                        <td><span class="table-title">{{ item.get_incident_type_display }}</span>
+                                        <td><a class="table-title" href="{{ item.get_absolute_url }}">{{ item.get_incident_type_display }}</a>
                                             <span class="table-sub">{{ item.description|truncatechars:64 }}</span></td>
                                         <td class="num">
                                             <span class="badge badge--{{ item.severity|severity_tone }}">{{ item.severity }}</span>
