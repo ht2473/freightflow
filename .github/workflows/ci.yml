@@ -47,7 +47,7 @@ jobs:
           FF_SECRET_KEY: ci-only-secret-key-not-used-in-production-Bp7xQm2vTz9Kd4Lw
           FF_DEBUG: "False"
           FF_DB_ENGINE: sqlite
-        run: pytest --cov=backend --cov-report=xml --cov-report=term
+        run: pytest -m "not browser" --cov=backend --cov-report=xml --cov-report=term
       - name: Публикация отчёта о покрытии
         uses: actions/upload-artifact@v4
         with:
@@ -90,11 +90,14 @@ jobs:
           FF_DB_PASSWORD: freightflow
           FF_DB_HOST: 127.0.0.1
           FF_DB_PORT: "5432"
-        run: pytest -q
+        run: pytest -m "not browser" -q
 
   # Проверки в управляемом браузере вынесены в отдельное задание: они требуют
   # загрузки браузера и идут дольше остальных, поэтому не должны задерживать
-  # быструю обратную связь от модульного набора.
+  # быструю обратную связь от модульного набора. В заданиях выше они сняты
+  # по метке browser: библиотека управления браузером входит в зависимости
+  # разработки, поэтому набор не пропускает их сам, а сам браузер там
+  # не установлен.
   #
   # Задание закрывает разрыв в методике, из-за которого отказ карты оставался
   # незамеченным: тестовый клиент Django получает разметку, но не исполняет
