@@ -1442,9 +1442,32 @@ def scenario(district_id: int | None = None, **changes: float) -> dict:
         (row["district"] for row in base if row["district"].id == district_id),
         base[0]["district"],
     )
-    factors = {
-        key: 1 + float(changes.get(key, 0.0)) / 100 for key in SCENARIO_LEVERS
+    params = {key: float(changes.get(key, 0.0)) for key in SCENARIO_LEVERS}
+    shifted = _scenario_rows(base, target, params)
+    subject = next(row for row in shifted if row["target"])
+
+    return {
+        "available": True,
+        "rows": shifted,
+        "district": target,
+        "subject": subject,
+        "params": params,
+        "levers": SCENARIO_LEVERS,
+        "variants": _scenario_variants(base, target, params),
+        "avg_delta": round(sum(row["delta"] for row in shifted) / len(shifted), 2),
+        "worsened": sum(1 for row in shifted if row["delta"] > 0.5),
+        "improved": sum(1 for row in shifted if row["delta"] < -0.5),
+        "reordered": sum(1 for row in shifted if row["rank_delta"]),
     }
+
+
+def _scenario_rows(base: list[dict], target, params: dict[str, float]) -> list[dict]:
+    """Пересчитать индекс всех округов при заданном сдвиге условий одного.
+
+    Изменённые величины проходят тот же расчёт, что и исходные: переносится
+    сдвиг условий, а не отклик на него.
+    """
+    factors = {key: 1 + params.get(key, 0.0) / 100 for key in SCENARIO_LEVERS}
 
     shifted = []
     for item in base:
@@ -1477,20 +1500,55 @@ def scenario(district_id: int | None = None, **changes: float) -> dict:
     for rank, row in enumerate(shifted, start=1):
         row["rank"] = rank
         row["rank_delta"] = row["base_rank"] - rank
+    return shifted
 
-    subject = next(row for row in shifted if row["target"])
-    return {
-        "available": True,
-        "rows": shifted,
-        "district": target,
-        "subject": subject,
-        "params": {key: float(changes.get(key, 0.0)) for key in SCENARIO_LEVERS},
-        "levers": SCENARIO_LEVERS,
-        "avg_delta": round(sum(row["delta"] for row in shifted) / len(shifted), 2),
-        "worsened": sum(1 for row in shifted if row["delta"] > 0.5),
-        "improved": sum(1 for row in shifted if row["delta"] < -0.5),
-        "reordered": sum(1 for row in shifted if row["rank_delta"]),
-    }
+
+def _scenario_variants(base: list[dict], target, params: dict[str, float]) -> list[dict]:
+    """Сопоставить действие каждого условия по отдельности и всех вместе.
+
+    Сценарий обычно складывается из нескольких решений сразу, и по одному
+    итогу не видно, которое из них его определило. Каждое условие
+    прикладывается отдельно, а совокупный сдвиг приводится рядом: если он
+    не равен сумме отдельных, значит условия действуют через одну
+    и ту же составляющую индекса.
+    """
+    active = {key: value for key, value in params.items() if value}
+    if len(active) < 2:
+        return []
+
+    variants = []
+    for key, value in active.items():
+        rows = _scenario_rows(base, target, {key: value})
+        subject = next(row for row in rows if row["target"])
+        variants.append(
+            {
+                "code": key,
+                "title": SCENARIO_LEVERS[key],
+                "change": value,
+                "score": subject["score"],
+                "delta": subject["delta"],
+                "rank": subject["rank"],
+                "rank_delta": subject["rank_delta"],
+            }
+        )
+
+    combined = next(row for row in _scenario_rows(base, target, params) if row["target"])
+    variants.append(
+        {
+            "code": "all",
+            "title": _("Все условия вместе"),
+            "change": None,
+            "score": combined["score"],
+            "delta": combined["delta"],
+            "rank": combined["rank"],
+            "rank_delta": combined["rank_delta"],
+            "is_combined": True,
+            "sum_of_parts": round(
+                sum(item["delta"] for item in variants), 1
+            ),
+        }
+    )
+    return variants
 
 
 def compare_districts(ids: list[int]) -> dict:

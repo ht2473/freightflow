@@ -635,6 +635,32 @@ class TestScenario:
         """Без исходных данных расчёт помечается недоступным."""
         assert services.scenario(None, storage=10)["available"] is False
 
+    def test_single_condition_needs_no_breakdown(self, full_dataset, districts):
+        """Разбор не строится там, где условие одно: разбирать нечего."""
+        assert services.scenario(districts[0].id, storage=30)["variants"] == []
+
+    def test_breakdown_covers_every_condition(self, full_dataset, districts):
+        """Каждое заданное условие прикладывается отдельно, и все — вместе."""
+        result = services.scenario(districts[0].id, storage=30, network=10)
+        codes = [item["code"] for item in result["variants"]]
+        assert codes == ["storage", "network", "all"]
+        assert result["variants"][-1]["is_combined"] is True
+
+    def test_combined_variant_matches_main_result(self, full_dataset, districts):
+        """Совокупный вариант разбора совпадает с итогом сценария."""
+        result = services.scenario(districts[0].id, storage=30, network=10)
+        combined = result["variants"][-1]
+        assert combined["score"] == result["subject"]["score"]
+        assert combined["rank"] == result["subject"]["rank"]
+
+    def test_breakdown_keeps_sum_of_parts(self, full_dataset, districts):
+        """Сумма отдельных сдвигов приводится рядом с совокупным."""
+        result = services.scenario(districts[0].id, storage=30, network=10)
+        parts = result["variants"][:-1]
+        assert result["variants"][-1]["sum_of_parts"] == round(
+            sum(item["delta"] for item in parts), 1
+        )
+
 
 @pytest.mark.django_db
 class TestComparison:

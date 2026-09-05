@@ -114,6 +114,47 @@
         </div>
     </section>
 
+    {% if result.variants %}
+        <section class="section">
+            <div class="section__head">
+                <div>
+                    <p class="eyebrow">{% trans 'Разбор сценария' %}</p>
+                    <h2>{% trans 'Что даёт каждое условие по отдельности' %}</h2>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                        <tr><th>{% trans 'Условие' %}</th><th class="num">{% trans 'Изменение' %}</th>
+                            <th class="num">{% trans 'Индекс округа' %}</th>
+                            <th class="num">{% trans 'Сдвиг индекса' %}</th>
+                            <th class="num">{% trans 'Место' %}</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for item in result.variants %}
+                            <tr {% if item.is_combined %}class="is-subject"{% endif %}>
+                                <td><span class="table-title">{{ item.title }}</span></td>
+                                <td class="num">
+                                    {% if item.change is not None %}
+                                        {% if item.change > 0 %}+{% endif %}{{ item.change|spaced:0 }} %
+                                    {% else %}—{% endif %}
+                                </td>
+                                <td class="num">{{ item.score|spaced:1 }}</td>
+                                <td class="num">
+                                    {% if item.delta > 0 %}+{% endif %}{{ item.delta|spaced:1 }}
+                                </td>
+                                <td class="num">{{ item.rank }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="small muted" style="margin-top:var(--sp-3)">
+                {% trans 'Сумма отдельных сдвигов не обязана совпадать с совокупным: условия могут действовать через одну и ту же составляющую индекса, и тогда их действие не складывается.' %}
+            </p>
+        </section>
+    {% endif %}
+
     <section class="section">
         <div class="card">
             <h3 style="margin-bottom:var(--sp-3)">{% trans 'Что именно пересчитывается' %}</h3>
