@@ -141,6 +141,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.middleware.gzip.GZipMiddleware",
+    "core.middleware.ContentSecurityPolicyMiddleware",
     # Собственные обработчики: сквозной идентификатор запроса и журнал действий.
     "core.middleware.RequestIdMiddleware",
     "accounts.middleware.AuditMiddleware",

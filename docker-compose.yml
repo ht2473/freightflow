@@ -115,6 +115,7 @@ services:
     volumes:
       - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./deploy/proxy_params.conf:/etc/nginx/proxy_params.conf:ro
+      - ./deploy/security_headers.conf:/etc/nginx/security_headers.conf:ro
       - static_data:/var/www/static:ro
       - media_data:/var/www/media:ro
       - ./deploy/certs:/etc/nginx/certs:ro

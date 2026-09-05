@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 from django.conf import settings
+from django.urls import reverse
 
 STATIC_DIR = Path(settings.STATICFILES_DIRS[0])
 TEMPLATE_DIR = Path(settings.TEMPLATES[0]["DIRS"][0])
@@ -253,3 +254,50 @@ class TestContrast:
                 assert colours["--accent"] != colours[tone], (
                     f"цвет действия совпал со ступенью {tone}"
                 )
+
+
+class TestContentSecurityPolicy:
+    """Политика безопасности содержимого."""
+
+    def test_policy_accompanies_every_page(self, client, db):
+        """Ответ несёт объявление политики."""
+        response = client.get(reverse("core:home"))
+        assert "Content-Security-Policy" in response.headers
+
+    def test_policy_confines_the_page_to_its_own_domain(self, client, db):
+        """Источником по умолчанию объявлен собственный домен."""
+        policy = client.get(reverse("core:home"))["Content-Security-Policy"]
+        assert "default-src 'self'" in policy
+        assert "font-src 'self'" in policy
+        assert "connect-src 'self'" in policy
+
+    def test_only_own_scripts_are_executed(self, client, db):
+        """Разрешение на сценарии не выходит за пределы своего домена.
+
+        Разметка не содержит ни одного встроенного сценария, поэтому
+        послабление ``unsafe-inline`` не требуется: установка оформления
+        до первой отрисовки вынесена в отдельный файл.
+        """
+        policy = client.get(reverse("core:home"))["Content-Security-Policy"]
+        assert "script-src 'self'" in policy
+        assert "script-src 'self' 'unsafe-inline'" not in policy
+
+    def test_markup_carries_no_inline_script(self):
+        """Во всех шаблонах нет ни одного встроенного сценария.
+
+        Встроенный сценарий не исполнился бы при объявленной политике,
+        и раздел перестал бы работать молча — без сообщения на странице.
+        """
+        offenders = {}
+        for template in sorted(TEMPLATE_DIR.rglob("*.html")):
+            text = template.read_text(encoding="utf-8")
+            for match in re.finditer(r"<script(?P<attrs>[^>]*)>", text):
+                attrs = match.group("attrs")
+                if "src=" in attrs or "json_script" in attrs:
+                    continue
+                if 'type="application/json"' in attrs:
+                    continue
+                offenders.setdefault(
+                    str(template.relative_to(TEMPLATE_DIR)), []
+                ).append(attrs.strip() or "<script>")
+        assert offenders == {}, f"встроенные сценарии: {offenders}"

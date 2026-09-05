@@ -12,44 +12,17 @@
     <meta name="theme-color" content="#eceeed">
     <meta name="theme-color" content="#0f1417" media="(prefers-color-scheme: dark)">
 
-    {# Начертания, которыми набрана русскоязычная страница, запрашиваются      #}
-    {# заранее: объявление @font-face само по себе загрузку не начинает —      #}
-    {# браузер откладывает её до разбора разметки и встречи первого знака.     #}
-    <link rel="preload" as="font" type="font/woff2" crossorigin
-          href="{% static 'fonts/pt-sans-400-cyrillic.woff2' %}">
-    <link rel="preload" as="font" type="font/woff2" crossorigin
-          href="{% static 'fonts/pt-sans-narrow-700-cyrillic.woff2' %}">
-
+    {# Начертания подключаются первой таблицей стилей: браузер начинает их   #}
+    {# загрузку, разобрав её, и параллельно продолжает читать остальное.     #}
     <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
     <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
 
-    {# Оформление устанавливается до первой отрисовки страницы. Основной     #}
-    {# сценарий загружается с признаком defer и выполняется после разбора    #}
-    {# разметки — без этой вставки страница на мгновение показывалась бы в   #}
-    {# оформлении по умолчанию, а затем перекрашивалась.                     #}
-    <script>
-        (function () {
-            var root = document.documentElement;
-            var choice;
-            try {
-                choice = localStorage.getItem("ff-theme");
-            } catch (error) {
-                choice = null;
-            }
-            if (choice !== "dark" && choice !== "light" && choice !== "auto") {
-                choice = root.dataset.themeDefault || "light";
-            }
-            var applied = choice;
-            if (choice === "auto") {
-                applied = window.matchMedia
-                    && window.matchMedia("(prefers-color-scheme: dark)").matches
-                    ? "dark" : "light";
-            }
-            root.setAttribute("data-theme", applied);
-            root.setAttribute("data-theme-choice", choice);
-        })();
-    </script>
+    {# Оформление устанавливается до первой отрисовки страницы: сценарий   #}
+    {# подключён без отложенного исполнения и выполняется раньше, чем        #}
+    {# браузер нарисует первый кадр.                                        #}
+    <script src="{% static 'js/ff-theme.js' %}"></script>
+
     {% block head %}{% endblock %}
 </head>
 <body>

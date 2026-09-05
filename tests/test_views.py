@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from django.urls import reverse
 
@@ -341,7 +343,16 @@ class TestThemeToggle:
         assert 'data-theme-label-auto="Appearance: system default"' in content
 
     def test_theme_applied_before_first_paint(self, client, full_dataset):
-        """Оформление устанавливается до отрисовки, без мигания страницы."""
+        """Оформление устанавливается до отрисовки, без мигания страницы.
+
+        Сценарий подключён в заголовке страницы и без признаков отложенного
+        исполнения: браузер выполняет его прежде, чем нарисует первый кадр.
+        Отложенный сценарий отработал бы после разбора разметки, и страница
+        на мгновение показалась бы в оформлении по умолчанию.
+        """
         content = client.get(reverse("core:home")).content.decode()
         head = content.split("</head>")[0]
-        assert "data-theme-choice" in head
+        found = re.search(r"<script([^>]*js/ff-theme[^>]*)>", head)
+        assert found, "сценарий оформления не подключён в заголовке страницы"
+        assert "defer" not in found.group(1)
+        assert "async" not in found.group(1)
