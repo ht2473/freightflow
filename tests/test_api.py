@@ -221,3 +221,9 @@ class TestSchema:
     def test_redoc_available(self, client, full_dataset):
         """Альтернативное представление документации доступно."""
         assert client.get(f"{BASE}redoc/").status_code == 200
+
+    def test_schema_describes_token_scheme(self, client, full_dataset):
+        """Спецификация описывает способ авторизации, а не умалчивает о нём."""
+        body = client.get(f"{BASE}schema/").content.decode()
+        assert "ProfileToken" in body
+        assert "Authorization" in body

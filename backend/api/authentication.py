@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from accounts.models import profile_by_api_token
 from django.utils.translation import gettext_lazy as _
+from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework import authentication, exceptions
 
 #: Слово-опознаватель схемы в заголовке.
@@ -56,3 +57,26 @@ class ProfileTokenAuthentication(authentication.BaseAuthentication):
     def authenticate_header(self, request) -> str:
         """Схема, которую клиенту предлагается использовать при отказе."""
         return KEYWORD
+
+
+class ProfileTokenScheme(OpenApiAuthenticationExtension):
+    """Описание схемы доступа для спецификации OpenAPI.
+
+    Без этого описания спецификация умалчивала бы о единственном способе
+    авторизации: генератор знает о классе аутентификации, но не о том, как
+    он читает заголовок, а клиентские библиотеки собираются по спецификации.
+    """
+
+    target_class = ProfileTokenAuthentication
+    name = "ProfileToken"
+
+    def get_security_definition(self, auto_schema) -> dict:
+        return {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization",
+            "description": (
+                "Персональный токен: «Token <значение>». Выпускается в личном "
+                "кабинете пользователями с ролью «Аналитик» и выше."
+            ),
+        }
